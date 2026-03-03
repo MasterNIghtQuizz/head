@@ -1,100 +1,74 @@
-# Monorepo Project
+# Quiz Master Monorepo
 
-This project is a Yarn workspace-based monorepo using **Yarn v4.11.0**.
+This project is a Yarn workspace-based monorepo using **Yarn v4.11.0** and **Node.js 24**.
+It follows Hexagonal Architecture and Domain-Driven Design (DDD) principles.
 
 ## Prerequisites
 
-This project uses Yarn 4.11.0 via Corepack. If you haven't set it up yet:
+This project uses Yarn 4.11.0 via Corepack.
 
 ```bash
-# Enable Corepack (ships with Node.js ≥16.10)
 corepack enable
-
-# Set Yarn version to 4.11.0
-corepack prepare yarn@4.11.0 --activate
-```
-
-Or if you already have Yarn installed:
-
-```bash
 yarn set version 4.11.0
 ```
 
+## Architecture
+
+The system consists of an API Gateway and several microservices:
+
+- **api-gateway**: Entry point, routing requests to microservices.
+- **ms-user**: Manages user profiles and authentication.
+- **ms-quizz-management**: Manages quizzes, questions, and choices.
+
 ## Project Structure
 
-This monorepo contains the following packages:
+### `packages/common`
 
-### `packages/common/logger`
-- **Package name**: `common-logger`
-- **Purpose**: Logging utility using Pino and Pino-pretty
-- **Version**: 1.1.0
+- **common-logger**: Standardized logging based on Pino.
+- **common-config**: Centralized configuration management with Joi validation.
 
-### `packages/core`
-- **Package name**: `@monorepo/core`
-- **Purpose**: Core application with Fastify server setup and MySQL integration
-- **Version**: 1.0.0
+### `packages/api-gateway`
 
-### `packages/utils`
-- **Package name**: `@monorepo/utils`
-- **Purpose**: Utility functions and services that depend on core and logger
-- **Version**: 1.0.0
-- **Dependencies**: Uses workspace references to `@monorepo/core` and `common-logger`
+- **Package name**: `@monorepo/api-gateway`
+- **Purpose**: Fastify-based gateway for microservice coordination.
+
+### `packages/ms-user`
+
+- **Package name**: `@monorepo/ms-user`
+- **Purpose**: User management service with PostgreSQL integration.
+
+### `packages/ms-quizz-management`
+
+- **Package name**: `@monorepo/ms-quizz-management`
+- **Purpose**: Quiz management service with PostgreSQL integration.
 
 ## Getting Started
 
 ### Installation
 
-Install all dependencies for the workspace:
-
 ```bash
 yarn install
 ```
 
-### Available Scripts
+### Running with Docker
 
-#### Root-level Scripts
-
-From the project root:
-
-- `yarn lint` - Run ESLint and TypeScript compiler checks
-- `yarn tsc` - Run TypeScript compiler
-
-#### Workspace-specific Scripts
-
-Run scripts in specific packages:
-
-- `yarn workspace @monorepo/core start` - Start the core application
-- `yarn workspace @monorepo/utils start` - Start the utils application
-
-Or navigate to a specific package and run:
+The entire stack, including PostgreSQL, can be started using Docker Compose:
 
 ```bash
-cd packages/core
-yarn start
+docker-compose up --build
 ```
 
-### Working with Yarn Workspaces
-
-To add a dependency to a specific package:
+### Manual Start
 
 ```bash
-yarn workspace @monorepo/core add <package-name>
+yarn workspace @monorepo/api-gateway start
+yarn workspace @monorepo/ms-user start
+yarn workspace @monorepo/ms-quizz-management start
 ```
 
-To add a dev dependency:
+## Infrastructure
 
-```bash
-yarn workspace @monorepo/core add -D <package-name>
-```
-
-To run a command in all workspaces:
-
-```bash
-yarn workspaces foreach run <command>
-```
-
-## Learn More
-
-- [Yarn Workspaces Documentation](https://yarnpkg.com/features/workspaces)
-- [Fastify Documentation](https://fastify.dev/docs/latest/)
-- [Pino Logger Documentation](https://getpino.io/)
+- **Database**: PostgreSQL 16 (Shared instance with service-specific schemas recommended).
+- **Communication**: HTTP/JSON (Fastify).
+- **Configuration**: JSON files (`default.json`, `custom-environment-variables.json`).
+- **Validation**: Joi.

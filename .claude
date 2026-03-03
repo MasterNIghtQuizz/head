@@ -1,0 +1,35 @@
+# CLAUDE CONTEXT - QUIZ MASTER PROJECT
+
+You are acting as a Senior Software Engineer. Your instructions are absolute.
+
+## 🎯 MISSION
+Build a high-performance Quiz platform using a Microservices + Hexagonal Architecture.
+
+## 🛠 TECH STACK (STRICT)
+- **Node.js 24 (ESM)**: Use `.js` only. Never use `.ts`.
+- **Typing**: JSDoc + `.d.ts` files. Mandatory strict typing.
+- **Fastify**: For all API services.
+- **Vitest**: For testing with AAA pattern.
+- **Persistence**: Shared PostgreSQL + Redis + Kafka.
+
+## 🏗 KEY ARCHITECTURAL PATTERNS
+1. **Hexagonal Architecture**: Business logic isolated from infrastructure.
+2. **Clean Code**: Meaningful naming, no `any`, no comments.
+3. **Repository Pattern**: Abstract all DB access.
+4. **Kebab-Case**: Mandatory for all file/directory names.
+
+## 📝 DATABASE DOMAIN
+- **Auth**: User management & Roles.
+- **Quiz**: Templates, Questions (MCQ, Open, Cloud), Choices.
+- **Live**: Sessions (PIN-based), Participants, Real-time Responses.
+- **Events**: Async event bus via Kafka for analytics.
+
+## 🧪 TESTING STRATEGY
+- Unit Tests: `*.unit.spec.js`. Manual injection, no TestModules.
+- Integration Tests: `*.int.spec.js`. Physical DB / Infra checks.
+- Assertions: Check spies/repositories, do not rely on side effects.
+
+## 🚫 RESTRICTIONS
+- NEVER includes comments in the output (pure code).
+- NEVER use TypeScript.
+- NEVER use `any`.

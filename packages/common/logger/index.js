@@ -1,1 +1,1 @@
-export { default } from './src/logger.js';
+export { default, createLogger } from "./src/logger.js";

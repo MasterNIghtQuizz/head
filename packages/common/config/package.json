@@ -1,0 +1,11 @@
+{
+  "name": "common-config",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "dependencies": {
+    "common-logger": "workspace:*",
+    "joi": "^18.0.2"
+  }
+}

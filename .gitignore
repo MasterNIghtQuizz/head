@@ -49,8 +49,15 @@ profile-*
 .idea
 
 # vscode
-.vscode
-*code-workspace
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+
+# Build
+dist/
+.eslintcache
+.yarn/install-state.gz
+.pnp.*
 
 # clinic
 profile*

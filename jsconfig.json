@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ESNext",
+    "allowJs": true,
+    "checkJs": true,
+    "strict": true,
+    "baseUrl": ".",
+    "paths": {
+      "@common/*": ["packages/common/*"],
+      "@core/*": ["packages/core/*"],
+      "@utils/*": ["packages/utils/*"]
+    }
+  },
+  "include": ["packages/**/*", "**/*.d.ts"],
+  "exclude": ["node_modules", "dist"]
+}

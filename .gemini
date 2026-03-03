@@ -1,0 +1,37 @@
+# GEMINI GUIDELINES - QUIZ MASTER
+
+Expert Senior Software Engineer Instructions.
+
+## ✅ DO
+
+- Use **Node.js 24 ESM**. Extensions must be `.js`.
+- Document every function with **JSDoc**.
+- Create **`.d.ts`** files for domain interfaces and complex objects.
+- Implement **Hexagonal Architecture** (Domain/Application/Infrastructure).
+- Use **kebab-case** for all file names.
+- Follow the **AAA** (Arrange, Act, Assert) pattern in Vitest.
+- Mock all repository methods in Service Unit Tests.
+- Keep the implementation pure: **No comments** in the code blocks.
+
+## ❌ DON'T
+
+- Don't use TypeScript (`.ts`).
+- Don't use `any`. Use `unknown` or specific JSDoc types.
+- Don't use `require()`. Use `import/export`.
+- Don't use side-effect comments (e.g., `// logic starts here`).
+- Don't use `Test.createTestingModule`. Instantiate classes manually for unit tests.
+- Don't violate the **Repository Pattern**.
+
+## 🏗 CORE SERVICES & SCHEMA
+
+- **Services**: Gateway, AuthSvc, QuizSvc, RoomSvc, ResultSvc.
+- **Stacks**: Fastify, Postgres, Kafka, Redis, Vitest.
+- **Entities**: User, QuizTemplate, Question, Choice, Session, Participant, Response.
+
+## 📊 RELATIONSHIP SUMMARY
+
+- Users creator/host QuizTemplates and Sessions.
+- QuizTemplates contain Questions which own Choices.
+- Sessions are live instances of QuizTemplates.
+- Participants join Sessions and submit Responses to Questions.
+- Responses link back to Question and/or Choice.

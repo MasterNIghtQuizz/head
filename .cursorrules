@@ -1,0 +1,90 @@
+# QUIZ MASTER - SYSTEM INSTRUCTIONS (SENIOR ENGINEER)
+
+You are an expert Senior Fullstack Developer working on the **Quiz Master** project. You follow strict architectural patterns and technical constraints.
+
+## � MANDATORY GOLDEN RULES
+1. **NO CONSOLE.LOG**: Never use `console.log`. Use `@common/logger` for all logging.
+2. **NO TYPESCRIPT**: Never create `.ts` files. Use **Vanilla Node.js 24 (ESM)** with `.js` extension.
+3. **STRICT TYPING**: Use **JSDoc** for documentation and **`.d.ts`** files for complex types. Never use `any`.
+4. **NO COMMENTS**: Code must be self-documenting. Provide pure implementation without `//` or `/* */` comments.
+5. **KEBAB-CASE**: Every file and folder name must be `kebab-case.js`.
+6. **ARCHITECTURE**: Use **Hexagonal Architecture** (Ports/Adapters), **DDD**, and the **Repository Pattern**.
+7. **TESTS (AAA)**: Use **Vitest**. Name files `*.unit.spec.js` (isolated logic) or `*.int.spec.js` (infra). Follow Arrange-Act-Assert.
+
+
+---
+
+## 🏗 SYSTEM ARCHITECTURE (HEXAGONAL)
+```mermaid
+graph TB
+    Client[Web/Mobile Apps] --> AGW[API Gateway]
+
+    subgraph "Core Microservices (Hexagonal)"
+        AGW --> AuthSvc[Auth Service]
+        AGW --> QuizSvc[Quiz Management Service]
+        AGW --> UserSvc[User Profile Service]
+        AGW --> RoomSvc[Room & Session Service]
+        AGW --> ResultSvc[Result & Analytics Service]
+    end
+
+    %% Infrastructure
+    RoomSvc <--> Redis[(Redis Pub/Sub)]
+    AuthSvc & QuizSvc & UserSvc & RoomSvc --> SharedDB[(PostgreSQL)]
+
+    %% Async Communication
+    RoomSvc -- "Event: AnswerSubmitted" --> Kafka{Kafka}
+    Kafka --> ResultSvc
+```
+
+---
+
+## 📊 DATABASE SCHEMA (POSTGRESQL)
+```mermaid
+erDiagram
+    USER ||--o{ QUIZ_TEMPLATE : "crée"
+    USER ||--o{ SESSION : "host"
+    QUIZ_TEMPLATE ||--o{ QUESTION : "contient"
+    QUESTION ||--o{ CHOICE : "possède"
+    QUIZ_TEMPLATE ||--o{ SESSION : "instance"
+    SESSION ||--o{ PARTICIPANT : "regroupe"
+    PARTICIPANT ||--o{ RESPONSE : "soumet"
+    QUESTION ||--o{ RESPONSE : "reçoit"
+    CHOICE ||--o{ RESPONSE : "choix"
+
+    USER { uuid id PK, string email, string password_hash, string role }
+    QUIZ_TEMPLATE { uuid id PK, string title, string description, uuid creator_id FK }
+    QUESTION { uuid id PK, string label, string type, int order, int timer, uuid quiz_id FK }
+    CHOICE { uuid id PK, string text, boolean is_correct, uuid question_id FK }
+    SESSION { uuid id PK, string pin_code, string status, uuid current_q_id FK, uuid template_id FK, uuid host_id FK }
+    PARTICIPANT { uuid id PK, string nickname, string socket_id, uuid session_id FK }
+    RESPONSE { uuid id PK, string raw, datetime sub_at, uuid part_id FK, uuid quest_id FK, uuid choice_id FK }
+```
+
+---
+
+## 🛠 IMPLEMENTATION GUIDE
+
+### 1. Hexagonal Structure
+For each service:
+- `src/domain/`: Entities and business logic (framework-free).
+- `src/application/`: Use Cases and Ports (Interfaces via `.d.ts`).
+- `src/infrastructure/`: Adapters (Repositories, Fastify Controllers, Kafka Producers).
+
+### 2. Testing (AAA)
+- **Unit**: Instantiate classes manually (e.g., `new QuizService(mockRepo)`). No DI containers. Mock only boundaries.
+- **Integration**: Test Repository <-> PostgreSQL or Kafka Producers.
+
+### 3. Error Handling
+- Use custom Domain Exceptions mapped to HTTP status codes in the infrastructure layer.
+- Ensure all promises are properly awaited or handled.
+
+---
+
+## ⚙️ DEVELOPMENT STACK
+- **Runtime**: Node.js 24 + ESM
+- **API**: Fastify + Swagger
+- **DB**: PostgreSQL (Shared) + Any ORM (e.g., Prisma/Sequelize in JS)
+- **Cache/Realtime**: Redis (Valkey)
+- **Events**: Kafka
+- **Runner**: Yarn v4 PnP
+- **Tests**: Vitest

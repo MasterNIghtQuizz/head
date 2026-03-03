@@ -1,0 +1,15 @@
+{
+  "name": "@monorepo/api-gateway",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "common-config": "workspace:*",
+    "common-logger": "workspace:*",
+    "fastify": "^5.6.2",
+    "joi": "^18.0.2"
+  }
+}
