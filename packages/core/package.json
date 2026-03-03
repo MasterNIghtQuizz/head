@@ -1,0 +1,15 @@
+{
+    "name": "@monorepo/core",
+    "version": "1.0.0",
+    "type": "module",
+    "main": "src/index.js",
+    "scripts": {
+        "start": "node src/index.js"
+    },
+    "dependencies": {
+        "@types/node": "^20.0.0",
+        "dotenv": "^17.2.3",
+        "fastify": "^5.6.2",
+        "mysql2": "^3.15.3"
+    }
+}

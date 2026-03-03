@@ -1,33 +1,12 @@
 {
-  "name": "head",
-  "version": "1.0.0",
-  "description": "This project was bootstrapped with Fastify-CLI.",
-  "main": "app.js",
-  "directories": {
-    "test": "test"
-  },
+  "name": "monorepo",
+  "type": "module",
+  "packageManager": "yarn@4.11.0",
+  "workspaces": [
+    "packages/**"
+  ],
   "scripts": {
-    "test": "node --test test/**/*.test.js",
-    "start": "fastify start -l info app.js",
-    "dev": "fastify start -w -l info -P app.js"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/MasterNIghtQuizz/head.git"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/MasterNIghtQuizz/head/issues"
-  },
-  "homepage": "https://github.com/MasterNIghtQuizz/head#readme",
-  "dependencies": {
-    "fastify": "^5.0.0",
-    "fastify-plugin": "^5.0.0",
-    "@fastify/autoload": "^6.0.0",
-    "@fastify/sensible": "^6.0.0",
-    "fastify-cli": "^7.4.1"
-  },
-  "devDependencies": {}
+    "lint": "eslint --cache . && tsc",
+    "tsc": "tsc"
+  }
 }

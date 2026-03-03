@@ -1,0 +1,41 @@
+services: 
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: wtd_db
+      MYSQL_USER: wtd_user
+      MYSQL_PASSWORD: wtd_password
+    ports:
+      - "3306:3306"
+    # volumes:
+    #   - mysql-data:/var/lib/mysql
+
+  core-service:
+    build: 
+      context: .
+      args: 
+        SERVICE_NAME: core
+    ports:
+      - "3001:3000"
+    environment: 
+      PORT: 3000
+      MYSQL_HOST: mysql
+      MYSQL_DATABASE: wtd_db
+      MYSQL_USER: wtd_user
+      MYSQL_PASSWORD: wtd_password
+    depends_on: 
+      - mysql
+  
+  utils-service: 
+    build: 
+      context: .
+      args: 
+        SERVICE_NAME: utils
+    ports:
+      - "3002:3000"
+    environment: 
+      PORT: 3000
+      CORE_SERVICE_URL: http://core-service:3000
+    depends_on: 
+      - core-service
