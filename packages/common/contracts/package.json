@@ -1,0 +1,11 @@
+{
+  "name": "common-contracts",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "lint": "yarn run -T eslint .",
+    "lint:fix": "yarn run -T eslint . --fix",
+    "build": "echo 'Pure JS package - no build step'"
+  }
+}

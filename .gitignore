@@ -63,3 +63,7 @@ dist/
 profile*
 *clinic*
 *flamegraph*
+
+# RSA Keys
+keys/
+*.pem

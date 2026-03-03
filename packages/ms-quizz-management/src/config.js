@@ -22,9 +22,25 @@ const schema = Joi.object({
     user: Joi.string().required(),
     password: Joi.string().required(),
   }).required(),
+  auth: Joi.object({
+    internal: Joi.object({
+      privateKeyPath: Joi.string().required(),
+      publicKeyPath: Joi.string().required(),
+    }).required(),
+  }).required(),
 });
 
 Config.init({ directory: configDirectory, schema });
+
+const projectRoot = path.resolve(__dirname, "..");
+
+const resolveKeyPath = (/** @type {string} */ keyPath) =>
+  path.isAbsolute(keyPath) ? keyPath : path.resolve(projectRoot, keyPath);
+
+const rawAuth =
+  /** @type {{ internal: { privateKeyPath: string; publicKeyPath: string; } }} */ (
+    Config.get("auth")
+  );
 
 /** @type {typeof import('./config.d.ts').config} */
 export const config = {
@@ -32,4 +48,10 @@ export const config = {
   port: /** @type {number} */ (Config.get("app.port")),
   logger: /** @type {Record<string, unknown>} */ (Config.get("logger")),
   postgres: /** @type {Record<string, any>} */ (Config.get("postgres")),
+  auth: {
+    internal: {
+      privateKeyPath: resolveKeyPath(rawAuth.internal.privateKeyPath),
+      publicKeyPath: resolveKeyPath(rawAuth.internal.publicKeyPath),
+    },
+  },
 };

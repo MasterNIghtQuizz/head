@@ -6,4 +6,9 @@ export declare const config: {
     user: string;
     quizz: string;
   };
+  auth: {
+    access: { privateKeyPath: string; publicKeyPath: string };
+    refresh: { privateKeyPath: string; publicKeyPath: string };
+    internal: { privateKeyPath: string; publicKeyPath: string };
+  };
 };

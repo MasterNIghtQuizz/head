@@ -8,7 +8,21 @@
     "pretty": true
   },
   "services": {
-    "user": "http://localhost:3001",
-    "quizz": "http://localhost:3002"
+    "user": "http://localhost:4001",
+    "quizz": "http://localhost:4002"
+  },
+  "auth": {
+    "access": {
+      "privateKeyPath": "../../keys/access-private.pem",
+      "publicKeyPath": "../../keys/access-public.pem"
+    },
+    "refresh": {
+      "privateKeyPath": "../../keys/refresh-private.pem",
+      "publicKeyPath": "../../keys/refresh-public.pem"
+    },
+    "internal": {
+      "privateKeyPath": "../../keys/internal-private.pem",
+      "publicKeyPath": "../../keys/internal-public.pem"
+    }
   }
 }

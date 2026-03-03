@@ -4,10 +4,8 @@
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": "explicit"
   },
-  "eslint.validate": [
-    "javascript",
-    "javascriptreact"
-  ],
+  "eslint.validate": ["javascript", "javascriptreact"],
+  "eslint.workingDirectories": [{ "mode": "auto" }],
   "explorer.fileNesting.enabled": true,
   "explorer.fileNesting.patterns": {
     "*.js": "${capture}.unit.spec.js, ${capture}.int.spec.js, ${capture}.e2e.spec.js, ${capture}.d.ts"

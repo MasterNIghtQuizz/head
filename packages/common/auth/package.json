@@ -1,0 +1,25 @@
+{
+  "name": "common-auth",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "lint": "yarn run -T eslint .",
+    "lint:fix": "yarn run -T eslint . --fix",
+    "build": "echo 'Pure JS package - no build step'",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "common-core": "workspace:*",
+    "common-crypto": "workspace:*",
+    "common-logger": "workspace:*",
+    "fastify": "^5.0.0",
+    "reflect-metadata": "^0.2.2"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.3",
+    "@vitest/coverage-v8": "^4.0.18",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  }
+}

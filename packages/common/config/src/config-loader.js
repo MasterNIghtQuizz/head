@@ -3,7 +3,9 @@ import path from "node:path";
 
 /** @type {typeof import('./config-loader.d.ts').readJson} */
 const readJson = (configPath) => {
-  if (!fs.existsSync(configPath)) return {};
+  if (!fs.existsSync(configPath)) {
+    return {};
+  }
   return JSON.parse(fs.readFileSync(configPath, "utf-8"));
 };
 
@@ -11,8 +13,9 @@ const readJson = (configPath) => {
 const merge = (target, source) => {
   for (const key of Object.keys(source)) {
     if (source[key] instanceof Object && !Array.isArray(source[key])) {
-      if (!target[key])
+      if (!target[key]) {
         target[key] = /** @type {Record<string, unknown>} */ ({});
+      }
       merge(
         /** @type {Record<string, unknown>} */ (target[key]),
         /** @type {Record<string, unknown>} */ (source[key]),

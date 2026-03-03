@@ -1,0 +1,38 @@
+import { CryptoService } from "common-crypto";
+import logger from "common-logger";
+
+/**
+ * @param {import('../types.d.ts').AuthHookOptions} options
+ * @returns {import('fastify').onRequestHookHandler}
+ */
+export function hookAccessToken(options) {
+  return function accessTokenHook(request, reply, done) {
+    if (request.routeOptions?.config?.isPublic) {
+      done();
+      return;
+    }
+
+    const token = /** @type {string | undefined} */ (
+      request.headers["access-token"]
+    );
+
+    if (!token) {
+      logger.warn({ url: request.url }, "Missing access-token header");
+      reply.code(401).send({ error: "Missing access-token header" });
+      return;
+    }
+
+    try {
+      const payload =
+        /** @type {import('../types.d.ts').AccessTokenPayload} */ (
+          CryptoService.verify(token, options.publicKeyPath)
+        );
+
+      request.user = payload;
+      done();
+    } catch (error) {
+      logger.warn({ url: request.url, error }, "Invalid access token");
+      reply.code(401).send({ error: "Invalid or expired access token" });
+    }
+  };
+}

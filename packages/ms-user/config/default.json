@@ -1,6 +1,6 @@
 {
   "app": {
-    "port": 3001,
+    "port": 4001,
     "env": "development"
   },
   "logger": {
@@ -9,9 +9,23 @@
   },
   "postgres": {
     "host": "localhost",
-    "port": 5432,
-    "database": "quiz_master_db",
+    "port": 5433,
+    "database": "ms_user_db",
     "user": "postgres",
     "password": "postgres_password"
+  },
+  "auth": {
+    "access": {
+      "privateKeyPath": "../../keys/access-private.pem",
+      "publicKeyPath": "../../keys/access-public.pem"
+    },
+    "refresh": {
+      "privateKeyPath": "../../keys/refresh-private.pem",
+      "publicKeyPath": "../../keys/refresh-public.pem"
+    },
+    "internal": {
+      "privateKeyPath": "../../keys/internal-private.pem",
+      "publicKeyPath": "../../keys/internal-public.pem"
+    }
   }
 }

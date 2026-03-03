@@ -9,22 +9,26 @@
     "node": ">=24.0.0"
   },
   "scripts": {
-    "lint": "eslint .",
+    "start": "concurrently -k -p \"[{name}]\" -n \"GATEWAY,USER,QUIZZ\" -c \"cyan,green,yellow\" \"yarn workspace @monorepo/api-gateway start\" \"yarn workspace @monorepo/ms-user start\" \"yarn workspace @monorepo/ms-quizz-management start\"",
+    "lint": "yarn eslint .",
     "test": "vitest",
     "test:unit": "vitest run --project unit",
     "test:int": "vitest run --project integration"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^25.3.3",
+    "concurrently": "^9.2.1",
     "eslint": "^10.0.0",
     "eslint-config-prettier": "^10.0.0",
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-jsdoc": "^50.0.0",
     "eslint-plugin-prettier": "^5.2.0",
     "eslint-plugin-unicorn": "^56.0.0",
+    "globals": "^17.4.0",
     "prettier": "^3.3.0",
     "typescript": "^5.9.3",
-    "vitest": "^3.0.0"
+    "vitest": "^4.0.18"
   },
   "dependencies": {
     "@fastify/swagger": "^9.0.0",

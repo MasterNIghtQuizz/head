@@ -4,6 +4,11 @@
   "type": "module",
   "main": "index.js",
   "types": "index.d.ts",
+  "scripts": {
+    "lint": "yarn run -T eslint .",
+    "lint:fix": "yarn run -T eslint . --fix",
+    "build": "echo 'Pure JS package - no build step'"
+  },
   "dependencies": {
     "pino": "^10.1.0",
     "pino-pretty": "^13.1.2"

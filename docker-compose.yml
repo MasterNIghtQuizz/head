@@ -6,9 +6,13 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres_password
     ports:
-      - "5432:5432"
+      - "5433:5432"
+    volumes:
+      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+      - pgdata:/var/lib/postgresql/data
 
   api-gateway:
+    profiles: [app]
     build:
       context: .
       args:
@@ -21,27 +25,34 @@ services:
       - postgres
 
   ms-user:
+    profiles: [app]
     build:
       context: .
       args:
         SERVICE_NAME: ms-user
     ports:
-      - "3001:3001"
+      - "4001:4001"
     environment:
-      PORT: 3001
+      PORT: 4001
       POSTGRES_HOST: postgres
+      POSTGRES_DB: ms_user_db
     depends_on:
       - postgres
 
   ms-quizz-management:
+    profiles: [app]
     build:
       context: .
       args:
         SERVICE_NAME: ms-quizz-management
     ports:
-      - "3002:3002"
+      - "4002:4002"
     environment:
-      PORT: 3002
+      PORT: 4002
       POSTGRES_HOST: postgres
+      POSTGRES_DB: ms_quizz_db
     depends_on:
       - postgres
+
+volumes:
+  pgdata:
