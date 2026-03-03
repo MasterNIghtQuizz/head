@@ -32,5 +32,11 @@
       "privateKey": "AUTH_INTERNAL_PRIVATE_KEY",
       "publicKey": "AUTH_INTERNAL_PUBLIC_KEY"
     }
+  },
+  "kafka": {
+    "brokers": {
+      "__name": "KAFKA_BROKERS",
+      "__format": "json"
+    }
   }
 }

@@ -27,5 +27,10 @@
       "privateKeyPath": "../../keys/internal-private.pem",
       "publicKeyPath": "../../keys/internal-public.pem"
     }
+  },
+  "kafka": {
+    "brokers": [
+      "localhost:9092"
+    ]
   }
 }

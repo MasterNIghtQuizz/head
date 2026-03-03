@@ -33,6 +33,9 @@ const schema = Joi.object({
       publicKeyPath: Joi.string().required(),
     }).required(),
   }).required(),
+  kafka: Joi.object({
+    brokers: Joi.array().items(Joi.string()).required(),
+  }).required(),
 });
 
 Config.init({ directory: configDirectory, schema });
@@ -55,6 +58,7 @@ export const config = {
   services: /** @type {{ user: string; quizz: string }} */ (
     Config.get("services")
   ),
+  kafka: /** @type {{ brokers: string[] }} */ (Config.get("kafka")),
   auth: {
     access: {
       privateKeyPath: resolveKeyPath(rawAuth.access.privateKeyPath),

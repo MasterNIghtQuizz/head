@@ -27,6 +27,7 @@ fastify.get("/health", { config: { isPublic: true } }, async () => {
   return { status: "ok", service: "api-gateway" };
 });
 
+// @ts-ignore
 await registerSwagger(fastify, {
   title: "API Gateway",
   description: "Quiz Master Gateway API",

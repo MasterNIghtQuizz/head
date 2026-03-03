@@ -1,0 +1,21 @@
+{
+  "name": "common-kafka",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/index.js",
+  "types": "src/types.d.ts",
+  "scripts": {
+    "lint": "yarn run -T eslint .",
+    "lint:fix": "yarn run -T eslint . --fix",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "common-logger": "workspace:*",
+    "kafkajs": "^2.2.4"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.3",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  }
+}

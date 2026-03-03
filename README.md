@@ -5,12 +5,12 @@ It follows a Microservices Architecture governed by Domain-Driven Design (DDD) p
 
 ## 🏗 Architecture Overview
 
-The system consists of an API Gateway and multiple internal microservices communicating via HTTP/JSON.
+The system consists of an API Gateway and multiple internal microservices communicating synchronously via HTTP/JSON, and asynchronously via strictly typed **Kafka** events.
 
 - **`api-gateway`**: The single public-facing entry point, acting as a reverse proxy, aggregator, and global authenticator.
 - **`ms-user`**: A microservice that manages user profiles, registration, and user-centric data.
 - **`ms-quizz-management`**: A microservice dedicated to managing quizzes, questions, and choices.
-- **`common/*`**: Shared libraries standardizing core behaviors like logging, authentication, database access, and error handling across all services.
+- **`common/*`**: Shared libraries standardizing core behaviors like logging, authentication, database access, messaging, and error handling across all services.
 
 ## 🔐 Authentication & Security Workflow
 
@@ -27,6 +27,26 @@ Our security model incorporates a unified authentication flow, relying on asymme
    - The Microservice transparently intercepts the request, validates the Internal Token using `hookInternalToken`, and reconstructs the `request.user` context payload.
    - This ensures **Zero-Trust** within the cluster: Microservices only answer requests demonstrably originating from the authorized Gateway or legitimate Internal services.
 
+## 📡 Event-Driven Architecture & Idempotency
+
+To decouple microservices and guarantee data consistency without distributed transactions, we use **Apache Kafka** for asynchronous communication. This ensures highly scalable, fault-tolerant event streaming across domains.
+
+### 📝 1. Producers & Topics
+Microservices that dictate domain changes act as **Producers**.
+For instance, when a new user registers in `ms-user`, it triggers a producer to publish a strictly typed event (e.g., `USER_CREATED`) to the `user.events` topic. We have enabled `idempotence: true` on the Kafka client itself to prevent network retries from polluting the topic.
+
+### 🎧 2. Consumers & Exactly-Once Processing
+Subscribing microservices (e.g., `ms-quizz-management`) act as **Consumers** that react to these domain topics. Due to the nature of distributed systems, at-least-once delivery is the standard. This means a consumer might receive the same message multiple times.
+
+To protect against this, we implemented robust **Consumer-Side Idempotency**:
+- Every message distributed via Kafka contains a strictly unique `eventId` (UUID).
+- Before processing an event payload, the consumer queries a shared `processed_events` PostgreSQL table (managed via TypeORM's `ProcessedEventEntity`).
+- If the `eventId` already exists, the event is immediately discarded/skipped, preventing side-effect duplication.
+- If the `eventId` is new, the business logic runs and the `eventId` is recorded in the same database transaction, ensuring atomic **Exactly-Once** semantics.
+
+### 🔄 3. Database Consistency
+We rely on **TypeORM** automated migrations (`yarn migrations:run`) to ensure that the `processed_events` table exists and is synchronized across all domains that implement Kafka listeners.
+
 ## 📦 Project Structure
 
 ### `/packages/common`
@@ -35,7 +55,8 @@ Shared libraries providing cross-cutting concerns.
 - **`common-core`**: Foundational classes (Controllers, Services), Decorators (e.g., `@Public()`, `@Schema()`), and core helpers.
 - **`common-crypto`**: Cryptographic utility wrappers and token signing/verifying functions.
 - **`common-logger`**: Pino-based high-performance JSON logger.
-- **`common-database`**: Standardized Sequelize/TypeORM configurations and generic connection handling.
+- **`common-database`**: Standardized **TypeORM** / PostgreSQL configurations, migrations runner, and shared entities (e.g., `ProcessedEventEntity`).
+- **`common-kafka`**: Typed wrappers for Kafka consumer/producer with built-in idempotency logic and graceful disconnects.
 - **`common-errors`**: Global custom error classes (e.g., `NotFoundError`) and Fastify error handlers.
 - **`common-axios`**: Pre-configured Axios instances for inter-service communication.
 - **`common-swagger`**: OpenAPI generators utilizing Fastify-Swagger.
@@ -116,7 +137,8 @@ We use **Vitest** for our fast, native execution test suite, alongside **ESLint*
   ```
 
 ## 🛠 Infrastructure Details
-- **Database**: PostgreSQL 16
+- **Database**: PostgreSQL 16 (via TypeORM)
+- **Event Broker**: Apache Kafka
 - **Routing**: Fastify v5
 - **Testing**: Vitest v4
 - **Language**: Node 24 (ESM Modules, Mixed JS/TS)
