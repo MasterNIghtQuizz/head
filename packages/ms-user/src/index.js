@@ -21,7 +21,9 @@ fastify.get("/health", { config: { isPublic: true } }, async () => {
 import { ControllerFactory } from "common-core";
 import { UserController } from "./modules/user/controllers/user.controller.js";
 import { UserService } from "./modules/user/services/user.service.js";
+import { createKafkaClient, KafkaProducer } from "common-kafka";
 
+// @ts-ignore
 await registerSwagger(fastify, {
   title: "MS User",
   description: "User Management Service API",
@@ -30,9 +32,26 @@ await registerSwagger(fastify, {
 
 await initDatabase();
 
-const userService = new UserService();
+const kafkaClient = createKafkaClient({
+  clientId: "ms-user",
+  brokers: config.kafka.brokers,
+});
+const kafkaProducer = new KafkaProducer(kafkaClient);
+await kafkaProducer.connect();
+
+const userService = new UserService(kafkaProducer);
 ControllerFactory.register(fastify, UserController, [userService]);
 
 logger.info(config, "MS User starting...");
 
 await fastify.listen({ host: "0.0.0.0", port: config.port });
+
+const shutdown = async () => {
+  logger.info("Gracefully shutting down ms-user...");
+  await kafkaProducer.disconnect();
+  await fastify.close();
+  process.exit(0);
+};
+
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);

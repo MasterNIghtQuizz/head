@@ -6,6 +6,9 @@ export declare const config: {
     user: string;
     quizz: string;
   };
+  kafka: {
+    brokers: string[];
+  };
   auth: {
     access: { privateKeyPath: string; publicKeyPath: string };
     refresh: { privateKeyPath: string; publicKeyPath: string };

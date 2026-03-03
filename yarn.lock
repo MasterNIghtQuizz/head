@@ -607,6 +607,7 @@ __metadata:
     common-config: "workspace:*"
     common-crypto: "workspace:*"
     common-database: "workspace:*"
+    common-kafka: "workspace:*"
     common-logger: "workspace:*"
     common-swagger: "workspace:*"
     fastify: "npm:^5.6.2"
@@ -627,6 +628,7 @@ __metadata:
     common-core: "workspace:^"
     common-crypto: "workspace:*"
     common-database: "workspace:*"
+    common-kafka: "workspace:*"
     common-logger: "workspace:*"
     common-swagger: "workspace:*"
     fastify: "npm:^5.6.2"
@@ -1652,6 +1654,18 @@ __metadata:
 "common-errors@workspace:*, common-errors@workspace:packages/common/errors":
   version: 0.0.0-use.local
   resolution: "common-errors@workspace:packages/common/errors"
+  languageName: unknown
+  linkType: soft
+
+"common-kafka@workspace:*, common-kafka@workspace:packages/common/kafka":
+  version: 0.0.0-use.local
+  resolution: "common-kafka@workspace:packages/common/kafka"
+  dependencies:
+    "@types/node": "npm:^25.3.3"
+    common-logger: "workspace:*"
+    kafkajs: "npm:^2.2.4"
+    typescript: "npm:^5.9.3"
+    vitest: "npm:^4.0.18"
   languageName: unknown
   linkType: soft
 
@@ -3551,6 +3565,13 @@ __metadata:
     jwa: "npm:^2.0.1"
     safe-buffer: "npm:^5.0.1"
   checksum: 10c0/6be1ed93023aef570ccc5ea8d162b065840f3ef12f0d1bb3114cade844de7a357d5dc558201d9a65101e70885a6fa56b17462f520e6b0d426195510618a154d0
+  languageName: node
+  linkType: hard
+
+"kafkajs@npm:^2.2.4":
+  version: 2.2.4
+  resolution: "kafkajs@npm:2.2.4"
+  checksum: 10c0/6eece1f682a257955f647b6142430e87681d11bf01e9ebe0a73b4bc0653b8f970c48ba72a3b25fdbb4205cfbb36e5ef93d954b8f8c5f7767ae2b4693bdec9d88
   languageName: node
   linkType: hard
 

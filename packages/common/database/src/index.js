@@ -1,5 +1,6 @@
 import { DatabaseStrategy } from "./strategy.js";
 import { TypeORMStrategy } from "./typeorm.strategy.js";
+import { ProcessedEventEntity } from "./entities/processed-event.entity.js";
 
 /** @typedef {DatabaseStrategy} IDatabaseStrategy */
 
@@ -55,4 +56,4 @@ export class DatabaseContext {
   }
 }
 
-export { DatabaseStrategy, TypeORMStrategy };
+export { DatabaseStrategy, TypeORMStrategy, ProcessedEventEntity };

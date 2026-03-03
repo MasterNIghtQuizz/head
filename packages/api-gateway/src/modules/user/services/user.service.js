@@ -17,4 +17,17 @@ export class UserService extends BaseService {
       },
     });
   }
+
+  /**
+   * Register a new user
+   * @param {{ email: string, role: string }} userData
+   * @returns {Promise<any>}
+   */
+  async register(userData) {
+    return call({
+      url: `${config.services.user}/users/register`,
+      method: "POST",
+      data: userData,
+    });
+  }
 }

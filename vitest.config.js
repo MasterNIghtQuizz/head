@@ -9,10 +9,7 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "json", "html"],
       all: true,
-      include: [
-        "packages/**/*.js",
-        "packages/**/*.ts",
-      ],
+      include: ["packages/**/*.js", "packages/**/*.ts"],
       exclude: [
         "**/*.d.ts",
         "**/*.config.{js,ts}",
@@ -40,7 +37,7 @@ export default defineConfig({
         "packages/api-gateway/**/helpers/**",
         "packages/api-gateway/**/healthcheck/**",
         "packages/ms-*/**/helpers/**",
-        "packages/ms-*/**/healthcheck/**"
+        "packages/ms-*/**/healthcheck/**",
       ],
     },
   },

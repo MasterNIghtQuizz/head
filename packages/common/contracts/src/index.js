@@ -3,4 +3,4 @@
  * @property {boolean} ok
  */
 
-export {};
+export * from "./events.js";
