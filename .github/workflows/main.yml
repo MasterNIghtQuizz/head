@@ -6,9 +6,38 @@ on:
     branches: [main]
 
 jobs:
-  lint:
+  detect-changes:
+    runs-on: ubuntu-latest`
+    outputs:
+        api-gateway: ${{ steps.filter.outputs.api-gateway }}
+        common: ${{ steps.filter.outputs.common }}
+        ms-quizz-management: ${{ steps.filter.outputs.ms-quizz-management }}
+        ms-user: ${{ steps.filter.outputs.ms-user }}
+    steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+
+        - name: Detect changes in packages
+          uses: dorny/paths-filter@v2
+          id: filter
+          with:
+            filters: |
+        api-gateway:
+            - 'packages/api-gateway/**'
+            - '!packages/api-gateway/README.md'
+        common:
+            - 'packages/common/**'
+            - '!packages/common/README.md'
+        ms-quizz-management:
+            - 'packages/ms-quizz-management/**'
+            - '!packages/ms-quizz-management/README.md'
+
+        ms-user:
+            - 'packages/ms-user/**'
+  quality:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         package: [api-gateway, common, ms-quizz-management, ms-user]
     defaults:
