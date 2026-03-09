@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        package: [common]
+        package: [api-gateway, common, ms-quizz-management, ms-user]
     defaults:
       run:
         working-directory: ./packages/${{ matrix.package }}
