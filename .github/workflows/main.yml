@@ -8,9 +8,12 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package: [common]
     defaults:
       run:
-        working-directory: ./packages/common
+        working-directory: ./packages/${{ matrix.package }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -31,5 +34,12 @@ jobs:
       - name: Lint
         run: yarn lint
 
-      - name: Test
-        run: yarn test
+      - name: Run tests if defined
+        run: |
+          if npm run | grep -q 'test'; then
+          echo "Test script found, running tests"
+          yarn test
+
+          else
+          echo "No test script, skipping"
+          fi
