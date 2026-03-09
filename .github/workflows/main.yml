@@ -9,10 +9,7 @@ jobs:
   detect-changes:
     runs-on: ubuntu-latest`
     outputs:
-      api-gateway: ${{ steps.filter.outputs.api-gateway }}
-      common: ${{ steps.filter.outputs.common }}
-      ms-quizz-management: ${{ steps.filter.outputs.ms-quizz-management }}
-      ms-user: ${{ steps.filter.outputs.ms-user }}
+      packages: ${{ steps.filter.outputs.packages }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -35,14 +32,13 @@ jobs:
                 - 'packages/ms-user/**'
                 - '!packages/ms-user/README.md'
   quality:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.packages != '[]'}}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        package: [api-gateway, common, ms-quizz-management, ms-user]
-    defaults:
-      run:
-        working-directory: ./packages/${{ matrix.package }}
+        package: ${{ fromJson(needs.detect-changes.outputs.packages) }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -60,14 +56,14 @@ jobs:
       - name: Install Dependencies
         run: yarn install --frozen-lockfile
 
-      - name: Lint
-        run: yarn lint
+      - name: Lint ${{ matrix.package }}
+        run: yarn workspace @monorepo/${{ matrix.package }} lint
 
-      - name: Run tests if defined
+      - name: Test ${{ matrix.package }} (If defined)
         run: |
           if npm run | grep -q 'test'; then
           echo "Test script found, running tests"
-          yarn test
+          yarn workspace @monorepo/${{ matrix.package }} test
 
           else
           echo "No test script, skipping"
