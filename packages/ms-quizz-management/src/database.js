@@ -1,4 +1,8 @@
-import { DatabaseContext, TypeORMStrategy, ProcessedEventEntity } from "common-database";
+import {
+  DatabaseContext,
+  TypeORMStrategy,
+  ProcessedEventEntity,
+} from "common-database";
 import { config } from "./config.js";
 import { QuizEntity } from "./modules/quiz/entities/quiz.entity.js";
 import { CreateProcessedEventsTable1710000000000 } from "./migrations/1710000000000-CreateProcessedEventsTable.js";
