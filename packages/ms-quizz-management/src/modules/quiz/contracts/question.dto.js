@@ -23,6 +23,7 @@ export class CreateQuestionRequestDto {
 
   /**
    * @param {CreateQuestionRequest} data
+   * @returns {import('joi').ValidationResult<CreateQuestionRequest>}
    */
   static validate(data) {
     const schema = Joi.object({
@@ -52,6 +53,7 @@ export class UpdateQuestionRequestDto {
 
   /**
    * @param {UpdateQuestionRequest} data
+   * @returns {import('joi').ValidationResult<UpdateQuestionRequest>}
    */
   static validate(data) {
     const schema = Joi.object({
@@ -79,3 +81,16 @@ export class QuestionResponseDto {
     this.timer_seconds = data.timer_seconds;
   }
 }
+
+export const QuestionResponseSchema = {
+  $id: "QuestionResponseDto",
+  type: "object",
+  properties: {
+    id: { type: "string", format: "uuid" },
+    label: { type: "string" },
+    type: { type: "string" },
+    order_index: { type: "integer" },
+    timer_seconds: { type: "integer" },
+  },
+  required: ["id", "label", "type", "order_index", "timer_seconds"],
+};

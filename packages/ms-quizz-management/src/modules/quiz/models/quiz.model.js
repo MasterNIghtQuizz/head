@@ -14,8 +14,8 @@ export class Quiz {
   /** @type {Date | undefined} */
   updatedAt;
 
-  /** @type {import('./question.model.js').Question[]} */
-  questions = [];
+  /** @type {import('./question.model.js').Question[] | undefined} */
+  questions;
 
   /**
    * @param {Partial<Quiz>} [data]

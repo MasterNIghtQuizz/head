@@ -21,6 +21,7 @@ export class CreateChoiceRequestDto {
 
   /**
    * @param {CreateChoiceRequest} data
+   * @returns {import('joi').ValidationResult<CreateChoiceRequest>}
    */
   static validate(data) {
     const schema = Joi.object({
@@ -46,6 +47,7 @@ export class UpdateChoiceRequestDto {
 
   /**
    * @param {UpdateChoiceRequest} data
+   * @returns {import('joi').ValidationResult<UpdateChoiceRequest>}
    */
   static validate(data) {
     const schema = Joi.object({
@@ -69,3 +71,14 @@ export class ChoiceResponseDto {
     this.is_correct = data.is_correct;
   }
 }
+
+export const ChoiceResponseSchema = {
+  $id: "ChoiceResponseDto",
+  type: "object",
+  properties: {
+    id: { type: "string", format: "uuid" },
+    text: { type: "string" },
+    is_correct: { type: "boolean" },
+  },
+  required: ["id", "text", "is_correct"],
+};
