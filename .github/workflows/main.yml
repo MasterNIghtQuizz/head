@@ -90,4 +90,10 @@ jobs:
         run: yarn workspace ${{ matrix.package }} lint
 
       - name: Test ${{ matrix.package }}
-        run: yarn workspace ${{ matrix.package }} test
+        run: |
+          if yarn workspace ${{ matrix.package }} run | grep -q 'test'; then
+            echo "Test script found, running tests"
+            yarn workspace ${{ matrix.package }} run test
+          else
+            echo "No test script, skipping"
+          fi
