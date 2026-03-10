@@ -9,8 +9,26 @@ The system consists of an API Gateway and multiple internal microservices commun
 
 - **`api-gateway`**: The single public-facing entry point, acting as a reverse proxy, aggregator, and global authenticator.
 - **`ms-user`**: A microservice that manages user profiles, registration, and user-centric data.
-- **`ms-quizz-management`**: A microservice dedicated to managing quizzes, questions, and choices.
+- **`ms-quizz-management`**: A microservice dedicated to managing quizzes, questions, and choices. Features CRUD operations, bulk question retrieval, and quiz-specific filtering.
 - **`common/*`**: Shared libraries standardizing core behaviors like logging, authentication, database access, messaging, and error handling across all services.
+
+## 🧱 Service Features (MS Quizz Management)
+
+The `ms-quizz-management` service provides:
+
+- **Full CRUD** for Quizzes, Questions, and Choices.
+- **Bonus Operations**:
+  - `getQuestionsByQuizId(quizId)`: Retrieve all questions belonging to a specific quiz, ordered by its `order_index`.
+  - `getQuestionsByIds(ids[])`: Bulk retrieve questions by id.
+  - `getChoicesByQuestionId(questionId)`: Retrieve all choices for a specific question.
+
+## 🚨 Error Handling Strategy
+
+All services utilize the `common-errors` shared library to ensure consistent API responses:
+
+- **`BaseError`**: Standardized JSON structure for all application errors.
+- **Domain-Specific Errors**: Located in `./errors` folders (e.g., `QUIZ_NOT_FOUND`).
+- **Postgres Integration**: Services catch DB-specific errors (e.g., unique constraint violations) and map them to `ConflictError` (409) or `InternalServerError` (500).
 
 ## 🔐 Authentication & Security Workflow
 
@@ -32,25 +50,31 @@ Our security model incorporates a unified authentication flow, relying on asymme
 To decouple microservices and guarantee data consistency without distributed transactions, we use **Apache Kafka** for asynchronous communication. This ensures highly scalable, fault-tolerant event streaming across domains.
 
 ### 📝 1. Producers & Topics
+
 Microservices that dictate domain changes act as **Producers**.
 For instance, when a new user registers in `ms-user`, it triggers a producer to publish a strictly typed event (e.g., `USER_CREATED`) to the `user.events` topic. We have enabled `idempotence: true` on the Kafka client itself to prevent network retries from polluting the topic.
 
 ### 🎧 2. Consumers & Exactly-Once Processing
+
 Subscribing microservices (e.g., `ms-quizz-management`) act as **Consumers** that react to these domain topics. Due to the nature of distributed systems, at-least-once delivery is the standard. This means a consumer might receive the same message multiple times.
 
 To protect against this, we implemented robust **Consumer-Side Idempotency**:
+
 - Every message distributed via Kafka contains a strictly unique `eventId` (UUID).
 - Before processing an event payload, the consumer queries a shared `processed_events` PostgreSQL table (managed via TypeORM's `ProcessedEventEntity`).
 - If the `eventId` already exists, the event is immediately discarded/skipped, preventing side-effect duplication.
 - If the `eventId` is new, the business logic runs and the `eventId` is recorded in the same database transaction, ensuring atomic **Exactly-Once** semantics.
 
 ### 🔄 3. Database Consistency
+
 We rely on **TypeORM** automated migrations (`yarn migrations:run`) to ensure that the `processed_events` table exists and is synchronized across all domains that implement Kafka listeners.
 
 ## 📦 Project Structure
 
 ### `/packages/common`
+
 Shared libraries providing cross-cutting concerns.
+
 - **`common-auth`**: Fastify hooks & TS typings for token verification and internal token interception.
 - **`common-core`**: Foundational classes (Controllers, Services), Decorators (e.g., `@Public()`, `@Schema()`), and core helpers.
 - **`common-crypto`**: Cryptographic utility wrappers and token signing/verifying functions.
@@ -62,13 +86,15 @@ Shared libraries providing cross-cutting concerns.
 - **`common-swagger`**: OpenAPI generators utilizing Fastify-Swagger.
 - **`common-config`**: Configuration validation relying on config/joi.
 
-*(See `packages/common/README.md` for more details on internal libraries)*
+_(See `packages/common/README.md` for more details on internal libraries)_
 
 ### `/packages/api-gateway`
+
 - **Purpose**: Fastify-based orchestrator. Validates external JWTs and mints Internal Tokens before proxying API requests to `ms-*` destinations.
-*(See `packages/api-gateway/README.md` for full implementation details)*
+  _(See `packages/api-gateway/README.md` for full implementation details)_
 
 ### `/packages/ms-*`
+
 - **Purpose**: Domain-specific microservices encapsulating their own databases (PostgreSQL/Sequelize).
 
 ## 🚀 Getting Started
@@ -76,6 +102,7 @@ Shared libraries providing cross-cutting concerns.
 ### Prerequisites
 
 This project utilizes Yarn 4 via Corepack:
+
 ```bash
 corepack enable
 yarn set version 4.11.0
@@ -84,6 +111,7 @@ yarn set version 4.11.0
 ### Installation
 
 Install all monorepo dependencies:
+
 ```bash
 yarn install
 ```
@@ -92,17 +120,22 @@ yarn install
 
 **With Docker Compose (Recommended):**
 The easiest way to bootstrap the databases alongside the services:
+
 ```bash
 docker-compose up --build
 ```
-*Note: Make sure port 5432 is free on your host, or configure `docker-compose.yml` accordingly.*
+
+_Note: Make sure port 5432 is free on your host, or configure `docker-compose.yml` accordingly._
 
 **Manual Start (Development):**
 You can launch the applications simultaneously using `concurrently`:
+
 ```bash
 yarn start
 ```
+
 Or individually:
+
 ```bash
 yarn workspace @monorepo/api-gateway start
 yarn workspace @monorepo/ms-user start
@@ -137,6 +170,7 @@ We use **Vitest** for our fast, native execution test suite, alongside **ESLint*
   ```
 
 ## 🛠 Infrastructure Details
+
 - **Database**: PostgreSQL 16 (via TypeORM)
 - **Event Broker**: Apache Kafka
 - **Routing**: Fastify v5

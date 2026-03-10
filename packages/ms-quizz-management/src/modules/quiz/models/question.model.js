@@ -17,8 +17,8 @@ export class Question {
   /** @type {import('./quiz.model.js').Quiz | undefined} */
   quiz;
 
-  /** @type {import('./choice.model.js').Choice[]} */
-  choices = [];
+  /** @type {import('./choice.model.js').Choice[] | undefined} */
+  choices;
 
   /**
    * @param {Partial<Question>} [data]

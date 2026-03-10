@@ -20,6 +20,7 @@ export class CreateQuizRequestDto {
 
   /**
    * @param {CreateQuizRequest} data
+   * @returns {import('joi').ValidationResult<CreateQuizRequest>}
    */
   static validate(data) {
     const schema = Joi.object({
@@ -44,6 +45,7 @@ export class UpdateQuizRequestDto {
 
   /**
    * @param {UpdateQuizRequest} data
+   * @returns {import('joi').ValidationResult<UpdateQuizRequest>}
    */
   static validate(data) {
     const schema = Joi.object({
@@ -69,3 +71,20 @@ export class QuizResponseDto {
     this.updatedAt = data.updatedAt;
   }
 }
+
+export const QuizResponseSchema = {
+  $id: "QuizResponseDto",
+  type: "object",
+  properties: {
+    id: { type: "string", format: "uuid" },
+    title: { type: "string" },
+    description: { type: "string", nullable: true },
+    createdAt: { type: "string", format: "date-time" },
+    updatedAt: { type: "string", format: "date-time" },
+    questions: {
+      type: "array",
+      items: { $ref: "QuestionResponseDto#" },
+    },
+  },
+  required: ["id", "title", "createdAt", "updatedAt"],
+};

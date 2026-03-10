@@ -1,10 +1,8 @@
 import { BaseRepository } from "common-core";
 import { QuizEntity } from "../entities/quiz.entity.js";
 
-/** @typedef {import('../models/quiz.model.js').Quiz} Quiz */
-
 /**
- * @extends {BaseRepository<Quiz>}
+ * @extends {BaseRepository<import('../models/quiz.model.js').Quiz>}
  */
 export class QuizRepository extends BaseRepository {
   /**
