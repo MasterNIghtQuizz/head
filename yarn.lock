@@ -1619,8 +1619,6 @@ __metadata:
 "common-contracts@workspace:*, common-contracts@workspace:^, common-contracts@workspace:packages/common/contracts":
   version: 0.0.0-use.local
   resolution: "common-contracts@workspace:packages/common/contracts"
-  dependencies:
-    joi: "npm:^18.0.2"
   languageName: unknown
   linkType: soft
 
