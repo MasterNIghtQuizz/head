@@ -9,13 +9,12 @@ jobs:
   detect-changes:
     runs-on: ubuntu-latest
     outputs:
-      packages: ${{ steps.filter.outputs.packages }}
+      packages: ${{ steps.all.outputs.packages || steps.filter.outputs.packages }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Detect changes in packages
-        if: github.event_name != 'pull_request'
         uses: dorny/paths-filter@v2
         id: filter
         with:
@@ -32,9 +31,15 @@ jobs:
             ms-user:
                 - 'packages/ms-user/**'
                 - '!packages/ms-user/README.md'
+
+      - name: Set all packages for a PR to main, to ensure all packages are tested
+        if: ${{ github.event_name == 'pull_request' && github.base_ref == 'main' }}
+        id: all
+        run: echo 'packages=["api-gateway","common","ms-quizz-management","ms-user"]' >> "$GITHUB_OUTPUT"
+
   quality:
     needs: detect-changes
-    # if: ${{ needs.detect-changes.outputs.packages != '[]'}}
+    if: ${{ needs.detect-changes.outputs.packages != '[]'}}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
