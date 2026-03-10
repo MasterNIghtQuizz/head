@@ -12,9 +12,14 @@ export class UserEventsConsumer {
   }
 
   register() {
-    this.kafkaConsumer.addHandler(Topics.USER_EVENTS, async (message, _headers) => {
-      await this.handleUserEvents(/** @type {import('common-contracts').UserEventMessage} */ (message));
-    });
+    this.kafkaConsumer.addHandler(
+      Topics.USER_EVENTS,
+      async (message, _headers) => {
+        await this.handleUserEvents(
+          /** @type {import('common-contracts').UserEventMessage} */ (message),
+        );
+      },
+    );
   }
 
   /**
@@ -22,16 +27,20 @@ export class UserEventsConsumer {
    */
   async handleUserEvents(message) {
     if (!message?.eventId) {
-      logger.warn("Received message without eventId, skipping idempotency check.");
+      logger.warn(
+        "Received message without eventId, skipping idempotency check.",
+      );
       return;
     }
 
-    const existingEvent = await this.processedEventRepo.findOne({ where: { id: message.eventId } });
+    const existingEvent = await this.processedEventRepo.findOne({
+      where: { id: message.eventId },
+    });
 
     if (existingEvent) {
       logger.info(
         { eventId: message.eventId },
-        "Event already processed, skipping. (Idempotency check passed)"
+        "Event already processed, skipping. (Idempotency check passed)",
       );
       return;
     }
@@ -52,7 +61,7 @@ export class UserEventsConsumer {
   async onUserCreated(payload) {
     logger.info(
       { userId: payload.userId },
-      "Received USER_CREATED natively via Kafka. Initializing default Quizz profile for User..."
+      "Received USER_CREATED natively via Kafka. Initializing default Quizz profile for User...",
     );
   }
 }
