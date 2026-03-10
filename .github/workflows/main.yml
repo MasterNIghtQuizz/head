@@ -19,11 +19,11 @@ jobs:
         id: filter
         with:
           filters: |
-            @monorepo/api-gateway:
+            "@monorepo/api-gateway":
                 - 'packages/api-gateway/src/**'
-            @monorepo/ms-quizz-management:
+            "@monorepo/ms-quizz-management":
               - 'packages/ms-quizz-management/src/**'
-            @monorepo/ms-user:
+            "@monorepo/ms-user":
               - 'packages/ms-user/src/**'
             common-auth:
                 - 'packages/common/auth/src/**'
