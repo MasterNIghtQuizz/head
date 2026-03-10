@@ -19,23 +19,49 @@ jobs:
         id: filter
         with:
           filters: |
-            api-gateway:
-                - 'packages/api-gateway/**'
-                - '!packages/api-gateway/README.md'
-            common:
-                - 'packages/common/**'
-                - '!packages/common/README.md'
-            ms-quizz-management:
-                - 'packages/ms-quizz-management/**'
-                - '!packages/ms-quizz-management/README.md'
-            ms-user:
-                - 'packages/ms-user/**'
-                - '!packages/ms-user/README.md'
+            @monorepo/api-gateway:
+                - 'packages/api-gateway/src/**'
+            @monorepo/ms-quizz-management:
+              - 'packages/ms-quizz-management/src/**'
+            @monorepo/ms-user:
+              - 'packages/ms-user/src/**'
+            common-auth:
+                - 'packages/common/auth/src/**'
+            common-axios:
+                - 'packages/common/axios/src/**'
+            common-config:
+                - 'packages/common/config/src/**'
+            common-contracts:
+                - 'packages/common/contracts/src/**'
+            common-core:
+                - 'packages/common/core/src/**'
+            common-crypto:
+                - 'packages/common/crypto/src/**'
+            common-kafka:
+                - 'packages/common/kafka/src/**'
 
       - name: Set all packages for a PR to main, to ensure all packages are tested
         if: ${{ github.event_name == 'pull_request' && github.base_ref == 'main' }}
         id: all
-        run: echo 'packages=["api-gateway","common","ms-quizz-management","ms-user"]' >> "$GITHUB_OUTPUT"
+        run: |
+          {
+            echo 'packages<<EOF'
+            cat <<'JSON'
+            [
+              "@monorepo/api-gateway",
+              "@monorepo/ms-quizz-management",
+              "@monorepo/ms-user",
+              "common-auth",
+              "common-axios",
+              "common-config",
+              "common-contracts",
+              "common-core",
+              "common-crypto",
+              "common-kafka"
+            ]
+            JSON
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
 
   quality:
     needs: detect-changes
@@ -63,14 +89,7 @@ jobs:
         run: yarn install --frozen-lockfile
 
       - name: Lint ${{ matrix.package }}
-        run: yarn workspace @monorepo/${{ matrix.package }} lint
+        run: yarn workspace ${{ matrix.package }} lint
 
-      - name: Test ${{ matrix.package }} (If defined)
-        run: |
-          if npm run | grep -q 'test'; then
-          echo "Test script found, running tests"
-          yarn workspace @monorepo/${{ matrix.package }} test
-
-          else
-          echo "No test script, skipping"
-          fi
+      - name: Test ${{ matrix.package }}
+        run: yarn workspace ${{ matrix.package }} test
