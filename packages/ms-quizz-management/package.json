@@ -12,6 +12,8 @@
   "dependencies": {
     "common-auth": "workspace:*",
     "common-config": "workspace:*",
+    "common-contracts": "workspace:*",
+    "common-core": "workspace:*",
     "common-crypto": "workspace:*",
     "common-database": "workspace:*",
     "common-kafka": "workspace:*",

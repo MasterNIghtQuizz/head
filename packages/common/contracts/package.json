@@ -7,5 +7,8 @@
     "lint": "yarn run -T eslint .",
     "lint:fix": "yarn run -T eslint . --fix",
     "build": "echo 'Pure JS package - no build step'"
+  },
+  "dependencies": {
+    "joi": "^18.0.2"
   }
 }
