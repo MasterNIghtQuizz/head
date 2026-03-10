@@ -4,6 +4,7 @@ export declare const config: {
   logger: Record<string, unknown>;
   postgres: Record<string, any>;
   kafka: {
+    enabled: boolean;
     brokers: string[];
   };
   auth: {

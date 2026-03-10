@@ -45,7 +45,7 @@ export class TypeORMStrategy extends DatabaseStrategy {
       database: database,
       entities,
       migrations,
-      synchronize: env === "development",
+      synchronize: env === "development" || env === "test",
       logging: env === "development",
     });
 

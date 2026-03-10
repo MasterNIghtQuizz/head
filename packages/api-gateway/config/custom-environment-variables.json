@@ -6,6 +6,10 @@
   "logger": {
     "level": "LOG_LEVEL"
   },
+  "services": {
+    "user": "USER_SERVICE_URL",
+    "quizz": "QUIZZ_SERVICE_URL"
+  },
   "auth": {
     "access": {
       "privateKeyPath": "AUTH_ACCESS_PRIVATE_KEY_PATH",

@@ -21,8 +21,7 @@
     }
   },
   "kafka": {
-    "brokers": [
-      "localhost:9092"
-    ]
+    "enabled": true,
+    "brokers": ["localhost:9092"]
   }
 }

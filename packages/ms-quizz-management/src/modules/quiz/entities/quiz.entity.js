@@ -1,7 +1,10 @@
 import { EntitySchema } from "typeorm";
+import { Quiz } from "../models/quiz.model.js";
 
-export const QuizEntity = new EntitySchema({
+/** @type {import('typeorm').EntitySchemaOptions<Quiz>} */
+const quizSchema = {
   name: "Quiz",
+  target: Quiz,
   tableName: "quizzes",
   columns: {
     id: {
@@ -25,4 +28,13 @@ export const QuizEntity = new EntitySchema({
       updateDate: true,
     },
   },
-});
+  relations: {
+    questions: {
+      target: "Question",
+      type: "one-to-many",
+      inverseSide: "quiz",
+    },
+  },
+};
+
+export const QuizEntity = new EntitySchema(quizSchema);

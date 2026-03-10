@@ -12,7 +12,8 @@
     "paths": {
       "@common/*": ["packages/common/*"],
       "@core/*": ["packages/core/*"],
-      "@utils/*": ["packages/utils/*"]
+      "@utils/*": ["packages/utils/*"],
+      "@monorepo/api-gateway/*": ["packages/api-gateway/src/*"]
     }
   },
   "include": ["packages/**/*", "**/*.d.ts"],
