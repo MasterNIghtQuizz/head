@@ -1,0 +1,99 @@
+name: QuizzApp CI
+on:
+  push:
+    branches: [feat/CI-1.0, main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      packages: ${{ steps.all.outputs.packages || steps.filter.outputs.packages }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Detect changes in packages
+        uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            "@monorepo/api-gateway":
+                - 'packages/api-gateway/src/**'
+            "@monorepo/ms-quizz-management":
+              - 'packages/ms-quizz-management/src/**'
+            "@monorepo/ms-user":
+              - 'packages/ms-user/src/**'
+            common-auth:
+                - 'packages/common/auth/src/**'
+            common-axios:
+                - 'packages/common/axios/src/**'
+            common-config:
+                - 'packages/common/config/src/**'
+            common-contracts:
+                - 'packages/common/contracts/src/**'
+            common-core:
+                - 'packages/common/core/src/**'
+            common-crypto:
+                - 'packages/common/crypto/src/**'
+            common-kafka:
+                - 'packages/common/kafka/src/**'
+
+      - name: Set all packages for a PR to main, to ensure all packages are tested
+        if: ${{ github.event_name == 'pull_request' && github.base_ref == 'main' }}
+        id: all
+        run: |
+          {
+            echo 'packages<<EOF'
+            echo '['
+            echo '  "@monorepo/api-gateway",'
+            echo '  "@monorepo/ms-quizz-management",'
+            echo '  "@monorepo/ms-user",'
+            echo '  "common-auth",'
+            echo '  "common-axios",'
+            echo '  "common-config",'
+            echo '  "common-contracts",'
+            echo '  "common-core",'
+            echo '  "common-crypto",'
+            echo '  "common-kafka"'
+            echo ']'
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+
+  quality:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.packages != '[]'}}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJson(needs.detect-changes.outputs.packages) }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Enable Corepack
+        shell: bash
+        run: corepack enable
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.14.0"
+          cache: "yarn"
+
+      - name: Install Dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Lint ${{ matrix.package }}
+        run: yarn workspace ${{ matrix.package }} lint
+
+      - name: Test ${{ matrix.package }}
+        run: |
+          if yarn workspace ${{ matrix.package }} run | grep -q 'test'; then
+            echo "Test script found, running tests"
+            yarn workspace ${{ matrix.package }} run test
+          else
+            echo "No test script, skipping"
+          fi
