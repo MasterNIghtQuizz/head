@@ -79,4 +79,3 @@ ApplyMethodDecorators(UserController, "register", [
 ]);
 
 Controller("/users")(UserController);
-

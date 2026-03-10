@@ -34,8 +34,8 @@ export class UserService extends BaseService {
       payload: {
         userId,
         email: userData.email,
-        role: userData.role
-      }
+        role: userData.role,
+      },
     };
 
     await this.kafkaProducer.publish(Topics.USER_EVENTS, payload);
