@@ -46,20 +46,18 @@ jobs:
         run: |
           {
             echo 'packages<<EOF'
-            cat <<'JSON'
-            [
-              "@monorepo/api-gateway",
-              "@monorepo/ms-quizz-management",
-              "@monorepo/ms-user",
-              "common-auth",
-              "common-axios",
-              "common-config",
-              "common-contracts",
-              "common-core",
-              "common-crypto",
-              "common-kafka"
-            ]
-            JSON
+            echo '['
+            echo '  "@monorepo/api-gateway",'
+            echo '  "@monorepo/ms-quizz-management",'
+            echo '  "@monorepo/ms-user",'
+            echo '  "common-auth",'
+            echo '  "common-axios",'
+            echo '  "common-config",'
+            echo '  "common-contracts",'
+            echo '  "common-core",'
+            echo '  "common-crypto",'
+            echo '  "common-kafka"'
+            echo ']'
             echo 'EOF'
           } >> "$GITHUB_OUTPUT"
 
