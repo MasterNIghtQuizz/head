@@ -1,20 +1,24 @@
+// @ts-nocheck
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import { hookInternalTokenInterceptor } from "../interceptors/internal-token.interceptor.js";
 import { CryptoService } from "common-crypto";
 import logger from "common-logger";
 import { createExecutionContext } from "./test-helpers.js";
 import { UserRole } from "../enums.js";
-import type { InternalTokenInterceptorOptions } from "../types.js";
 
 describe("hookInternalTokenInterceptor (Interceptor Unit Test)", () => {
-  const options: InternalTokenInterceptorOptions = {
+  /** @type {import('../types.d.ts').InternalTokenInterceptorOptions} */
+  const options = {
     privateKeyPath: "/path/to/private.pem",
     source: "test-source",
     expiresIn: "10s",
   };
-  let hook: (request: any, reply: any, done: () => void) => void;
+
+  /** @type {import('fastify').onRequestHookHandler} */
+  let hook;
 
   beforeEach(() => {
+    // @ts-ignore
     hook = hookInternalTokenInterceptor(options);
   });
 
@@ -22,21 +26,21 @@ describe("hookInternalTokenInterceptor (Interceptor Unit Test)", () => {
     vi.restoreAllMocks();
   });
 
-  it("should call done() immediately and not process if the route is public", () => {
-    const { request, reply, done } = createExecutionContext();
+  it("should call done() immediately and not process if the route is public", async () => {
+    const { request, reply, done, fastify } = createExecutionContext();
     request.routeOptions = { config: { isPublic: true } };
 
-    hook(request, reply, done);
+    await hook.call(fastify, request, reply, done);
 
     expect(done).toHaveBeenCalled();
     expect(reply.code).not.toHaveBeenCalled();
   });
 
-  it("should return 401 if request.user is missing or incomplete", () => {
-    let { request, reply, done } = createExecutionContext();
+  it("should return 401 if request.user is missing or incomplete", async () => {
+    const { request, reply, done, fastify } = createExecutionContext();
     const loggerSpy = vi.spyOn(logger, "error").mockImplementation(() => {});
 
-    hook(request, reply, done);
+    await hook.call(fastify, request, reply, done);
 
     expect(loggerSpy).toHaveBeenCalled();
     expect(reply.code).toHaveBeenCalledWith(401);
@@ -46,19 +50,22 @@ describe("hookInternalTokenInterceptor (Interceptor Unit Test)", () => {
     expect(done).not.toHaveBeenCalled();
 
     vi.clearAllMocks();
-    ({ request, reply, done } = createExecutionContext(
-      {},
-      { userId: "partial" },
-    ));
-    hook(request, reply, done);
+    const {
+      request: req2,
+      reply: rep2,
+      done: done2,
+      fastify: fast2,
+    } = createExecutionContext({}, { userId: "partial" });
+    await hook.call(fast2, req2, rep2, done2);
 
     expect(loggerSpy).toHaveBeenCalled();
-    expect(reply.code).toHaveBeenCalledWith(401);
-    expect(done).not.toHaveBeenCalled();
+    expect(rep2.code).toHaveBeenCalledWith(401);
+    expect(done2).not.toHaveBeenCalled();
   });
 
-  it("should sign payload and attach internal-token to request if user is valid", () => {
-    const { request, reply, done } = createExecutionContext(
+  it("should sign payload and attach internal-token to request if user is valid", async () => {
+    /** @type {any} */
+    const { request, reply, done, fastify } = createExecutionContext(
       {},
       { userId: "456", role: UserRole.USER },
     );
@@ -66,7 +73,7 @@ describe("hookInternalTokenInterceptor (Interceptor Unit Test)", () => {
       .spyOn(CryptoService, "sign")
       .mockReturnValue("signed.internal.token");
 
-    hook(request, reply, done);
+    await hook.call(fastify, request, reply, done);
 
     expect(cryptoSpy).toHaveBeenCalledWith(
       {
@@ -84,8 +91,8 @@ describe("hookInternalTokenInterceptor (Interceptor Unit Test)", () => {
     expect(reply.code).not.toHaveBeenCalled();
   });
 
-  it("should return 500 if internal token generation throws an error", () => {
-    const { request, reply, done } = createExecutionContext(
+  it("should return 500 if internal token generation throws an error", async () => {
+    const { request, reply, done, fastify } = createExecutionContext(
       {},
       { userId: "456", role: UserRole.USER },
     );
@@ -94,7 +101,7 @@ describe("hookInternalTokenInterceptor (Interceptor Unit Test)", () => {
     });
     const loggerSpy = vi.spyOn(logger, "error").mockImplementation(() => {});
 
-    hook(request, reply, done);
+    await hook.call(fastify, request, reply, done);
 
     expect(loggerSpy).toHaveBeenCalled();
     expect(reply.code).toHaveBeenCalledWith(500);

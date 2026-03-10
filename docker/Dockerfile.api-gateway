@@ -9,7 +9,7 @@ COPY package.json yarn.lock .yarnrc.yml ./
 COPY packages ./packages
 COPY keys ./keys
 COPY scripts ./scripts
-COPY vitest.config.js jsconfig.json ./
+COPY vitest.config.js vitest.config.e2e.js jsconfig.json ./
 
 RUN if [ "$PRODUCTION" = "true" ]; then \
       yarn workspaces focus @monorepo/api-gateway --production; \

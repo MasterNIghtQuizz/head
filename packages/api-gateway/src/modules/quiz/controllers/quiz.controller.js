@@ -9,6 +9,24 @@ import {
   ApplyMethodDecorators,
 } from "common-core";
 
+/** @type {Record<string, unknown>} */
+const ErrorResponse = {
+  type: "object",
+  properties: { message: { type: "string" } },
+};
+
+/** @type {Record<string, unknown>} */
+const QuizResponse = {
+  type: "object",
+  properties: {
+    id: { type: "string", format: "uuid" },
+    title: { type: "string" },
+    description: { type: "string", nullable: true },
+    createdAt: { type: "string", format: "date-time" },
+    updatedAt: { type: "string", format: "date-time" },
+  },
+};
+
 export class QuizController extends BaseController {
   /**
    * @param {import('../services/quiz.service.js').QuizService} quizService
@@ -18,16 +36,12 @@ export class QuizController extends BaseController {
     this.quizService = quizService;
   }
 
-  /**
-   * @param {import('fastify').FastifyRequest} request
-   */
+  /** @param {import('fastify').FastifyRequest} request */
   async getAllQuizzes(request) {
     return this.quizService.getAllQuizzes(request.headers);
   }
 
-  /**
-   * @param {import('fastify').FastifyRequest<{Params: {id: string}}>} request
-   */
+  /** @param {import('fastify').FastifyRequest<{Params: {id: string}}>} request */
   async getQuizById(request) {
     return this.quizService.getQuizById(request.params.id, request.headers);
   }
@@ -67,12 +81,20 @@ export class QuizController extends BaseController {
 
 ApplyMethodDecorators(QuizController, "getAllQuizzes", [
   Schema({
-    description: "Get all quizzes",
+    summary: "List all quizzes",
+    description:
+      "Returns the full list of quizzes. Required header: `access-token`.",
     tags: ["Quiz"],
+    security: [{ accessToken: [] }],
     response: {
       200: {
+        description: "List of quizzes",
         type: "array",
-        items: { type: "object", additionalProperties: true },
+        items: QuizResponse,
+      },
+      401: {
+        description: "Unauthorized — missing or invalid access token",
+        ...ErrorResponse,
       },
     },
   }),
@@ -81,16 +103,22 @@ ApplyMethodDecorators(QuizController, "getAllQuizzes", [
 
 ApplyMethodDecorators(QuizController, "getQuizById", [
   Schema({
-    description: "Get quiz by id",
+    summary: "Get a quiz by ID",
+    description:
+      "Returns a single quiz by its UUID. Required header: `access-token`.",
     tags: ["Quiz"],
+    security: [{ accessToken: [] }],
     params: {
       type: "object",
+      required: ["id"],
       properties: {
-        id: { type: "string" },
+        id: { type: "string", format: "uuid", description: "Quiz UUID" },
       },
     },
     response: {
-      200: { type: "object", additionalProperties: true },
+      200: { description: "Quiz found", ...QuizResponse },
+      401: { description: "Unauthorized", ...ErrorResponse },
+      404: { description: "Not Found", ...ErrorResponse },
     },
   }),
   Get("/:id"),
@@ -98,11 +126,22 @@ ApplyMethodDecorators(QuizController, "getQuizById", [
 
 ApplyMethodDecorators(QuizController, "createQuiz", [
   Schema({
-    description: "Create a new quiz",
+    summary: "Create a quiz",
+    description: "Creates a new quiz. Required header: `access-token`.",
     tags: ["Quiz"],
-    body: { type: "object", additionalProperties: true },
+    security: [{ accessToken: [] }],
+    body: {
+      type: "object",
+      required: ["title"],
+      properties: {
+        title: { type: "string", description: "Quiz title" },
+        description: { type: "string", description: "Optional description" },
+      },
+    },
     response: {
-      201: { type: "object", additionalProperties: true },
+      201: { description: "Quiz created", ...QuizResponse },
+      400: { description: "Bad Request — invalid payload", ...ErrorResponse },
+      401: { description: "Unauthorized", ...ErrorResponse },
     },
   }),
   Post("/"),
@@ -110,17 +149,30 @@ ApplyMethodDecorators(QuizController, "createQuiz", [
 
 ApplyMethodDecorators(QuizController, "updateQuiz", [
   Schema({
-    description: "Update a quiz",
+    summary: "Update a quiz",
+    description:
+      "Updates an existing quiz by its UUID. Required header: `access-token`.",
     tags: ["Quiz"],
+    security: [{ accessToken: [] }],
     params: {
       type: "object",
+      required: ["id"],
       properties: {
-        id: { type: "string" },
+        id: { type: "string", format: "uuid", description: "Quiz UUID" },
       },
     },
-    body: { type: "object", additionalProperties: true },
+    body: {
+      type: "object",
+      properties: {
+        title: { type: "string" },
+        description: { type: "string" },
+      },
+    },
     response: {
-      200: { type: "object", additionalProperties: true },
+      200: { description: "Quiz updated", ...QuizResponse },
+      400: { description: "Bad Request — invalid payload", ...ErrorResponse },
+      401: { description: "Unauthorized", ...ErrorResponse },
+      404: { description: "Not Found", ...ErrorResponse },
     },
   }),
   Put("/:id"),
@@ -128,16 +180,21 @@ ApplyMethodDecorators(QuizController, "updateQuiz", [
 
 ApplyMethodDecorators(QuizController, "deleteQuiz", [
   Schema({
-    description: "Delete a quiz",
+    summary: "Delete a quiz",
+    description: "Deletes a quiz by its UUID. Required header: `access-token`.",
     tags: ["Quiz"],
+    security: [{ accessToken: [] }],
     params: {
       type: "object",
+      required: ["id"],
       properties: {
-        id: { type: "string" },
+        id: { type: "string", format: "uuid", description: "Quiz UUID" },
       },
     },
     response: {
-      204: { type: "null" },
+      204: { description: "Quiz deleted", type: "null" },
+      401: { description: "Unauthorized", ...ErrorResponse },
+      404: { description: "Not Found", ...ErrorResponse },
     },
   }),
   Delete("/:id"),

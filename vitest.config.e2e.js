@@ -1,0 +1,15 @@
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+  test: {
+    globals: true,
+    environment: "node",
+    include: ["**/*.e2e.spec.{js,ts}"],
+    alias: {
+      "@monorepo/api-gateway": new URL(
+        "./packages/api-gateway/src",
+        import.meta.url,
+      ).pathname,
+    },
+  },
+});

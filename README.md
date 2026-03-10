@@ -122,7 +122,7 @@ yarn install
 The easiest way to bootstrap the databases alongside the services:
 
 ```bash
-docker-compose up --build
+docker compose --profile app up -d
 ```
 
 _Note: Make sure port 5432 is free on your host, or configure `docker-compose.yml` accordingly._

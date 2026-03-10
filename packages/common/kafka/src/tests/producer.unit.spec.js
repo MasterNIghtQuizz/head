@@ -1,15 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { KafkaProducer } from "../producer.js";
-import { createMockKafkaClient, createMockProducer } from "./kafka-fake-factory.js";
-import type { Kafka, Producer } from "kafkajs";
+import {
+  createMockKafkaClient,
+  createMockProducer,
+} from "./kafka-fake-factory.js";
 
-describe("KafkaProducer", () => {
-  let mockProducer: Producer;
-  let mockKafkaClient: Kafka;
+describe("KafkaProducer (Unit Test)", () => {
+  /** @type {import('kafkajs').Producer} */
+  let mockProducer;
+  /** @type {import('kafkajs').Kafka} */
+  let mockKafkaClient;
 
   beforeEach(() => {
     mockProducer = createMockProducer();
-    mockKafkaClient = createMockKafkaClient(mockProducer, undefined as any);
+    mockKafkaClient = createMockKafkaClient(
+      mockProducer,
+      /** @type {any} */ ({}),
+    );
     vi.clearAllMocks();
   });
 
@@ -70,7 +77,7 @@ describe("KafkaProducer", () => {
     const kafkaProducer = new KafkaProducer(mockKafkaClient);
 
     await expect(
-      kafkaProducer.publish("test-topic", { data: 1 })
+      kafkaProducer.publish("test-topic", { data: 1 }),
     ).rejects.toThrow("Network Error");
   });
 });

@@ -1,12 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { KafkaConsumer } from "../consumer.js";
-import { createMockKafkaClient, createMockConsumer } from "./kafka-fake-factory.js";
-import type { Consumer, Kafka, ConsumerConfig } from "kafkajs";
+import {
+  createMockKafkaClient,
+  createMockConsumer,
+} from "./kafka-fake-factory.js";
 
-describe("KafkaConsumer", () => {
-  let mockConsumer: Consumer;
-  let mockKafkaClient: Kafka;
-  let config: ConsumerConfig;
+describe("KafkaConsumer (Unit Test)", () => {
+  /** @type {import('kafkajs').Consumer} */
+  let mockConsumer;
+  /** @type {import('kafkajs').Kafka} */
+  let mockKafkaClient;
+  /** @type {import('kafkajs').ConsumerConfig} */
+  let config;
 
   beforeEach(() => {
     mockConsumer = createMockConsumer();
@@ -49,7 +54,9 @@ describe("KafkaConsumer", () => {
 
     expect(mockConsumer.run).toHaveBeenCalledTimes(1);
 
-    const { eachMessage } = vi.mocked(mockConsumer.run).mock.calls[0][0] as any;
+    const { eachMessage } = /** @type {any} */ (
+      vi.mocked(mockConsumer.run).mock.calls[0][0]
+    );
     await eachMessage({
       topic: "test-topic",
       partition: 0,
@@ -62,7 +69,7 @@ describe("KafkaConsumer", () => {
     expect(handler).toHaveBeenCalledTimes(1);
     expect(handler).toHaveBeenCalledWith(
       { userId: "user-123" },
-      { "x-correlation-id": "12345" }
+      { "x-correlation-id": "12345" },
     );
   });
 
@@ -83,7 +90,9 @@ describe("KafkaConsumer", () => {
     kafkaConsumer.addHandler("test-topic", handler);
 
     await kafkaConsumer.start();
-    const { eachMessage } = vi.mocked(mockConsumer.run).mock.calls[0][0] as any;
+    const { eachMessage } = /** @type {any} */ (
+      vi.mocked(mockConsumer.run).mock.calls[0][0]
+    );
 
     await expect(
       eachMessage({
@@ -92,7 +101,7 @@ describe("KafkaConsumer", () => {
         message: {
           value: Buffer.from("invalid-json"),
         },
-      })
+      }),
     ).rejects.toThrow();
 
     expect(handler).not.toHaveBeenCalled();

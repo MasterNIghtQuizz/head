@@ -42,11 +42,21 @@ const resolveEnvVars = (mapping) => {
         result[key] = process.env[envVarName];
       }
     } else if (mapping[key] instanceof Object && !Array.isArray(mapping[key])) {
-      const resolved = resolveEnvVars(
-        /** @type {Record<string, unknown>} */ (mapping[key]),
-      );
-      if (Object.keys(resolved).length > 0) {
-        result[key] = resolved;
+      const obj = /** @type {Record<string, unknown>} */ (mapping[key]);
+      if (typeof obj.__name === "string") {
+        const envVarName = obj.__name;
+        if (process.env[envVarName] !== undefined) {
+          const raw = process.env[envVarName];
+          result[key] =
+            obj.__format === "json"
+              ? JSON.parse(/** @type {string} */ (raw))
+              : raw;
+        }
+      } else {
+        const resolved = resolveEnvVars(obj);
+        if (Object.keys(resolved).length > 0) {
+          result[key] = resolved;
+        }
       }
     }
   }

@@ -2,13 +2,26 @@ x-common-env: &common-env
   POSTGRES_USER: postgres
   POSTGRES_PASSWORD: postgres_password
 
+x-ms-user-db: &ms-user-db
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: 5432
+  POSTGRES_DB: ms_user_db
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: postgres_password
+
+x-ms-quizz-db: &ms-quizz-db
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: 5432
+  POSTGRES_DB: ms_quizz_db
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: postgres_password
+
 services:
   # ────────────────────────────────────────────────────────
   #  INFRASTRUCTURE — always started
   # ────────────────────────────────────────────────────────
   postgres:
     image: postgres:16
-    profiles: [app]
     environment:
       <<: *common-env
       POSTGRES_DB: quiz_master_db
@@ -41,7 +54,6 @@ services:
 
   kafka:
     image: confluentinc/cp-kafka:7.8.0
-    profiles: [app]
     hostname: kafka
     container_name: kafka
     ports:
@@ -76,7 +88,6 @@ services:
 
   kafka-ui:
     image: provectuslabs/kafka-ui:master
-    profiles: [app]
     container_name: kafka-ui
     ports:
       - "8080:8080"
@@ -86,6 +97,44 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
+
+  # ────────────────────────────────────────────────────────
+  #  MIGRATIONS — profile: app (run once before services)
+  # ────────────────────────────────────────────────────────
+  migrate-ms-user:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.ms-user
+    environment:
+      NODE_ENV: production
+      <<: *ms-user-db
+    command: ["yarn", "workspace", "@monorepo/ms-user", "run", "migrations:run"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  migrate-ms-quizz-management:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.ms-quizz-management
+    environment:
+      NODE_ENV: production
+      <<: *ms-quizz-db
+    command:
+      [
+        "yarn",
+        "workspace",
+        "@monorepo/ms-quizz-management",
+        "run",
+        "migrations:run",
+      ]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
 
   # ────────────────────────────────────────────────────────
   #  APPLICATION SERVICES — profile: app
@@ -100,12 +149,16 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
-      KAFKA_BROKERS: "kafka:29092"
+      KAFKA_BROKERS: '["kafka:29092"]'
       USER_SERVICE_URL: "http://ms-user:4001"
       QUIZZ_SERVICE_URL: "http://ms-quizz-management:4002"
     depends_on:
       kafka:
         condition: service_healthy
+      migrate-ms-user:
+        condition: service_completed_successfully
+      migrate-ms-quizz-management:
+        condition: service_completed_successfully
 
   ms-user:
     profiles: [app]
@@ -117,17 +170,15 @@ services:
     environment:
       NODE_ENV: production
       PORT: 4001
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      POSTGRES_DB: ms_user_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres_password
-      KAFKA_BROKERS: "kafka:29092"
+      <<: *ms-user-db
+      KAFKA_BROKERS: '["kafka:29092"]'
     depends_on:
       postgres:
         condition: service_healthy
       kafka:
         condition: service_healthy
+      migrate-ms-user:
+        condition: service_completed_successfully
 
   ms-quizz-management:
     profiles: [app]
@@ -139,17 +190,15 @@ services:
     environment:
       NODE_ENV: production
       PORT: 4002
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      POSTGRES_DB: ms_quizz_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres_password
-      KAFKA_BROKERS: "kafka:29092"
+      <<: *ms-quizz-db
+      KAFKA_BROKERS: '["kafka:29092"]'
     depends_on:
       postgres:
         condition: service_healthy
       kafka:
         condition: service_healthy
+      migrate-ms-quizz-management:
+        condition: service_completed_successfully
 
   # ────────────────────────────────────────────────────────
   #  TEST SERVICES — profile: test
@@ -167,7 +216,7 @@ services:
     environment:
       NODE_ENV: test
       PORT: 3010
-      KAFKA_BROKERS: ""
+      KAFKA_BROKERS: "[]"
       KAFKA_ENABLED: "false"
       USER_SERVICE_URL: "http://ms-user-test:4011"
       QUIZZ_SERVICE_URL: "http://ms-quizz-management-test:4012"
@@ -175,7 +224,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "wget -qO- http://localhost:3010/health | grep ok || exit 1",
+          "wget -qO- http://127.0.0.1:3010/health | grep ok || exit 1",
         ]
       interval: 3s
       timeout: 3s
@@ -198,13 +247,13 @@ services:
       POSTGRES_DB: ms_quizz_test_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres_password
-      KAFKA_BROKERS: ""
+      KAFKA_BROKERS: "[]"
       KAFKA_ENABLED: "false"
     healthcheck:
       test:
         [
           "CMD-SHELL",
-          "wget -qO- http://localhost:4011/health | grep ok || exit 1",
+          "wget -qO- http://127.0.0.1:4011/health | grep ok || exit 1",
         ]
       interval: 3s
       timeout: 3s
@@ -230,13 +279,13 @@ services:
       POSTGRES_DB: ms_quizz_test_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres_password
-      KAFKA_BROKERS: ""
+      KAFKA_BROKERS: "[]"
       KAFKA_ENABLED: "false"
     healthcheck:
       test:
         [
           "CMD-SHELL",
-          "wget -qO- http://localhost:4012/health | grep ok || exit 1",
+          "wget -qO- http://127.0.0.1:4012/health | grep ok || exit 1",
         ]
       interval: 3s
       timeout: 3s

@@ -91,4 +91,4 @@ while [ "$seed_attempt" -lt "$MAX_RETRIES" ]; do
 done
 
 log "Step 3/3 — Running E2E tests..."
-exec yarn vitest run e2e.spec --dir packages/api-gateway "$@"
+exec yarn vitest run --config vitest.config.e2e.js --dir packages/api-gateway "$@"

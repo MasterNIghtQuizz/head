@@ -16,9 +16,10 @@ vi.mock("kafkajs", () => {
 
 import { Kafka } from "kafkajs";
 
-describe("createKafkaClient", () => {
+describe("createKafkaClient (Unit Test)", () => {
   it("should create a KafkaJS client with a Pino log creator passed to the config", () => {
-    const config: any = { clientId: "test", brokers: ["kafka:9092"] };
+    /** @type {any} */
+    const config = { clientId: "test", brokers: ["kafka:9092"] };
 
     createKafkaClient(config);
 
@@ -28,7 +29,7 @@ describe("createKafkaClient", () => {
         clientId: "test",
         brokers: ["kafka:9092"],
         logCreator: expect.any(Function),
-      })
+      }),
     );
   });
 });
