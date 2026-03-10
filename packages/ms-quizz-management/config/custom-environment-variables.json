@@ -22,6 +22,7 @@
     }
   },
   "kafka": {
+    "enabled": "KAFKA_ENABLED",
     "brokers": {
       "__name": "KAFKA_BROKERS",
       "__format": "json"

@@ -5,6 +5,12 @@ export default defineConfig({
     globals: true,
     environment: "node",
     include: ["**/*.spec.{js,ts}"],
+    alias: {
+      "@monorepo/api-gateway": new URL(
+        "./packages/api-gateway/src",
+        import.meta.url,
+      ).pathname,
+    },
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],

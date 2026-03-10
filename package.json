@@ -13,7 +13,8 @@
     "lint": "yarn eslint .",
     "test": "vitest",
     "test:unit": "vitest run --project unit",
-    "test:int": "vitest run --project integration"
+    "test:int": "vitest run --project integration",
+    "test:e2e": "bash scripts/run-e2e.sh"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

@@ -9,7 +9,11 @@ const readJson = (configPath) => {
   return JSON.parse(fs.readFileSync(configPath, "utf-8"));
 };
 
-/** @type {typeof import('./config-loader.d.ts').merge} */
+/**
+ * @param {any} target
+ * @param {any} source
+ * @returns {any}
+ */
 const merge = (target, source) => {
   for (const key of Object.keys(source)) {
     if (source[key] instanceof Object && !Array.isArray(source[key])) {
@@ -52,10 +56,17 @@ const resolveEnvVars = (mapping) => {
 /** @type {typeof import('./config-loader.d.ts').loadConfig} */
 export const loadConfig = (directory) => {
   const defaultConfig = readJson(path.join(directory, "default.json"));
+
+  const env = process.env.NODE_ENV || "development";
+  const envFileConfig = readJson(path.join(directory, `${env}.json`));
+
   const envMapping = readJson(
     path.join(directory, "custom-environment-variables.json"),
   );
   const envConfig = resolveEnvVars(envMapping);
 
-  return merge(defaultConfig, envConfig);
+  const config = merge(defaultConfig, envFileConfig);
+  return merge(config, envConfig);
 };
+
+export { merge };

@@ -53,6 +53,25 @@ export const Delete = createRouteDecorator("DELETE");
 export const Patch = createRouteDecorator("PATCH");
 
 /**
+ * Public decorator to mark routes as public
+ */
+export function Public() {
+  /**
+   * @param {any} target
+   * @param {string} propertyKey
+   * @param {PropertyDescriptor} _descriptor
+   */
+  return function (target, propertyKey, _descriptor) {
+    Reflect.defineMetadata(
+      MetadataKeys.IS_PUBLIC,
+      true,
+      target.constructor,
+      propertyKey,
+    );
+  };
+}
+
+/**
  * Schema decorator for Swagger documentation
  * @param {any} schema
  */
