@@ -605,6 +605,8 @@ __metadata:
   dependencies:
     common-auth: "workspace:*"
     common-config: "workspace:*"
+    common-contracts: "workspace:*"
+    common-core: "workspace:*"
     common-crypto: "workspace:*"
     common-database: "workspace:*"
     common-kafka: "workspace:*"
@@ -1614,9 +1616,11 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"common-contracts@workspace:^, common-contracts@workspace:packages/common/contracts":
+"common-contracts@workspace:*, common-contracts@workspace:^, common-contracts@workspace:packages/common/contracts":
   version: 0.0.0-use.local
   resolution: "common-contracts@workspace:packages/common/contracts"
+  dependencies:
+    joi: "npm:^18.0.2"
   languageName: unknown
   linkType: soft
 
