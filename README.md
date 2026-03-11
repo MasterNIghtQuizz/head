@@ -122,6 +122,8 @@ yarn install
 The easiest way to bootstrap the databases alongside the services:
 
 ```bash
+docker compose --profile infra up -d
+# Si vous voulez lancer vos services sur docker
 docker compose --profile app up -d
 ```
 
@@ -162,6 +164,7 @@ We use **Vitest** for our fast, native execution test suite, alongside **ESLint*
   ```
 - **Run End-to-End (E2E) Tests**:
   E2E tests require a fully functional localized environment (databases, cache, microservices). We use a dedicated Docker Compose profile (`test`) to spin up isolated containers before running the tests.
+
   ```bash
   # 1. Build and start the test environment (detached mode)
   docker compose --profile test up -d --build
@@ -172,6 +175,7 @@ We use **Vitest** for our fast, native execution test suite, alongside **ESLint*
   # 3. Tear down the test environment when finished
   docker compose --profile test down -v
   ```
+
 - **Generate Coverage Report** (Excludes config and useless files):
   ```bash
   yarn vitest run --coverage

@@ -11,4 +11,19 @@ export class QuizRepository extends BaseRepository {
   constructor(datasource) {
     super(datasource, QuizEntity);
   }
+
+  /**
+   * @param {string} id
+   * @returns {Promise<any>}
+   */
+  async findByIdWithChildren(id) {
+    const repo =
+      /** @type {import('typeorm').Repository<import('../models/quiz.model.js').Quiz>} */ (
+        this.repo
+      );
+    return repo.findOne({
+      where: { id },
+      relations: ["questions", "questions.choices"],
+    });
+  }
 }

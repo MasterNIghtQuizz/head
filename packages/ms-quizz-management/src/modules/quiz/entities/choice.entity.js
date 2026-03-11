@@ -27,6 +27,7 @@ const choiceSchema = {
         name: "question_id",
       },
       inverseSide: "choices",
+      onDelete: "CASCADE",
     },
   },
 };

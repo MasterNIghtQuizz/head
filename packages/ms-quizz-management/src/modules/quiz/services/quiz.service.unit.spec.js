@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { QuizService } from "./quiz.service.js";
 import { QuizRepository } from "../repositories/quiz.repository.js";
-import { ValkeyRepository } from "common-valkey";
 import { createQuizMock } from "../../../tests/factories/quiz.factory.js";
 import {
   CreateQuizRequestDto,
@@ -16,7 +15,7 @@ import {
 /**
  * @typedef {import('../models/quiz.model.js').Quiz} Quiz
  * @typedef {import('vitest').Mocked<QuizRepository>} QuizRepositoryMock
- * @typedef {import('vitest').Mocked<ValkeyRepository>} ValkeyRepositoryMock
+ * @typedef {import('vitest').Mocked<import('common-valkey').ValkeyRepository>} ValkeyRepositoryMock
  */
 
 describe("QuizService Unit Tests", () => {
@@ -313,20 +312,41 @@ describe("QuizService Unit Tests", () => {
   });
 
   describe("deleteQuiz", () => {
-    it("should invalidate cache on delete", async () => {
-      const quiz = createQuizMock({ id: "1" });
-      vi.spyOn(quizRepositoryMock, "findOne").mockResolvedValue(quiz);
+    it("should invalidate cache on delete, including children", async () => {
+      const quiz = createQuizMock({
+        id: "1",
+        questions: [
+          /** @type {any} */ ({
+            id: "q1",
+            choices: [{ id: "c1" }, { id: "c2" }],
+          }),
+        ],
+      });
+      vi.spyOn(quizRepositoryMock, "findByIdWithChildren").mockResolvedValue(
+        quiz,
+      );
       vi.spyOn(quizRepositoryMock, "delete").mockResolvedValue(undefined);
 
       await quizService.deleteQuiz("1");
 
       expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("quiz:1");
       expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("quizzes:all");
+      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("questions:all");
+      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("quiz:questions:1");
+      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("choices:all");
+      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("question:q1");
+      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith(
+        "question:choices:q1",
+      );
+      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("choice:c1");
+      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("choice:c2");
     });
 
     it("should succeed even if cache invalidation fails on delete", async () => {
       const quiz = createQuizMock({ id: "1" });
-      vi.spyOn(quizRepositoryMock, "findOne").mockResolvedValue(quiz);
+      vi.spyOn(quizRepositoryMock, "findByIdWithChildren").mockResolvedValue(
+        quiz,
+      );
       vi.spyOn(quizRepositoryMock, "delete").mockResolvedValue(undefined);
       valkeyRepositoryMock.del.mockRejectedValue(new Error("Cache Down"));
 

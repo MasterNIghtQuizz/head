@@ -18,10 +18,10 @@ x-ms-quizz-db: &ms-quizz-db
 
 services:
   # ────────────────────────────────────────────────────────
-  #  INFRASTRUCTURE — always started
+  #  INFRASTRUCTURE — profiles: infra
   # ────────────────────────────────────────────────────────
   postgres:
-    profiles: [app]
+    profiles: [infra]
     image: postgres:16
     environment:
       <<: *common-env
@@ -38,7 +38,7 @@ services:
       retries: 5
 
   valkey:
-    profiles: [app]
+    profiles: [infra]
     image: valkey/valkey:8
     container_name: valkey
     ports:
@@ -52,7 +52,7 @@ services:
       - valkeydata:/data
 
   kafka:
-    profiles: [app]
+    profiles: [infra]
     image: confluentinc/cp-kafka:7.8.0
     hostname: kafka
     container_name: kafka
@@ -87,7 +87,7 @@ services:
       - kafkadata:/var/lib/kafka/data
 
   kafka-ui:
-    profiles: [app]
+    profiles: [infra]
     image: provectuslabs/kafka-ui:master
     container_name: kafka-ui
     ports:
@@ -103,7 +103,7 @@ services:
   #  MIGRATIONS — profile: app (run once before services)
   # ────────────────────────────────────────────────────────
   migrate-ms-user:
-    profiles: [app]
+    profiles: [infra]
     build:
       context: .
       dockerfile: docker/Dockerfile.ms-user
@@ -117,7 +117,7 @@ services:
     restart: "no"
 
   migrate-ms-quizz-management:
-    profiles: [app]
+    profiles: [infra]
     build:
       context: .
       dockerfile: docker/Dockerfile.ms-quizz-management

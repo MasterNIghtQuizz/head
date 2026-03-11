@@ -162,6 +162,131 @@ describe("Quiz Cache E2E Tests", () => {
     });
   });
 
+  describe("Cache Cascade Invalidation", () => {
+    it("should invalidate child question and choice caches when a quiz is deleted", async () => {
+      const createQuizRes = await app.inject({
+        method: "POST",
+        url: "/quizzes",
+        payload: { title: "Cascade Quiz" },
+        headers: { "access-token": accessToken },
+      });
+      const quizId = createQuizRes.json().id;
+
+      const createQuestionRes = await app.inject({
+        method: "POST",
+        url: "/questions",
+        payload: {
+          label: "Cascade Q1",
+          type: "multiple",
+          order_index: 1,
+          timer_seconds: 15,
+          quiz_id: quizId,
+        },
+        headers: { "access-token": accessToken },
+      });
+      const questionId = createQuestionRes.json().id;
+
+      const createChoiceRes = await app.inject({
+        method: "POST",
+        url: "/choices",
+        payload: {
+          text: "Cascade C1",
+          is_correct: true,
+          question_id: questionId,
+        },
+        headers: { "access-token": accessToken },
+      });
+      const choiceId = createChoiceRes.json().id;
+
+      await app.inject({
+        method: "GET",
+        url: `/quizzes/${quizId}`,
+        headers: { "access-token": accessToken },
+      });
+      await app.inject({
+        method: "GET",
+        url: `/questions/${questionId}`,
+        headers: { "access-token": accessToken },
+      });
+      await app.inject({
+        method: "GET",
+        url: `/choices/${choiceId}`,
+        headers: { "access-token": accessToken },
+      });
+
+      expect(await valkeyRepository.get(`quiz:${quizId}`)).not.toBeNull();
+      expect(
+        await valkeyRepository.get(`question:${questionId}`),
+      ).not.toBeNull();
+      expect(await valkeyRepository.get(`choice:${choiceId}`)).not.toBeNull();
+
+      await app.inject({
+        method: "DELETE",
+        url: `/quizzes/${quizId}`,
+        headers: { "access-token": accessToken },
+      });
+
+      expect(await valkeyRepository.get(`quiz:${quizId}`)).toBeNull();
+      expect(await valkeyRepository.get(`question:${questionId}`)).toBeNull();
+      expect(await valkeyRepository.get(`choice:${choiceId}`)).toBeNull();
+    });
+
+    it("should invalidate child choice caches when a question is deleted", async () => {
+      const quizId = "550e8400-e29b-41d4-a716-446655440002";
+
+      const createQuestionRes = await app.inject({
+        method: "POST",
+        url: "/questions",
+        payload: {
+          label: "Cascade Q2",
+          type: "multiple",
+          order_index: 1,
+          timer_seconds: 15,
+          quiz_id: quizId,
+        },
+        headers: { "access-token": accessToken },
+      });
+      const questionId = createQuestionRes.json().id;
+
+      const createChoiceRes = await app.inject({
+        method: "POST",
+        url: "/choices",
+        payload: {
+          text: "Cascade C2",
+          is_correct: true,
+          question_id: questionId,
+        },
+        headers: { "access-token": accessToken },
+      });
+      const choiceId = createChoiceRes.json().id;
+
+      await app.inject({
+        method: "GET",
+        url: `/questions/${questionId}`,
+        headers: { "access-token": accessToken },
+      });
+      await app.inject({
+        method: "GET",
+        url: `/choices/${choiceId}`,
+        headers: { "access-token": accessToken },
+      });
+
+      expect(
+        await valkeyRepository.get(`question:${questionId}`),
+      ).not.toBeNull();
+      expect(await valkeyRepository.get(`choice:${choiceId}`)).not.toBeNull();
+
+      await app.inject({
+        method: "DELETE",
+        url: `/questions/${questionId}`,
+        headers: { "access-token": accessToken },
+      });
+
+      expect(await valkeyRepository.get(`question:${questionId}`)).toBeNull();
+      expect(await valkeyRepository.get(`choice:${choiceId}`)).toBeNull();
+    });
+  });
+
   describe("Question Caching", () => {
     const q1Id = "550e8400-e29b-41d4-a716-446655440001";
     const quizId = "550e8400-e29b-41d4-a716-446655440002";

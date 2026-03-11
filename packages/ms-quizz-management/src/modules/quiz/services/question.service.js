@@ -280,12 +280,22 @@ export class QuestionService extends BaseService {
         const invalidations = [
           this.valkeyRepository.del(`question:${id}`),
           this.valkeyRepository.del("questions:all"),
+          this.valkeyRepository.del(`question:choices:${id}`),
+          this.valkeyRepository.del("choices:all"),
         ];
 
         if (question?.quiz?.id) {
           invalidations.push(
             this.valkeyRepository.del(`quiz:questions:${question.quiz.id}`),
           );
+        }
+
+        if (question?.choices) {
+          for (const choice of question.choices) {
+            invalidations.push(
+              this.valkeyRepository.del(`choice:${choice.id}`),
+            );
+          }
         }
 
         await Promise.all(invalidations);
