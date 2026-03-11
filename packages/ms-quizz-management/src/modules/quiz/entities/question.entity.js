@@ -33,6 +33,7 @@ const questionSchema = {
         name: "quiz_id",
       },
       inverseSide: "questions",
+      onDelete: "CASCADE",
     },
     choices: {
       target: "Choice",

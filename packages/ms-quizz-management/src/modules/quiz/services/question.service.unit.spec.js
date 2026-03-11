@@ -363,10 +363,12 @@ describe("QuestionService Unit Tests", () => {
   });
 
   describe("deleteQuestion", () => {
-    it("should invalidate cache on delete", async () => {
+    it("should invalidate cache on delete, including choices", async () => {
       const question = createQuestionMock({
         id: "1",
         quiz: createQuizMock({ id: "q1" }),
+        /** @type {any} */
+        choices: [{ id: "c1" }, { id: "c2" }],
       });
       vi.spyOn(questionRepositoryMock, "findOne").mockResolvedValue(question);
       vi.spyOn(questionRepositoryMock, "delete").mockResolvedValue(undefined);
@@ -378,6 +380,12 @@ describe("QuestionService Unit Tests", () => {
       expect(valkeyRepositoryMock.del).toHaveBeenCalledWith(
         "quiz:questions:q1",
       );
+      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith(
+        "question:choices:1",
+      );
+      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("choices:all");
+      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("choice:c1");
+      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("choice:c2");
     });
 
     it("should succeed even if cache invalidation fails on delete", async () => {

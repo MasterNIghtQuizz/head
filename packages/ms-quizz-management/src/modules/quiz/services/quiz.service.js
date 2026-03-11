@@ -194,12 +194,36 @@ export class QuizService extends BaseService {
   async deleteQuiz(id) {
     logger.info({ id }, "Deleting quiz...");
     try {
+      const quiz = await this.quizRepository.findByIdWithChildren(id);
       await this.quizRepository.delete(id);
       try {
-        await Promise.all([
+        const invalidations = [
           this.valkeyRepository.del(`quiz:${id}`),
           this.valkeyRepository.del("quizzes:all"),
-        ]);
+          this.valkeyRepository.del(`quiz:questions:${id}`),
+          this.valkeyRepository.del("questions:all"),
+          this.valkeyRepository.del("choices:all"),
+        ];
+
+        if (quiz?.questions) {
+          for (const question of quiz.questions) {
+            invalidations.push(
+              this.valkeyRepository.del(`question:${question.id}`),
+            );
+            invalidations.push(
+              this.valkeyRepository.del(`question:choices:${question.id}`),
+            );
+            if (question.choices) {
+              for (const choice of question.choices) {
+                invalidations.push(
+                  this.valkeyRepository.del(`choice:${choice.id}`),
+                );
+              }
+            }
+          }
+        }
+
+        await Promise.all(invalidations);
       } catch (cacheError) {
         logger.warn(
           { error: /** @type {Error} */ (cacheError), id },

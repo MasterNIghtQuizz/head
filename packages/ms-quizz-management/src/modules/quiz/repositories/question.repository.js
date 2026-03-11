@@ -43,7 +43,7 @@ export class QuestionRepository extends BaseRepository {
       );
     return repo.findOne({
       where: { id },
-      relations: ["quiz"],
+      relations: ["quiz", "choices"],
     });
   }
 
