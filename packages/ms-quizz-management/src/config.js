@@ -32,6 +32,13 @@ const schema = Joi.object({
     enabled: Joi.boolean().required(),
     brokers: Joi.array().items(Joi.string()).required(),
   }).required(),
+  valkey: Joi.object({
+    host: Joi.string().required(),
+    port: Joi.number().required(),
+    password: Joi.string().allow("").optional(),
+    db: Joi.number().optional(),
+    ttl: Joi.number().optional(),
+  }).required(),
 });
 
 Config.init({ directory: configDirectory, schema });
@@ -61,4 +68,8 @@ export const config = {
       publicKeyPath: resolveKeyPath(rawAuth.internal.publicKeyPath),
     },
   },
+  valkey:
+    /** @type {import('common-valkey').ValkeyConfig & { ttl: number }} */ (
+      Config.get("valkey")
+    ),
 };

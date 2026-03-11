@@ -20,6 +20,7 @@
     "common-kafka": "workspace:*",
     "common-logger": "workspace:*",
     "common-swagger": "workspace:*",
+    "common-valkey": "workspace:*",
     "fastify": "^5.6.2",
     "joi": "^18.0.2",
     "pg": "^8.13.3",

@@ -8,6 +8,7 @@ import { hookInternalToken } from "common-auth";
 import { ProcessedEventEntity } from "common-database";
 import { createKafkaClient, KafkaConsumer } from "common-kafka";
 import { UserEventsConsumer } from "./infrastructure/kafka/consumers/user-events.consumer.js";
+import { ValkeyService, ValkeyRepository } from "common-valkey";
 import { QuizService } from "./modules/quiz/services/quiz.service.js";
 import { QuizRepository } from "./modules/quiz/repositories/quiz.repository.js";
 import { ControllerFactory } from "common-core";
@@ -47,6 +48,10 @@ export async function createServer() {
   });
 
   await initDatabase();
+  const valkeyService = new ValkeyService(config.valkey);
+  await valkeyService.connect();
+  const valkeyRepository = new ValkeyRepository(valkeyService);
+  const valkeyTtl = config.valkey.ttl ?? 3600;
 
   let kafkaConsumer = null;
   if (config.kafka.enabled) {
@@ -65,27 +70,38 @@ export async function createServer() {
     await kafkaConsumer.start();
   }
 
-  const quizService = new QuizService(new QuizRepository(db.instance));
+  const quizService = new QuizService(
+    new QuizRepository(db.instance),
+    valkeyRepository,
+    valkeyTtl,
+  );
   ControllerFactory.register(fastify, QuizController, [quizService]);
-  const choiceService = new ChoiceService(new ChoiceRepository(db.instance));
+  const choiceService = new ChoiceService(
+    new ChoiceRepository(db.instance),
+    valkeyRepository,
+    valkeyTtl,
+  );
   ControllerFactory.register(fastify, ChoiceController, [choiceService]);
   const questionService = new QuestionService(
     new QuestionRepository(db.instance),
+    valkeyRepository,
+    valkeyTtl,
   );
   ControllerFactory.register(fastify, QuestionController, [questionService]);
   ControllerFactory.register(fastify, TestingController, []);
 
-  return { fastify, kafkaConsumer };
+  return { fastify, kafkaConsumer, valkeyService };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const { fastify } = await createServer();
+  const { fastify, valkeyService } = await createServer();
   logger.info(config, "MS Quizz Management starting...");
   await fastify.listen({ host: "0.0.0.0", port: config.port });
 
   const shutdown = async () => {
     logger.info("Gracefully shutting down ms-quizz-management...");
     await fastify.close();
+    await valkeyService.disconnect();
     process.exit(0);
   };
 

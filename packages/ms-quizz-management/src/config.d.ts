@@ -10,4 +10,5 @@ export declare const config: {
   auth: {
     internal: { privateKeyPath: string; publicKeyPath: string };
   };
+  valkey: import("common-valkey").ValkeyConfig & { ttl: number };
 };

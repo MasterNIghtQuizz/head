@@ -21,6 +21,7 @@ services:
   #  INFRASTRUCTURE — always started
   # ────────────────────────────────────────────────────────
   postgres:
+    profiles: [app]
     image: postgres:16
     environment:
       <<: *common-env
@@ -36,23 +37,22 @@ services:
       timeout: 5s
       retries: 5
 
-  postgres-test:
-    image: postgres:16
-    profiles: [test]
-    environment:
-      <<: *common-env
-      POSTGRES_DB: ms_quizz_test_db
+  valkey:
+    profiles: [app]
+    image: valkey/valkey:8
+    container_name: valkey
     ports:
-      - "5434:5432"
+      - "6379:6379"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d ms_quizz_test_db"]
+      test: ["CMD", "valkey-cli", "ping"]
       interval: 5s
-      timeout: 5s
+      timeout: 3s
       retries: 5
     volumes:
-      - pgdata-test:/var/lib/postgresql/data
+      - valkeydata:/data
 
   kafka:
+    profiles: [app]
     image: confluentinc/cp-kafka:7.8.0
     hostname: kafka
     container_name: kafka
@@ -87,6 +87,7 @@ services:
       - kafkadata:/var/lib/kafka/data
 
   kafka-ui:
+    profiles: [app]
     image: provectuslabs/kafka-ui:master
     container_name: kafka-ui
     ports:
@@ -152,6 +153,8 @@ services:
       KAFKA_BROKERS: '["kafka:29092"]'
       USER_SERVICE_URL: "http://ms-user:4001"
       QUIZZ_SERVICE_URL: "http://ms-quizz-management:4002"
+      VALKEY_HOST: valkey
+      VALKEY_PORT: 6379
     depends_on:
       kafka:
         condition: service_healthy
@@ -192,6 +195,8 @@ services:
       PORT: 4002
       <<: *ms-quizz-db
       KAFKA_BROKERS: '["kafka:29092"]'
+      VALKEY_HOST: valkey
+      VALKEY_PORT: 6379
     depends_on:
       postgres:
         condition: service_healthy
@@ -204,6 +209,21 @@ services:
   #  TEST SERVICES — profile: test
   #  NODE_ENV=test, Kafka OFF for ms-quizz
   # ────────────────────────────────────────────────────────
+  postgres-test:
+    image: postgres:16
+    profiles: [test]
+    environment:
+      <<: *common-env
+      POSTGRES_DB: ms_quizz_test_db
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ms_quizz_test_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - pgdata-test:/var/lib/postgresql/data
   api-gateway-test:
     profiles: [test]
     build:
@@ -220,6 +240,14 @@ services:
       KAFKA_ENABLED: "false"
       USER_SERVICE_URL: "http://ms-user-test:4011"
       QUIZZ_SERVICE_URL: "http://ms-quizz-management-test:4012"
+      VALKEY_HOST: valkey-test
+      VALKEY_PORT: 6379
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      valkey-test:
+        condition: service_healthy
     healthcheck:
       test:
         [
@@ -271,6 +299,11 @@ services:
         PRODUCTION: "false"
     ports:
       - "4012:4012"
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      valkey-test:
+        condition: service_healthy
     environment:
       NODE_ENV: test
       PORT: 4012
@@ -279,8 +312,13 @@ services:
       POSTGRES_DB: ms_quizz_test_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres_password
+      VALKEY_HOST: valkey-test
+      VALKEY_PORT: 6379
       KAFKA_BROKERS: "[]"
       KAFKA_ENABLED: "false"
+    volumes:
+      - .:/app
+      - /app/node_modules
     healthcheck:
       test:
         [
@@ -290,11 +328,23 @@ services:
       interval: 3s
       timeout: 3s
       retries: 20
-    depends_on:
-      postgres-test:
-        condition: service_healthy
+
+  valkey-test:
+    image: valkey/valkey:8
+    profiles: [test]
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    volumes:
+      - valkeydata-test:/data
 
 volumes:
   pgdata:
   pgdata-test:
   kafkadata:
+  valkeydata:
+  valkeydata-test:

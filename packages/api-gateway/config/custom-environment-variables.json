@@ -35,5 +35,12 @@
       "__name": "KAFKA_BROKERS",
       "__format": "json"
     }
+  },
+  "valkey": {
+    "host": "VALKEY_HOST",
+    "port": "VALKEY_PORT",
+    "password": "VALKEY_PASSWORD",
+    "db": "VALKEY_DB",
+    "ttl": "VALKEY_TTL"
   }
 }

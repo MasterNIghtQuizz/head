@@ -6,7 +6,8 @@ RUN corepack enable && corepack prepare yarn@4.11.0 --activate
 ARG PRODUCTION=true
 
 COPY package.json yarn.lock .yarnrc.yml ./
-COPY packages ./packages
+COPY packages/common ./packages/common
+COPY packages/ms-user ./packages/ms-user
 COPY keys ./keys
 COPY vitest.config.js vitest.config.e2e.js jsconfig.json ./
 

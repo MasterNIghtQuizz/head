@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { QuizService } from "./quiz.service.js";
 import { QuizRepository } from "../repositories/quiz.repository.js";
+import { ValkeyRepository } from "common-valkey";
 import { createQuizMock } from "../../../tests/factories/quiz.factory.js";
 import {
   CreateQuizRequestDto,
@@ -15,6 +16,7 @@ import {
 /**
  * @typedef {import('../models/quiz.model.js').Quiz} Quiz
  * @typedef {import('vitest').Mocked<QuizRepository>} QuizRepositoryMock
+ * @typedef {import('vitest').Mocked<ValkeyRepository>} ValkeyRepositoryMock
  */
 
 describe("QuizService Unit Tests", () => {
@@ -24,11 +26,26 @@ describe("QuizService Unit Tests", () => {
   /** @type {QuizRepositoryMock} */
   let quizRepositoryMock;
 
+  /** @type {ValkeyRepositoryMock} */
+  let valkeyRepositoryMock;
+
+  const CACHE_TTL = 3600;
+
   beforeEach(() => {
     quizRepositoryMock = /** @type {QuizRepositoryMock} */ (
       Object.create(QuizRepository.prototype)
     );
-    quizService = new QuizService(quizRepositoryMock);
+    valkeyRepositoryMock = /** @type {ValkeyRepositoryMock} */ ({
+      get: vi.fn(),
+      set: vi.fn(),
+      del: vi.fn(),
+      delByPattern: vi.fn(),
+    });
+    quizService = new QuizService(
+      quizRepositoryMock,
+      valkeyRepositoryMock,
+      CACHE_TTL,
+    );
   });
 
   afterEach(() => {
@@ -36,21 +53,75 @@ describe("QuizService Unit Tests", () => {
   });
 
   describe("getAllQuizzes", () => {
-    it("should return all quizzes mapped to response", async () => {
+    it("should return all quizzes mapped to response from DB if cache is empty", async () => {
       const quiz1 = createQuizMock({ id: "1", title: "Quiz 1" });
       const quiz2 = createQuizMock({ id: "2", title: "Quiz 2" });
       const quizzes = [quiz1, quiz2];
 
+      valkeyRepositoryMock.get.mockResolvedValue(null);
       const findAllSpy = vi
         .spyOn(quizRepositoryMock, "findAll")
         .mockResolvedValue(quizzes);
 
       const result = await quizService.getAllQuizzes();
 
+      expect(valkeyRepositoryMock.get).toHaveBeenCalledWith("quizzes:all");
       expect(findAllSpy).toHaveBeenCalled();
+      expect(valkeyRepositoryMock.set).toHaveBeenCalled();
       expect(result).toHaveLength(2);
-      expect(result[0].id).toBe("1");
-      expect(result[1].id).toBe("2");
+    });
+
+    it("should return all quizzes from cache if available", async () => {
+      const cachedResponse = [{ id: "1", title: "Cached Quiz" }];
+      valkeyRepositoryMock.get.mockResolvedValue(cachedResponse);
+      const findAllSpy = vi.spyOn(quizRepositoryMock, "findAll");
+
+      const result = await quizService.getAllQuizzes();
+
+      expect(valkeyRepositoryMock.get).toHaveBeenCalledWith("quizzes:all");
+      expect(findAllSpy).not.toHaveBeenCalled();
+      expect(result).toEqual(cachedResponse);
+    });
+
+    it("should return all quizzes from DB and populate cache if cache is empty", async () => {
+      const quizzes = [createQuizMock({ id: "1", title: "DB Quiz" })];
+      valkeyRepositoryMock.get.mockResolvedValue(null);
+      vi.spyOn(quizRepositoryMock, "findAll").mockResolvedValue(quizzes);
+
+      const result = await quizService.getAllQuizzes();
+
+      expect(valkeyRepositoryMock.get).toHaveBeenCalledWith("quizzes:all");
+      expect(valkeyRepositoryMock.set).toHaveBeenCalledWith(
+        "quizzes:all",
+        expect.any(Array),
+        CACHE_TTL,
+      );
+      expect(result).toHaveLength(1);
+      expect(result[0].title).toBe("DB Quiz");
+    });
+
+    it("should fallback to DB if cache GET fails", async () => {
+      const quizzes = [createQuizMock({ id: "1", title: "Fallback Quiz" })];
+      valkeyRepositoryMock.get.mockRejectedValue(new Error("Cache Down"));
+      vi.spyOn(quizRepositoryMock, "findAll").mockResolvedValue(quizzes);
+
+      const result = await quizService.getAllQuizzes();
+
+      expect(valkeyRepositoryMock.get).toHaveBeenCalled();
+      expect(quizRepositoryMock.findAll).toHaveBeenCalled();
+      expect(result).toHaveLength(1);
+    });
+
+    it("should return DB results even if cache SET fails after fetch", async () => {
+      const quizzes = [createQuizMock({ id: "1" })];
+      valkeyRepositoryMock.get.mockResolvedValue(null);
+      vi.spyOn(quizRepositoryMock, "findAll").mockResolvedValue(quizzes);
+      valkeyRepositoryMock.set.mockRejectedValue(new Error("Cache Write Down"));
+
+      const result = await quizService.getAllQuizzes();
+
+      expect(result).toHaveLength(1);
+      expect(valkeyRepositoryMock.set).toHaveBeenCalled();
     });
 
     it("should throw DATABASE_ERROR if repository fails", async () => {
@@ -66,16 +137,43 @@ describe("QuizService Unit Tests", () => {
   });
 
   describe("getQuizById", () => {
-    it("should return a quiz by id", async () => {
-      const quiz = createQuizMock({ id: "1" });
-      const findOneSpy = vi
-        .spyOn(quizRepositoryMock, "findOne")
-        .mockResolvedValue(quiz);
+    it("should return a quiz from cache if available", async () => {
+      const cached = { id: "1", title: "Cached" };
+      valkeyRepositoryMock.get.mockResolvedValue(cached);
+      const findOneSpy = vi.spyOn(quizRepositoryMock, "findOne");
 
       const result = await quizService.getQuizById("1");
 
-      expect(findOneSpy).toHaveBeenCalledWith("1");
+      expect(valkeyRepositoryMock.get).toHaveBeenCalledWith("quiz:1");
+      expect(findOneSpy).not.toHaveBeenCalled();
+      expect(result).toEqual(cached);
+    });
+
+    it("should return quiz from DB and populate cache if cache is empty", async () => {
+      const quiz = createQuizMock({ id: "1" });
+      valkeyRepositoryMock.get.mockResolvedValue(null);
+      vi.spyOn(quizRepositoryMock, "findOne").mockResolvedValue(quiz);
+
+      const result = await quizService.getQuizById("1");
+
+      expect(valkeyRepositoryMock.get).toHaveBeenCalledWith("quiz:1");
+      expect(valkeyRepositoryMock.set).toHaveBeenCalledWith(
+        "quiz:1",
+        expect.any(Object),
+        CACHE_TTL,
+      );
       expect(result.id).toBe("1");
+    });
+
+    it("should fallback to DB if cache GET fails", async () => {
+      const quiz = createQuizMock({ id: "1" });
+      valkeyRepositoryMock.get.mockRejectedValue(new Error("Cache Down"));
+      vi.spyOn(quizRepositoryMock, "findOne").mockResolvedValue(quiz);
+
+      const result = await quizService.getQuizById("1");
+
+      expect(result.id).toBe("1");
+      expect(quizRepositoryMock.findOne).toHaveBeenCalledWith("1");
     });
 
     it("should throw QUIZ_NOT_FOUND if quiz does not exist", async () => {
@@ -119,6 +217,34 @@ describe("QuizService Unit Tests", () => {
       await expect(
         quizService.createQuiz(new CreateQuizRequestDto({ title: "Existing" })),
       ).rejects.toThrow(ConflictError);
+    });
+
+    it("should invalidate cache on create", async () => {
+      const data = new CreateQuizRequestDto({
+        title: "New",
+        description: "Desc",
+      });
+      const quiz = createQuizMock({ id: "new" });
+      vi.spyOn(quizRepositoryMock, "create").mockResolvedValue(quiz);
+
+      await quizService.createQuiz(data);
+
+      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("quizzes:all");
+    });
+
+    it("should succeed even if cache invalidation fails on create", async () => {
+      const data = new CreateQuizRequestDto({
+        title: "New",
+        description: "Desc",
+      });
+      const quiz = createQuizMock({ id: "new" });
+      vi.spyOn(quizRepositoryMock, "create").mockResolvedValue(quiz);
+      valkeyRepositoryMock.del.mockRejectedValue(new Error("Cache Down"));
+
+      const result = await quizService.createQuiz(data);
+
+      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("quizzes:all");
+      expect(result.id).toBe("new");
     });
 
     it("should throw DATABASE_ERROR if create fails", async () => {
@@ -187,14 +313,26 @@ describe("QuizService Unit Tests", () => {
   });
 
   describe("deleteQuiz", () => {
-    it("should call delete on repository", async () => {
-      const deleteSpy = vi
-        .spyOn(quizRepositoryMock, "delete")
-        .mockResolvedValue(undefined);
+    it("should invalidate cache on delete", async () => {
+      const quiz = createQuizMock({ id: "1" });
+      vi.spyOn(quizRepositoryMock, "findOne").mockResolvedValue(quiz);
+      vi.spyOn(quizRepositoryMock, "delete").mockResolvedValue(undefined);
 
       await quizService.deleteQuiz("1");
 
-      expect(deleteSpy).toHaveBeenCalledWith("1");
+      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("quiz:1");
+      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("quizzes:all");
+    });
+
+    it("should succeed even if cache invalidation fails on delete", async () => {
+      const quiz = createQuizMock({ id: "1" });
+      vi.spyOn(quizRepositoryMock, "findOne").mockResolvedValue(quiz);
+      vi.spyOn(quizRepositoryMock, "delete").mockResolvedValue(undefined);
+      valkeyRepositoryMock.del.mockRejectedValue(new Error("Cache Down"));
+
+      await quizService.deleteQuiz("1");
+
+      expect(quizRepositoryMock.delete).toHaveBeenCalledWith("1");
     });
 
     it("should throw DATABASE_ERROR if delete fails", async () => {

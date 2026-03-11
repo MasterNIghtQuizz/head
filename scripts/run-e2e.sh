@@ -1,11 +1,16 @@
 #!/bin/sh
 set -e
 
-QUIZZ_URL="${QUIZZ_SERVICE_URL:-http://localhost:4002}"
+export QUIZZ_SERVICE_URL="${QUIZZ_SERVICE_URL:-http://localhost:4012}"
+QUIZZ_URL="$QUIZZ_SERVICE_URL"
 HEALTH_ENDPOINT="${QUIZZ_URL}/health"
 SEED_ENDPOINT="${QUIZZ_URL}/testing/seed"
 MAX_RETRIES="${E2E_MAX_RETRIES:-30}"
 RETRY_INTERVAL="${E2E_RETRY_INTERVAL:-2}"
+
+VALKEY_HOST="${VALKEY_HOST:-localhost}"
+VALKEY_PORT="${VALKEY_PORT:-6380}"
+export VALKEY_HOST VALKEY_PORT
 
 log() { printf "\033[1;36m[e2e]\033[0m %s\n" "$1"; }
 err() { printf "\033[1;31m[e2e]\033[0m %s\n" "$1"; }
@@ -91,4 +96,4 @@ while [ "$seed_attempt" -lt "$MAX_RETRIES" ]; do
 done
 
 log "Step 3/3 — Running E2E tests..."
-exec yarn vitest run --config vitest.config.e2e.js --dir packages/api-gateway "$@"
+exec yarn vitest run --config vitest.config.e2e.js --no-file-parallelism --maxWorkers=1 --dir packages/api-gateway "$@"

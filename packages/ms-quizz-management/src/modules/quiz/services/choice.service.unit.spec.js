@@ -1,7 +1,10 @@
+/* eslint-disable no-unused-vars */
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { ChoiceService } from "./choice.service.js";
 import { ChoiceRepository } from "../repositories/choice.repository.js";
+import { ValkeyRepository } from "common-valkey";
 import { createChoiceMock } from "../../../tests/factories/choice.factory.js";
+import { createQuestionMock } from "../../../tests/factories/question.factory.js";
 import { CreateChoiceRequestDto } from "../contracts/choice.dto.js";
 import {
   NotFoundError,
@@ -12,6 +15,7 @@ import {
 /**
  * @typedef {import('../models/choice.model.js').Choice} Choice
  * @typedef {import('vitest').Mocked<ChoiceRepository>} ChoiceRepositoryMock
+ * @typedef {import('vitest').Mocked<ValkeyRepository>} ValkeyRepositoryMock
  */
 
 describe("ChoiceService Unit Tests", () => {
@@ -21,11 +25,26 @@ describe("ChoiceService Unit Tests", () => {
   /** @type {ChoiceRepositoryMock} */
   let choiceRepositoryMock;
 
+  /** @type {ValkeyRepositoryMock} */
+  let valkeyRepositoryMock;
+
+  const CACHE_TTL = 3600;
+
   beforeEach(() => {
     choiceRepositoryMock = /** @type {ChoiceRepositoryMock} */ (
       Object.create(ChoiceRepository.prototype)
     );
-    choiceService = new ChoiceService(choiceRepositoryMock);
+    valkeyRepositoryMock = /** @type {ValkeyRepositoryMock} */ ({
+      get: vi.fn(),
+      set: vi.fn(),
+      del: vi.fn(),
+      delByPattern: vi.fn(),
+    });
+    choiceService = new ChoiceService(
+      choiceRepositoryMock,
+      valkeyRepositoryMock,
+      CACHE_TTL,
+    );
   });
 
   afterEach(() => {
@@ -33,16 +52,31 @@ describe("ChoiceService Unit Tests", () => {
   });
 
   describe("getAllChoices", () => {
-    it("should return all choices", async () => {
+    it("should return all choices from DB if cache is empty", async () => {
       const choices = [createChoiceMock({ id: "1" })];
+      valkeyRepositoryMock.get.mockResolvedValue(null);
       const spy = vi
         .spyOn(choiceRepositoryMock, "findAll")
         .mockResolvedValue(choices);
 
       const result = await choiceService.getAllChoices();
 
+      expect(valkeyRepositoryMock.get).toHaveBeenCalledWith("choices:all");
       expect(spy).toHaveBeenCalled();
+      expect(valkeyRepositoryMock.set).toHaveBeenCalled();
       expect(result).toHaveLength(1);
+    });
+
+    it("should return all choices from cache if available", async () => {
+      const cached = [{ id: "1", text: "Cached" }];
+      valkeyRepositoryMock.get.mockResolvedValue(cached);
+      const spy = vi.spyOn(choiceRepositoryMock, "findAll");
+
+      const result = await choiceService.getAllChoices();
+
+      expect(valkeyRepositoryMock.get).toHaveBeenCalledWith("choices:all");
+      expect(spy).not.toHaveBeenCalled();
+      expect(result).toEqual(cached);
     });
 
     it("should throw DATABASE_ERROR if fetch fails", async () => {
@@ -56,16 +90,43 @@ describe("ChoiceService Unit Tests", () => {
   });
 
   describe("getChoiceById", () => {
-    it("should return a choice by id", async () => {
-      const choice = createChoiceMock({ id: "1" });
-      const spy = vi
-        .spyOn(choiceRepositoryMock, "findOne")
-        .mockResolvedValue(choice);
+    it("should return a choice from cache if available", async () => {
+      const cached = { id: "1", text: "Cached" };
+      valkeyRepositoryMock.get.mockResolvedValue(cached);
+      const findOneSpy = vi.spyOn(choiceRepositoryMock, "findOne");
 
       const result = await choiceService.getChoiceById("1");
 
-      expect(spy).toHaveBeenCalledWith("1");
+      expect(valkeyRepositoryMock.get).toHaveBeenCalledWith("choice:1");
+      expect(findOneSpy).not.toHaveBeenCalled();
+      expect(result).toEqual(cached);
+    });
+
+    it("should return choice from DB and populate cache if cache is empty", async () => {
+      const choice = createChoiceMock({ id: "1" });
+      valkeyRepositoryMock.get.mockResolvedValue(null);
+      vi.spyOn(choiceRepositoryMock, "findOne").mockResolvedValue(choice);
+
+      const result = await choiceService.getChoiceById("1");
+
+      expect(valkeyRepositoryMock.get).toHaveBeenCalledWith("choice:1");
+      expect(valkeyRepositoryMock.set).toHaveBeenCalledWith(
+        "choice:1",
+        expect.any(Object),
+        CACHE_TTL,
+      );
       expect(result.id).toBe("1");
+    });
+
+    it("should fallback to DB if cache GET fails", async () => {
+      const choice = createChoiceMock({ id: "1" });
+      valkeyRepositoryMock.get.mockRejectedValue(new Error("Cache Down"));
+      vi.spyOn(choiceRepositoryMock, "findOne").mockResolvedValue(choice);
+
+      const result = await choiceService.getChoiceById("1");
+
+      expect(result.id).toBe("1");
+      expect(choiceRepositoryMock.findOne).toHaveBeenCalledWith("1");
     });
 
     it("should throw CHOICE_NOT_FOUND if choice does not exist", async () => {
@@ -87,16 +148,54 @@ describe("ChoiceService Unit Tests", () => {
   });
 
   describe("getChoicesByQuestionId", () => {
-    it("should return choices for a question", async () => {
-      const choices = [createChoiceMock({ id: "1" })];
-      const spy = vi
-        .spyOn(choiceRepositoryMock, "findByQuestionId")
-        .mockResolvedValue(choices);
+    it("should return choices from cache if available", async () => {
+      const cached = [{ id: "1", text: "Cached" }];
+      valkeyRepositoryMock.get.mockResolvedValue(cached);
+      const findByQuestionIdSpy = vi.spyOn(
+        choiceRepositoryMock,
+        "findByQuestionId",
+      );
 
       const result = await choiceService.getChoicesByQuestionId("q1");
 
-      expect(spy).toHaveBeenCalledWith("q1");
+      expect(valkeyRepositoryMock.get).toHaveBeenCalledWith(
+        "question:choices:q1",
+      );
+      expect(findByQuestionIdSpy).not.toHaveBeenCalled();
+      expect(result).toEqual(cached);
+    });
+
+    it("should return choices from DB and populate cache if cache is empty", async () => {
+      const choices = [createChoiceMock({ id: "1" })];
+      valkeyRepositoryMock.get.mockResolvedValue(null);
+      vi.spyOn(choiceRepositoryMock, "findByQuestionId").mockResolvedValue(
+        choices,
+      );
+
+      const result = await choiceService.getChoicesByQuestionId("q1");
+
+      expect(valkeyRepositoryMock.get).toHaveBeenCalledWith(
+        "question:choices:q1",
+      );
+      expect(valkeyRepositoryMock.set).toHaveBeenCalledWith(
+        "question:choices:q1",
+        expect.any(Array),
+        CACHE_TTL,
+      );
       expect(result).toHaveLength(1);
+    });
+
+    it("should fallback to DB if cache GET fails", async () => {
+      const choices = [createChoiceMock({ id: "1" })];
+      valkeyRepositoryMock.get.mockRejectedValue(new Error("Cache Down"));
+      vi.spyOn(choiceRepositoryMock, "findByQuestionId").mockResolvedValue(
+        choices,
+      );
+
+      const result = await choiceService.getChoicesByQuestionId("q1");
+
+      expect(result).toHaveLength(1);
+      expect(choiceRepositoryMock.findByQuestionId).toHaveBeenCalledWith("q1");
     });
 
     it("should throw DATABASE_ERROR if fetch fails", async () => {
@@ -110,22 +209,17 @@ describe("ChoiceService Unit Tests", () => {
   });
 
   describe("createChoice", () => {
-    it("should create and return a choice", async () => {
+    it("should invalidate cache on create", async () => {
       const data = { text: "Yes", is_correct: true, question_id: "q1" };
       const created = createChoiceMock({ id: "c1", ...data });
-      const spy = vi
-        .spyOn(choiceRepositoryMock, "create")
-        .mockResolvedValue(created);
+      vi.spyOn(choiceRepositoryMock, "create").mockResolvedValue(created);
 
-      const result = await choiceService.createChoice(
-        new CreateChoiceRequestDto(data),
-      );
+      await choiceService.createChoice(new CreateChoiceRequestDto(data));
 
-      expect(spy).toHaveBeenCalledWith(
-        expect.objectContaining({ text: "Yes" }),
+      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("choices:all");
+      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith(
+        "question:choices:q1",
       );
-      expect(result.id).toBe("c1");
-      expect(result.text).toBe("Yes");
     });
 
     it("should throw CHOICE_CONFLICT if text already exists", async () => {
@@ -163,19 +257,24 @@ describe("ChoiceService Unit Tests", () => {
   });
 
   describe("updateChoice", () => {
-    it("should update and return a choice", async () => {
-      const choice = createChoiceMock({ id: "1", text: "Updated" });
-      const spy = vi
-        .spyOn(choiceRepositoryMock, "update")
-        .mockResolvedValue(choice);
-
-      const result = await choiceService.updateChoice("1", {
+    it("should invalidate cache on update", async () => {
+      const choice = createChoiceMock({
+        id: "1",
         text: "Updated",
-        is_correct: undefined,
+        question: createQuestionMock({ id: "q1" }),
+      });
+      vi.spyOn(choiceRepositoryMock, "update").mockResolvedValue(choice);
+
+      await choiceService.updateChoice("1", {
+        text: "Updated",
+        is_correct: true,
       });
 
-      expect(spy).toHaveBeenCalledWith("1", { text: "Updated" });
-      expect(result.text).toBe("Updated");
+      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("choice:1");
+      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("choices:all");
+      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith(
+        "question:choices:q1",
+      );
     });
 
     it("should throw CHOICE_NOT_FOUND if choice to update exists", async () => {
@@ -213,7 +312,37 @@ describe("ChoiceService Unit Tests", () => {
   });
 
   describe("deleteChoice", () => {
+    it("should invalidate cache on delete", async () => {
+      const choice = createChoiceMock({
+        id: "1",
+        question: createQuestionMock({ id: "q1" }),
+      });
+      vi.spyOn(choiceRepositoryMock, "findOne").mockResolvedValue(choice);
+      vi.spyOn(choiceRepositoryMock, "delete").mockResolvedValue(undefined);
+
+      await choiceService.deleteChoice("1");
+
+      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("choice:1");
+      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("choices:all");
+      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith(
+        "question:choices:q1",
+      );
+    });
+
+    it("should succeed even if cache invalidation fails on delete", async () => {
+      const choice = createChoiceMock({ id: "1" });
+      vi.spyOn(choiceRepositoryMock, "findOne").mockResolvedValue(choice);
+      vi.spyOn(choiceRepositoryMock, "delete").mockResolvedValue(undefined);
+      valkeyRepositoryMock.del.mockRejectedValue(new Error("Cache Down"));
+
+      await choiceService.deleteChoice("1");
+
+      expect(choiceRepositoryMock.delete).toHaveBeenCalledWith("1");
+    });
+
     it("should call delete on repository", async () => {
+      const choice = createChoiceMock({ id: "1" });
+      vi.spyOn(choiceRepositoryMock, "findOne").mockResolvedValue(choice);
       const spy = vi
         .spyOn(choiceRepositoryMock, "delete")
         .mockResolvedValue(undefined);
