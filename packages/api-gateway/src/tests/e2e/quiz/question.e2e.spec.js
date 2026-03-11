@@ -1,11 +1,16 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeAll, beforeEach } from "vitest";
 import { createServer } from "@monorepo/api-gateway/app.js";
+import { seedDatabase } from "../utils/test-utils.js";
 
 describe("Question E2E Tests", () => {
   /** @type {import('fastify').FastifyInstance<any, any, any, any>} */
   let app;
   /** @type {string} */
   let accessToken;
+
+  beforeAll(async () => {
+    await seedDatabase();
+  });
 
   beforeEach(async () => {
     app = await createServer();

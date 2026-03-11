@@ -33,7 +33,7 @@ jobs:
       - name: Wait for ms-quizz-management to be healthy
         run: |
           echo "Waiting for ms-quizz-management-test to become healthy..."
-          timeout 300 bash -c '
+          timeout 60 bash -c '
             until [ "$(docker compose --profile test ps ms-quizz-management-test --format "{{.Health}}")" == "healthy" ]; do
               STATUS=$(docker compose --profile test ps ms-quizz-management-test --format "{{.Health}}")
               if [ "$STATUS" == "unhealthy" ]; then

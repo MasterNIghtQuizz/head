@@ -3,25 +3,60 @@ import logger from "common-logger";
 import { QuizMapper } from "../mappers/quiz.mapper.js";
 import { QUIZ_NOT_FOUND, QUIZ_CONFLICT } from "../errors/quiz.errors.js";
 import { DATABASE_ERROR } from "../errors/internal.errors.js";
+import { BaseError } from "common-errors";
 
 export class QuizService extends BaseService {
   /**
    * @param {import('../repositories/quiz.repository.js').QuizRepository} quizRepository
+   * @param {import('common-valkey').ValkeyRepository} valkeyRepository
+   * @param {number} cacheTtl
    */
-  constructor(quizRepository) {
+  constructor(quizRepository, valkeyRepository, cacheTtl) {
     super();
     /** @type {import('../repositories/quiz.repository.js').QuizRepository} */
     this.quizRepository = quizRepository;
+    /** @type {import('common-valkey').ValkeyRepository} */
+    this.valkeyRepository = valkeyRepository;
+    /** @type {number} */
+    this.cacheTtl = cacheTtl;
   }
 
   async getAllQuizzes() {
     logger.info("Fetching all quizzes...");
+    const cacheKey = "quizzes:all";
+    try {
+      const cached = await this.valkeyRepository.get(cacheKey);
+      if (cached) {
+        logger.info("Quizzes fetched from cache");
+        return cached;
+      }
+    } catch (error) {
+      logger.warn(
+        { error: /** @type {Error} */ (error) },
+        "Valkey cache get failed, falling back to DB",
+      );
+    }
+
     try {
       const quizzes = await this.quizRepository.findAll();
-      logger.info({ count: quizzes.length }, "Quizzes fetched successfully");
-      return quizzes.map(QuizMapper.toResponse);
+      const response = quizzes.map(QuizMapper.toResponse);
+
+      try {
+        await this.valkeyRepository.set(cacheKey, response, this.cacheTtl);
+      } catch (cacheError) {
+        logger.warn(
+          { error: /** @type {Error} */ (cacheError) },
+          "Valkey cache set failed",
+        );
+      }
+
+      logger.info({ count: quizzes.length }, "Quizzes fetched from DB");
+      return response;
     } catch (error) {
-      logger.error({ error }, "Error fetching all quizzes");
+      logger.error(
+        { error: /** @type {Error} */ (error) },
+        "Error fetching all quizzes from DB",
+      );
       throw DATABASE_ERROR(/** @type {Error} */ (error));
     }
   }
@@ -31,19 +66,49 @@ export class QuizService extends BaseService {
    */
   async getQuizById(id) {
     logger.info({ id }, "Fetching quiz by id...");
-    let quiz;
+    const cacheKey = `quiz:${id}`;
     try {
-      quiz = await this.quizRepository.findOne(id);
+      const cached = await this.valkeyRepository.get(cacheKey);
+      if (cached) {
+        logger.info({ id }, "Quiz fetched from cache");
+        return cached;
+      }
     } catch (error) {
-      logger.error({ error, id }, "Error fetching quiz by id");
+      logger.warn(
+        { error: /** @type {Error} */ (error), id },
+        "Valkey cache get failed, falling back to DB",
+      );
+    }
+
+    try {
+      const quiz = await this.quizRepository.findOne(id);
+      if (!quiz) {
+        logger.warn({ id }, "Quiz not found in DB");
+        throw QUIZ_NOT_FOUND(id);
+      }
+
+      const response = QuizMapper.toResponse(quiz);
+      try {
+        await this.valkeyRepository.set(cacheKey, response, this.cacheTtl);
+      } catch (cacheError) {
+        logger.warn(
+          { error: /** @type {Error} */ (cacheError), id },
+          "Valkey cache set failed",
+        );
+      }
+
+      logger.info({ id }, "Quiz fetched from DB");
+      return response;
+    } catch (error) {
+      if (/** @type {BaseError} */ (error).statusCode) {
+        throw error;
+      }
+      logger.error(
+        { error: /** @type {Error} */ (error), id },
+        "Error fetching quiz by id from DB",
+      );
       throw DATABASE_ERROR(/** @type {Error} */ (error));
     }
-    if (!quiz) {
-      logger.warn({ id }, "Quiz not found");
-      throw QUIZ_NOT_FOUND(id);
-    }
-    logger.info({ id }, "Quiz fetched successfully");
-    return QuizMapper.toResponse(quiz);
   }
 
   /**
@@ -53,6 +118,14 @@ export class QuizService extends BaseService {
     logger.info({ title: data.title }, "Creating new quiz...");
     try {
       const quiz = await this.quizRepository.create(data);
+      try {
+        await this.valkeyRepository.del("quizzes:all");
+      } catch (cacheError) {
+        logger.warn(
+          { error: /** @type {Error} */ (cacheError) },
+          "Valkey cache invalidation failed",
+        );
+      }
       logger.info({ id: quiz.id }, "Quiz created successfully");
       return QuizMapper.toResponse(quiz);
     } catch (error) {
@@ -64,7 +137,10 @@ export class QuizService extends BaseService {
         );
         throw QUIZ_CONFLICT(data.title || "unknown");
       }
-      logger.error({ error, data }, "Error creating quiz");
+      logger.error(
+        { error: /** @type {Error} */ (error), data },
+        "Error creating quiz",
+      );
       throw DATABASE_ERROR(/** @type {Error} */ (error));
     }
   }
@@ -75,24 +151,41 @@ export class QuizService extends BaseService {
    */
   async updateQuiz(id, data) {
     logger.info({ id }, "Updating quiz...");
-    let quiz;
     try {
-      quiz = await this.quizRepository.update(id, data);
+      const quiz = await this.quizRepository.update(id, data);
+      if (!quiz) {
+        logger.warn({ id }, "Quiz not found for update");
+        throw QUIZ_NOT_FOUND(id);
+      }
+      const response = QuizMapper.toResponse(quiz);
+      try {
+        await Promise.all([
+          this.valkeyRepository.del(`quiz:${id}`),
+          this.valkeyRepository.del("quizzes:all"),
+        ]);
+      } catch (cacheError) {
+        logger.warn(
+          { error: /** @type {Error} */ (cacheError), id },
+          "Valkey cache invalidation failed during update",
+        );
+      }
+      logger.info({ id }, "Quiz updated successfully");
+      return response;
     } catch (error) {
+      if (/** @type {BaseError} */ (error).statusCode) {
+        throw error;
+      }
       // @ts-ignore
       if (error?.code === "23505") {
         logger.warn({ id, title: data.title }, "Quiz update conflict");
         throw QUIZ_CONFLICT(data.title || id);
       }
-      logger.error({ error, id, data }, "Error updating quiz");
+      logger.error(
+        { error: /** @type {Error} */ (error), id, data },
+        "Error updating quiz",
+      );
       throw DATABASE_ERROR(/** @type {Error} */ (error));
     }
-    if (!quiz) {
-      logger.warn({ id }, "Quiz not found for update");
-      throw QUIZ_NOT_FOUND(id);
-    }
-    logger.info({ id }, "Quiz updated successfully");
-    return QuizMapper.toResponse(quiz);
   }
 
   /**
@@ -102,9 +195,23 @@ export class QuizService extends BaseService {
     logger.info({ id }, "Deleting quiz...");
     try {
       await this.quizRepository.delete(id);
+      try {
+        await Promise.all([
+          this.valkeyRepository.del(`quiz:${id}`),
+          this.valkeyRepository.del("quizzes:all"),
+        ]);
+      } catch (cacheError) {
+        logger.warn(
+          { error: /** @type {Error} */ (cacheError), id },
+          "Valkey cache invalidation failed during delete",
+        );
+      }
       logger.info({ id }, "Quiz deleted successfully");
     } catch (error) {
-      logger.error({ error, id }, "Error deleting quiz");
+      logger.error(
+        { error: /** @type {Error} */ (error), id },
+        "Error deleting quiz",
+      );
       throw DATABASE_ERROR(/** @type {Error} */ (error));
     }
   }

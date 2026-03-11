@@ -14,4 +14,11 @@ export declare const config: {
     refresh: { privateKeyPath: string; publicKeyPath: string };
     internal: { privateKeyPath: string; publicKeyPath: string };
   };
+  valkey: {
+    host: string;
+    port: number;
+    password?: string;
+    db?: number;
+    ttl?: number;
+  };
 };
