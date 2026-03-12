@@ -4,21 +4,19 @@ import { hookInternalTokenInterceptor } from "../interceptors/internal-token.int
 import { CryptoService } from "common-crypto";
 import logger from "common-logger";
 import { createExecutionContext } from "./test-helpers.js";
-import { UserRole } from "../enums.js";
+import { UserRole, TokenType } from "../enums.js";
+import { InternalServerError, UnauthorizedError } from "common-errors";
 
 describe("hookInternalTokenInterceptor (Interceptor Unit Test)", () => {
-  /** @type {import('../types.d.ts').InternalTokenInterceptorOptions} */
   const options = {
     privateKeyPath: "/path/to/private.pem",
     source: "test-source",
     expiresIn: "10s",
   };
 
-  /** @type {import('fastify').onRequestHookHandler} */
   let hook;
 
   beforeEach(() => {
-    // @ts-ignore
     hook = hookInternalTokenInterceptor(options);
   });
 
@@ -32,22 +30,21 @@ describe("hookInternalTokenInterceptor (Interceptor Unit Test)", () => {
 
     await hook.call(fastify, request, reply, done);
 
-    expect(done).toHaveBeenCalled();
+    expect(done).toHaveBeenCalledWith();
     expect(reply.code).not.toHaveBeenCalled();
   });
 
-  it("should return 401 if request.user is missing or incomplete", async () => {
+  it("should call done(error) if request.user is missing or incomplete", async () => {
     const { request, reply, done, fastify } = createExecutionContext();
     const loggerSpy = vi.spyOn(logger, "error").mockImplementation(() => {});
 
     await hook.call(fastify, request, reply, done);
 
     expect(loggerSpy).toHaveBeenCalled();
-    expect(reply.code).toHaveBeenCalledWith(401);
-    expect(reply.send).toHaveBeenCalledWith({
-      error: "Unauthorized: Missing user context",
-    });
-    expect(done).not.toHaveBeenCalled();
+    expect(done).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+    expect(done.mock.calls[0][0].message).toBe(
+      "Unauthorized: Missing user context",
+    );
 
     vi.clearAllMocks();
     const {
@@ -59,12 +56,10 @@ describe("hookInternalTokenInterceptor (Interceptor Unit Test)", () => {
     await hook.call(fast2, req2, rep2, done2);
 
     expect(loggerSpy).toHaveBeenCalled();
-    expect(rep2.code).toHaveBeenCalledWith(401);
-    expect(done2).not.toHaveBeenCalled();
+    expect(done2).toHaveBeenCalledWith(expect.any(UnauthorizedError));
   });
 
   it("should sign payload and attach internal-token to request if user is valid", async () => {
-    /** @type {any} */
     const { request, reply, done, fastify } = createExecutionContext(
       {},
       { userId: "456", role: UserRole.USER },
@@ -79,7 +74,7 @@ describe("hookInternalTokenInterceptor (Interceptor Unit Test)", () => {
       {
         userId: "456",
         role: UserRole.USER,
-        type: "internal",
+        type: TokenType.INTERNAL,
         source: "test-source",
       },
       options.privateKeyPath,
@@ -87,11 +82,11 @@ describe("hookInternalTokenInterceptor (Interceptor Unit Test)", () => {
     );
     expect(request.headers["internal-token"]).toBe("signed.internal.token");
     expect(request.internalToken).toBe("signed.internal.token");
-    expect(done).toHaveBeenCalled();
+    expect(done).toHaveBeenCalledWith();
     expect(reply.code).not.toHaveBeenCalled();
   });
 
-  it("should return 500 if internal token generation throws an error", async () => {
+  it("should call done(error) if internal token generation throws an error", async () => {
     const { request, reply, done, fastify } = createExecutionContext(
       {},
       { userId: "456", role: UserRole.USER },
@@ -104,10 +99,9 @@ describe("hookInternalTokenInterceptor (Interceptor Unit Test)", () => {
     await hook.call(fastify, request, reply, done);
 
     expect(loggerSpy).toHaveBeenCalled();
-    expect(reply.code).toHaveBeenCalledWith(500);
-    expect(reply.send).toHaveBeenCalledWith({
-      error: "Internal token generation failed",
-    });
-    expect(done).not.toHaveBeenCalled();
+    expect(done).toHaveBeenCalledWith(expect.any(InternalServerError));
+    expect(done.mock.calls[0][0].message).toBe(
+      "Internal token generation failed",
+    );
   });
 });

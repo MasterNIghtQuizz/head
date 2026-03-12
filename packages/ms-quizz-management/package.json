@@ -7,7 +7,8 @@
     "start": "node src/index.js",
     "migrations:run": "node src/run-migrations.js",
     "lint": "yarn run -T eslint src",
-    "lint:fix": "yarn run -T eslint src --fix"
+    "lint:fix": "yarn run -T eslint src --fix",
+    "test": "yarn run -T vitest run"
   },
   "dependencies": {
     "common-auth": "workspace:*",

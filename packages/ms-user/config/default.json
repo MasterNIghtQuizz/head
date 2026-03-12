@@ -29,8 +29,17 @@
     }
   },
   "kafka": {
-    "brokers": [
-      "localhost:9092"
-    ]
+    "enabled": true,
+    "brokers": ["localhost:9092"]
+  },
+  "security": {
+    "encryptionKey": "1c20db7ae7a3b8d332d4f25f740e835e4c84d91c7d879b6ed700140871f18acb"
+  },
+  "valkey": {
+    "host": "localhost",
+    "port": 6379,
+    "password": "",
+    "db": 0,
+    "ttl": 3600
   }
 }

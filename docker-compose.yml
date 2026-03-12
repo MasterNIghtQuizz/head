@@ -275,8 +275,13 @@ services:
       POSTGRES_DB: ms_quizz_test_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres_password
+      VALKEY_HOST: valkey-test
+      VALKEY_PORT: 6379
       KAFKA_BROKERS: "[]"
       KAFKA_ENABLED: "false"
+    volumes:
+      - .:/app
+      - /app/node_modules
     healthcheck:
       test:
         [

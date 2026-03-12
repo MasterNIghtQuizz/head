@@ -1,4 +1,5 @@
 import { CryptoService } from "common-crypto";
+import { UnauthorizedError } from "common-errors";
 import logger from "common-logger";
 
 /**
@@ -6,7 +7,7 @@ import logger from "common-logger";
  * @returns {import('fastify').onRequestHookHandler}
  */
 export function hookInternalToken(options) {
-  return function internalTokenHook(request, reply, done) {
+  return function internalTokenHook(request, _reply, done) {
     if (request.routeOptions?.config?.isPublic) {
       done();
       return;
@@ -18,8 +19,7 @@ export function hookInternalToken(options) {
 
     if (!token) {
       logger.warn({ url: request.url }, "Missing internal-token header");
-      reply.code(401).send({ error: "Missing internal-token header" });
-      return;
+      return done(new UnauthorizedError("Missing internal-token header"));
     }
 
     try {
@@ -34,10 +34,11 @@ export function hookInternalToken(options) {
         role: payload.role,
         type: payload.type,
       };
+      logger.info({ user: request.user }, "Internal token verified");
       done();
     } catch (error) {
       logger.warn({ url: request.url, error }, "Invalid internal token");
-      reply.code(401).send({ error: "Invalid or expired internal token" });
+      return done(new UnauthorizedError("Invalid or expired internal token"));
     }
   };
 }

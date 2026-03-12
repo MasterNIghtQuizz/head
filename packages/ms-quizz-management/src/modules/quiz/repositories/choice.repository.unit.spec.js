@@ -86,7 +86,11 @@ describe("ChoiceRepository Unit Tests", () => {
 
       const result = await choiceRepository.create(choiceData);
 
-      expect(createSpy).toHaveBeenCalledWith(choiceData);
+      expect(createSpy).toHaveBeenCalledWith({
+        text: "Yes",
+        is_correct: true,
+        question: { id: "q1" },
+      });
       expect(saveSpy).toHaveBeenCalledWith(choiceInstance);
       expect(result).toEqual(choiceInstance);
     });

@@ -34,9 +34,17 @@
     }
   },
   "kafka": {
+    "enabled": "KAFKA_ENABLED",
     "brokers": {
       "__name": "KAFKA_BROKERS",
       "__format": "json"
     }
+  },
+  "valkey": {
+    "enabled": "VALKEY_ENABLED",
+    "host": "VALKEY_HOST",
+    "port": "VALKEY_PORT",
+    "password": "VALKEY_PASSWORD",
+    "db": "VALKEY_DB"
   }
 }

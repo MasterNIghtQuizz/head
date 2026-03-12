@@ -32,12 +32,24 @@ export class ControllerFactory {
               ControllerClass,
               route.handler,
             ) === true;
+          const useRefreshToken =
+            Reflect.getMetadata(
+              MetadataKeys.USE_REFRESH_TOKEN,
+              ControllerClass,
+              route.handler,
+            ) === true;
+
+          const roles = Reflect.getMetadata(
+            MetadataKeys.ROLES,
+            ControllerClass,
+            route.handler,
+          );
 
           app.route({
             method: route.method,
             url: route.path,
             schema: schema || {},
-            config: { isPublic },
+            config: { isPublic, roles, useRefreshToken },
             handler: instance[route.handler].bind(instance),
           });
         });

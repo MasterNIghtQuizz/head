@@ -102,7 +102,10 @@ describe("QuestionRepository Unit Tests", () => {
         questionData,
       );
 
-      expect(createSpy).toHaveBeenCalledWith(questionData);
+      expect(createSpy).toHaveBeenCalledWith({
+        label: "What is 1+1?",
+        quiz: { id: "q123" },
+      });
       expect(saveSpy).toHaveBeenCalledWith(questionInstance);
       expect(result).toEqual(questionInstance);
     });

@@ -17,4 +17,10 @@ export declare class CryptoService {
    * @param publicKeyPath Path to the RSA public key file
    */
   static verify<T = any>(token: string, publicKeyPath: string): T;
+
+  static hashPassword(password: string): Promise<string>;
+  static comparePassword(password: string, hash: string): Promise<boolean>;
+  static encrypt(text: string, secretKey: string): string;
+  static decrypt(text: string, secretKey: string): string;
+  static sha256Hash(text: string): string;
 }
