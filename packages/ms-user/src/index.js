@@ -14,14 +14,14 @@ fastify.addHook(
   }),
 );
 
-fastify.get("/health", { config: { isPublic: true } }, async () => {
-  return { status: "ok", service: "ms-user" };
-});
-
 import { ControllerFactory } from "common-core";
 import { UserController } from "./modules/user/controllers/user.controller.js";
+import { TestingController } from "./modules/user/controllers/testing.controller.js";
 import { UserService } from "./modules/user/services/user.service.js";
 import { createKafkaClient, KafkaProducer } from "common-kafka";
+import { UserRepository } from "./modules/user/repositories/user.repository.js";
+import { ValkeyRepository } from "common-valkey";
+import { db, valkey } from "./database.js";
 
 // @ts-ignore
 await registerSwagger(fastify, {
@@ -32,23 +32,34 @@ await registerSwagger(fastify, {
 
 await initDatabase();
 
-const kafkaClient = createKafkaClient({
-  clientId: "ms-user",
-  brokers: config.kafka.brokers,
-});
-const kafkaProducer = new KafkaProducer(kafkaClient);
-await kafkaProducer.connect();
+let kafkaProducer = null;
+if (config.kafka.enabled) {
+  const kafkaClient = createKafkaClient({
+    clientId: "ms-user",
+    brokers: config.kafka.brokers,
+  });
+  kafkaProducer = new KafkaProducer(kafkaClient);
+  await kafkaProducer.connect();
+}
 
-const userService = new UserService(kafkaProducer);
+const valkeyRepository = new ValkeyRepository(valkey);
+const userRepository = new UserRepository(db.instance, valkeyRepository);
+
+const userService = new UserService(kafkaProducer, userRepository);
 ControllerFactory.register(fastify, UserController, [userService]);
+
+ControllerFactory.register(fastify, TestingController, []);
 
 logger.info(config, "MS User starting...");
 
+fastify.get("/health", { config: { isPublic: true } }, async () => {
+  return { status: "ok", service: "ms-user" };
+});
 await fastify.listen({ host: "0.0.0.0", port: config.port });
 
 const shutdown = async () => {
   logger.info("Gracefully shutting down ms-user...");
-  await kafkaProducer.disconnect();
+  await kafkaProducer?.disconnect();
   await fastify.close();
   process.exit(0);
 };

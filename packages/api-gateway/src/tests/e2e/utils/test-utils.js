@@ -4,9 +4,6 @@ import { TokenType } from "common-auth";
 import path from "node:path";
 import { config } from "../../../config.js";
 
-/**
- * Seeds the database by calling the ms-quizz-management testing endpoint
- */
 export async function seedDatabase() {
   const keyPath = path.resolve(config.auth.internal.privateKeyPath);
 
@@ -21,11 +18,23 @@ export async function seedDatabase() {
     { expiresIn: "10m" },
   );
 
-  const quizzUrl = config.services?.quizz || "http://localhost:4012";
-  
-  await axios.post(`${quizzUrl}/testing/seed`, {}, {
-    headers: {
-      "internal-token": token
-    }
-  });
+  const quizzUrl = config.services.quizz;
+  const userUrl = config.services.user;
+
+  await Promise.all([
+    axios.post(
+      `${quizzUrl}/testing/seed`,
+      {},
+      {
+        headers: { "internal-token": token },
+      },
+    ),
+    axios.post(
+      `${userUrl}/testing/seed`,
+      {},
+      {
+        headers: { "internal-token": token },
+      },
+    ),
+  ]);
 }

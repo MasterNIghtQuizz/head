@@ -5,16 +5,13 @@ import { CryptoService } from "common-crypto";
 import logger from "common-logger";
 import { createExecutionContext } from "./test-helpers.js";
 import { UserRole } from "../enums.js";
+import { UnauthorizedError } from "common-errors";
 
 describe("hookAccessToken (Guard/Hook Unit Test)", () => {
-  /** @type {import('../types.d.ts').AuthHookOptions} */
   const options = { publicKeyPath: "/path/to/public.pem" };
-
-  /** @type {import('fastify').onRequestHookHandler} */
   let hook;
 
   beforeEach(() => {
-    // @ts-ignore
     hook = hookAccessToken(options);
   });
 
@@ -28,31 +25,38 @@ describe("hookAccessToken (Guard/Hook Unit Test)", () => {
 
     await hook.call(fastify, request, reply, done);
 
-    expect(done).toHaveBeenCalled();
+    expect(done).toHaveBeenCalledWith();
     expect(reply.code).not.toHaveBeenCalled();
   });
 
-  it("should return 401 if access-token header is missing", async () => {
+  it("should call done() immediately and not process if useRefreshToken is true", async () => {
+    const { request, reply, done, fastify } = createExecutionContext();
+    request.routeOptions = { config: { useRefreshToken: true } };
+
+    await hook.call(fastify, request, reply, done);
+
+    expect(done).toHaveBeenCalledWith();
+    expect(reply.code).not.toHaveBeenCalled();
+  });
+
+  it("should call done(error) if access-token header is missing", async () => {
     const { request, reply, done, fastify } = createExecutionContext();
     const loggerSpy = vi.spyOn(logger, "warn").mockImplementation(() => {});
 
     await hook.call(fastify, request, reply, done);
 
     expect(loggerSpy).toHaveBeenCalled();
-    expect(reply.code).toHaveBeenCalledWith(401);
-    expect(reply.send).toHaveBeenCalledWith({
-      error: "Missing access-token header",
-    });
-    expect(done).not.toHaveBeenCalled();
+    expect(done).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+    const error = done.mock.calls[0][0];
+    expect(error.message).toBe("Missing access-token header");
   });
 
-  it("should return 401 if access token is invalid or expired", async () => {
+  it("should call done(error) if access token is invalid or expired", async () => {
     const { request, reply, done, fastify } = createExecutionContext({
       "access-token": "invalid.token",
     });
     const cryptoSpy = vi
       .spyOn(CryptoService, "verify")
-      // @ts-ignore
       .mockImplementation(() => {
         throw new Error("Invalid signature");
       });
@@ -65,18 +69,15 @@ describe("hookAccessToken (Guard/Hook Unit Test)", () => {
       options.publicKeyPath,
     );
     expect(loggerSpy).toHaveBeenCalled();
-    expect(reply.code).toHaveBeenCalledWith(401);
-    expect(reply.send).toHaveBeenCalledWith({
-      error: "Invalid or expired access token",
-    });
-    expect(done).not.toHaveBeenCalled();
+    expect(done).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+    const error = done.mock.calls[0][0];
+    expect(error.message).toBe("Invalid or expired access token");
   });
 
   it("should append user to request and call done() if token is valid", async () => {
     const { request, reply, done, fastify } = createExecutionContext({
       "access-token": "valid.token",
     });
-    /** @type {import('../types.d.ts').AccessTokenPayload} */
     const mockPayload = { userId: "123", role: UserRole.ADMIN, type: "access" };
     const cryptoSpy = vi
       .spyOn(CryptoService, "verify")
@@ -89,7 +90,7 @@ describe("hookAccessToken (Guard/Hook Unit Test)", () => {
       options.publicKeyPath,
     );
     expect(request.user).toEqual(mockPayload);
-    expect(done).toHaveBeenCalled();
+    expect(done).toHaveBeenCalledWith();
     expect(reply.code).not.toHaveBeenCalled();
   });
 });

@@ -3,7 +3,12 @@ import logger from "common-logger";
 import { config } from "./config.js";
 import { registerSwagger } from "common-swagger";
 import { ControllerFactory } from "common-core";
-import { hookAccessToken, hookInternalTokenInterceptor } from "common-auth";
+import {
+  hookAccessToken,
+  hookInternalTokenInterceptor,
+  hookRefreshToken,
+} from "common-auth";
+import { hookRoles } from "./infrastructure/hooks/roles.hook.js";
 import { HelpersController } from "./modules/helpers/controllers/helpers.controller.js";
 import { HelpersService } from "./modules/helpers/services/helpers.service.js";
 import { UserController } from "./modules/user/controllers/user.controller.js";
@@ -22,7 +27,10 @@ export async function createServer() {
     "onRequest",
     hookAccessToken({ publicKeyPath: config.auth.access.publicKeyPath }),
   );
-
+  fastify.addHook(
+    "onRequest",
+    hookRefreshToken({ publicKeyPath: config.auth.refresh.publicKeyPath }),
+  );
   fastify.addHook(
     "onRequest",
     hookInternalTokenInterceptor({
@@ -32,9 +40,7 @@ export async function createServer() {
     }),
   );
 
-  fastify.get("/health", { config: { isPublic: true } }, async () => {
-    return { status: "ok", service: "api-gateway" };
-  });
+  fastify.addHook("preHandler", hookRoles());
 
   // @ts-ignore
   await registerSwagger(fastify, {

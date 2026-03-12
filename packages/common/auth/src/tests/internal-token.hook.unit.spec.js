@@ -1,20 +1,16 @@
-// @ts-nocheck
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import { hookInternalToken } from "../hooks/internal-token.hook.js";
 import { CryptoService } from "common-crypto";
 import logger from "common-logger";
 import { createExecutionContext } from "./test-helpers.js";
 import { UserRole } from "../enums.js";
+import { UnauthorizedError } from "common-errors";
 
 describe("hookInternalToken (Guard/Hook Unit Test)", () => {
-  /** @type {import('../types.d.ts').AuthHookOptions} */
   const options = { publicKeyPath: "/path/to/public.pem" };
-
-  /** @type {import('fastify').onRequestHookHandler} */
   let hook;
 
   beforeEach(() => {
-    // @ts-ignore
     hook = hookInternalToken(options);
   });
 
@@ -28,31 +24,28 @@ describe("hookInternalToken (Guard/Hook Unit Test)", () => {
 
     await hook.call(fastify, request, reply, done);
 
-    expect(done).toHaveBeenCalled();
+    expect(done).toHaveBeenCalledWith();
     expect(reply.code).not.toHaveBeenCalled();
   });
 
-  it("should return 401 if internal-token header is missing", async () => {
+  it("should call done(error) if internal-token header is missing", async () => {
     const { request, reply, done, fastify } = createExecutionContext();
     const loggerSpy = vi.spyOn(logger, "warn").mockImplementation(() => {});
 
     await hook.call(fastify, request, reply, done);
 
     expect(loggerSpy).toHaveBeenCalled();
-    expect(reply.code).toHaveBeenCalledWith(401);
-    expect(reply.send).toHaveBeenCalledWith({
-      error: "Missing internal-token header",
-    });
-    expect(done).not.toHaveBeenCalled();
+    expect(done).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+    const error = done.mock.calls[0][0];
+    expect(error.message).toBe("Missing internal-token header");
   });
 
-  it("should return 401 if internal token is invalid or expired", async () => {
+  it("should call done(error) if internal token is invalid or expired", async () => {
     const { request, reply, done, fastify } = createExecutionContext({
       "internal-token": "invalid.token",
     });
     const cryptoSpy = vi
       .spyOn(CryptoService, "verify")
-      // @ts-ignore
       .mockImplementation(() => {
         throw new Error("Invalid signature");
       });
@@ -65,18 +58,15 @@ describe("hookInternalToken (Guard/Hook Unit Test)", () => {
       options.publicKeyPath,
     );
     expect(loggerSpy).toHaveBeenCalled();
-    expect(reply.code).toHaveBeenCalledWith(401);
-    expect(reply.send).toHaveBeenCalledWith({
-      error: "Invalid or expired internal token",
-    });
-    expect(done).not.toHaveBeenCalled();
+    expect(done).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+    const error = done.mock.calls[0][0];
+    expect(error.message).toBe("Invalid or expired internal token");
   });
 
   it("should populate request.internalTokenPayload and request.user correctly and call done() if token is valid", async () => {
     const { request, reply, done, fastify } = createExecutionContext({
       "internal-token": "valid.token",
     });
-    /** @type {import('../types.d.ts').InternalTokenPayload} */
     const mockPayload = {
       userId: "123",
       role: UserRole.ADMIN,
@@ -99,7 +89,7 @@ describe("hookInternalToken (Guard/Hook Unit Test)", () => {
       role: UserRole.ADMIN,
       type: "internal",
     });
-    expect(done).toHaveBeenCalled();
+    expect(done).toHaveBeenCalledWith();
     expect(reply.code).not.toHaveBeenCalled();
   });
 });
