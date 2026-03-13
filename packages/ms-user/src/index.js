@@ -19,7 +19,7 @@ import { UserController } from "./modules/user/controllers/user.controller.js";
 import { TestingController } from "./modules/user/controllers/testing.controller.js";
 import { UserService } from "./modules/user/services/user.service.js";
 import { createKafkaClient, KafkaProducer } from "common-kafka";
-import { UserRepository } from "./modules/user/repositories/user.repository.js";
+import { TypeOrmUserRepository } from "./modules/user/infra/persistence/typeorm-user.repository.js";
 import { ValkeyRepository } from "common-valkey";
 import { db, valkey } from "./database.js";
 
@@ -43,7 +43,11 @@ if (config.kafka.enabled) {
 }
 
 const valkeyRepository = new ValkeyRepository(valkey);
-const userRepository = new UserRepository(db.instance, valkeyRepository);
+const userRepository = new TypeOrmUserRepository(
+  db.instance,
+  valkeyRepository,
+  config.security.encryptionKey,
+);
 
 const userService = new UserService(kafkaProducer, userRepository);
 ControllerFactory.register(fastify, UserController, [userService]);

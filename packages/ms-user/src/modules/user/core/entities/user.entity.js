@@ -1,5 +1,6 @@
 import { CryptoService } from "common-crypto";
-export class UserModel {
+
+export class UserEntity {
   /**
    * @param {Object} params
    * @param {string} [params.id]
@@ -21,7 +22,7 @@ export class UserModel {
   }
 
   /**
-   * @param {import('../contracts/user.dto.js').UpdateUserDto} dto
+   * @param {import('../../contracts/user.dto.js').UpdateUserDto} dto
    * @param {string} _encryptionKey
    * @param {function(string): Promise<string>} hashFn
    */
@@ -48,16 +49,16 @@ export class UserModel {
   }
 
   /**
-   * @param {import('../contracts/user.dto.js').RegisterUserDto} dto
+   * @param {import('../../contracts/user.dto.js').RegisterUserDto} dto
    * @param {string} role
    * @param {function(string): Promise<string>} hashFn
-   * @returns {Promise<UserModel>}
+   * @returns {Promise<UserEntity>}
    */
   static async createFromRegistration(dto, role, hashFn) {
     const password = await hashFn(dto.password);
     const emailHash = CryptoService.sha256Hash(dto.email);
 
-    return new UserModel({
+    return new UserEntity({
       email: dto.email,
       emailHash,
       password,

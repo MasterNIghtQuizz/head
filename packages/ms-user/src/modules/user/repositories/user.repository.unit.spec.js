@@ -1,57 +1,47 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
-import { UserRepository } from "./user.repository.js";
+import { TypeOrmUserRepository } from "../infra/persistence/typeorm-user.repository.js";
 import { createUserEntityMock } from "../../../tests/factories/user.factory.js";
+import { UserMapper } from "../infra/mappers/user.mapper.js";
 
-/**
- * @typedef {import('typeorm').DataSource} DataSource
- * @typedef {import('typeorm').Repository<import('../entities/user.entity.js').UserEntity>} UserRepo
- * @typedef {import('vitest').Mocked<UserRepo>} UserRepoMock
- * @typedef {import('vitest').Mocked<import('common-valkey').ValkeyRepository>} ValkeyRepositoryMock
- */
-
-describe("UserRepository Unit Tests", () => {
-  /** @type {UserRepository} */
+describe("TypeOrmUserRepository Unit Tests", () => {
+  /** @type {TypeOrmUserRepository} */
   let userRepository;
 
-  /** @type {import('vitest').Mocked<DataSource>} */
+  /** @type {import('vitest').Mocked<import('typeorm').DataSource>} */
   let dataSourceMock;
 
-  /** @type {UserRepoMock} */
+  /** @type {any} */
   let typeormRepoMock;
 
-  /** @type {ValkeyRepositoryMock} */
+  /** @type {import('vitest').Mocked<import('common-valkey').ValkeyRepository>} */
   let valkeyRepositoryMock;
 
+  const encryptionKey = "test-key";
+
   beforeEach(() => {
-    typeormRepoMock = /** @type {UserRepoMock} */ (
-      /** @type {unknown} */ ({
-        find: vi.fn(),
-        findOneBy: vi.fn(),
-        create: vi.fn(),
-        save: vi.fn(),
-        update: vi.fn(),
-        delete: vi.fn(),
-      })
-    );
+    typeormRepoMock = {
+      find: vi.fn(),
+      findOneBy: vi.fn(),
+      create: vi.fn(),
+      save: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    };
 
-    dataSourceMock = /** @type {import('vitest').Mocked<DataSource>} */ (
-      /** @type {unknown} */ ({
-        getRepository: vi.fn().mockReturnValue(typeormRepoMock),
-      })
-    );
+    dataSourceMock = /** @type {any} */ ({
+      getRepository: vi.fn().mockReturnValue(typeormRepoMock),
+    });
 
-    valkeyRepositoryMock = /** @type {ValkeyRepositoryMock} */ (
-      /** @type {unknown} */ ({
-        get: vi.fn(),
-        set: vi.fn(),
-        del: vi.fn(),
-        delByPattern: vi.fn(),
-      })
-    );
+    valkeyRepositoryMock = /** @type {any} */ ({
+      get: vi.fn(),
+      set: vi.fn(),
+      del: vi.fn(),
+    });
 
-    userRepository = new UserRepository(
-      /** @type {import('typeorm').DataSource} */ (dataSourceMock),
+    userRepository = new TypeOrmUserRepository(
+      /** @type {any} */ (dataSourceMock),
       valkeyRepositoryMock,
+      encryptionKey,
     );
   });
 
@@ -60,44 +50,40 @@ describe("UserRepository Unit Tests", () => {
   });
 
   describe("findByEmailHash", () => {
-    it("should call findOneBy with correct emailHash", async () => {
+    it("should call findOneBy and map to domain", async () => {
       const emailHash = "hash-123";
-      const user = createUserEntityMock({ emailHash });
-      const spy = vi
-        .spyOn(typeormRepoMock, "findOneBy")
-        .mockResolvedValue(user);
+      const userModel = {
+        id: "1",
+        email: "encrypted-email",
+        emailHash,
+        password: "pass",
+        role: "USER",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      vi.spyOn(typeormRepoMock, "findOneBy").mockResolvedValue(userModel);
 
       const result = await userRepository.findByEmailHash(emailHash);
 
-      expect(spy).toHaveBeenCalledWith({ emailHash });
-      expect(result).toEqual(user);
-    });
-  });
-
-  describe("findAll", () => {
-    it("should call find on typeorm repository", async () => {
-      const users = [createUserEntityMock()];
-      vi.spyOn(typeormRepoMock, "find").mockResolvedValue(users);
-
-      const result = await userRepository.findAll();
-
-      expect(typeormRepoMock.find).toHaveBeenCalled();
-      expect(result).toEqual(users);
+      expect(typeormRepoMock.findOneBy).toHaveBeenCalledWith({ emailHash });
+      expect(result).toEqual(UserMapper.toDomain(userModel, encryptionKey));
     });
   });
 
   describe("create", () => {
-    it("should create and save a new user", async () => {
-      const userData = { email: "new@test.com" };
-      const userInstance = createUserEntityMock(userData);
-      vi.spyOn(typeormRepoMock, "create").mockReturnValue(userInstance);
-      vi.spyOn(typeormRepoMock, "save").mockResolvedValue(userInstance);
+    it("should map to persistence, save and map back to domain", async () => {
+      const entity = createUserEntityMock({ email: "test@test.com" });
+      const model = { ...entity, email: "encrypted-test@test.com" };
 
-      const result = await userRepository.create(userData);
+      vi.spyOn(typeormRepoMock, "create").mockReturnValue(model);
+      vi.spyOn(typeormRepoMock, "save").mockResolvedValue(model);
 
-      expect(typeormRepoMock.create).toHaveBeenCalledWith(userData);
-      expect(typeormRepoMock.save).toHaveBeenCalledWith(userInstance);
-      expect(result).toEqual(userInstance);
+      const result = await userRepository.create(entity);
+
+      expect(typeormRepoMock.create).toHaveBeenCalled();
+      expect(typeormRepoMock.save).toHaveBeenCalled();
+      expect(result.email).toBe("test@test.com");
     });
   });
 });

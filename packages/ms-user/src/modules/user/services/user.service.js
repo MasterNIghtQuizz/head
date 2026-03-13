@@ -2,7 +2,8 @@ import { BaseService } from "common-core";
 import { CryptoService } from "common-crypto";
 import { UnauthorizedError } from "common-errors";
 import logger from "common-logger";
-import { UserMapper } from "../mappers/user.mapper.js";
+import { UserEntity } from "../core/entities/user.entity.js";
+import { UserMapper } from "../infra/mappers/user.mapper.js";
 import { config } from "../../../config.js";
 import { UserRole, TokenType } from "common-auth";
 import {
@@ -10,12 +11,11 @@ import {
   USER_CONFLICT,
   DATABASE_ERROR,
 } from "../errors/user.errors.js";
-import { UserModel } from "../models/user.model.js";
 
 export class UserService extends BaseService {
   /**
    * @param {import('common-kafka').KafkaProducer | null} kafkaProducer
-   * @param {import('../repositories/user.repository.js').UserRepository} userRepository
+   * @param {import('../core/ports/user.repository.js').IUserRepository} userRepository
    */
   constructor(kafkaProducer, userRepository) {
     super();
@@ -30,7 +30,7 @@ export class UserService extends BaseService {
   async register(data) {
     const emailHash = CryptoService.sha256Hash(data.email);
 
-    /** @type {import('../entities/user.entity.js').UserEntity | null} */
+    /** @type {import('../core/entities/user.entity.js').UserEntity | null} */
     let existingUser;
     try {
       existingUser = await this.userRepository.findByEmailHash(emailHash);
@@ -42,21 +42,16 @@ export class UserService extends BaseService {
       throw USER_CONFLICT(data.email);
     }
 
-    const model = await UserModel.createFromRegistration(
+    const entity = await UserEntity.createFromRegistration(
       data,
       UserRole.USER,
       CryptoService.hashPassword,
     );
 
-    const entityToCreate = UserMapper.toEntity(
-      model,
-      config.security.encryptionKey,
-    );
-
-    /** @type {import('../entities/user.entity.js').UserEntity} */
-    let userEntity;
+    /** @type {import('../core/entities/user.entity.js').UserEntity} */
+    let createdEntity;
     try {
-      userEntity = await this.userRepository.create(entityToCreate);
+      createdEntity = await this.userRepository.create(entity);
 
       try {
         await this.userRepository.valkeyRepository.del("user:all");
@@ -67,19 +62,14 @@ export class UserService extends BaseService {
       throw DATABASE_ERROR(/** @type {Error} */ (error));
     }
 
-    const userModel = UserMapper.toModel(
-      userEntity,
-      config.security.encryptionKey,
-    );
-
     if (this.kafkaProducer) {
       await this.kafkaProducer.publish(
         "user-registered",
-        UserMapper.toDto(userModel),
+        UserMapper.toDto(createdEntity),
       );
     }
 
-    const userDto = UserMapper.toDto(userModel);
+    const userDto = UserMapper.toDto(createdEntity);
     const accessToken = CryptoService.sign(
       { userId: userDto.id, role: userDto.role, type: TokenType.ACCESS },
       config.auth.access.privateKeyPath,
@@ -106,24 +96,12 @@ export class UserService extends BaseService {
   async login(data) {
     const emailHash = CryptoService.sha256Hash(data.email);
 
-    /** @type {import('../entities/user.entity.js').UserEntity | null} */
-    let userEntity;
-    try {
-      userEntity = await this.userRepository.findByEmailHash(emailHash);
-    } catch (error) {
-      throw DATABASE_ERROR(/** @type {Error} */ (error));
-    }
-
+    const userEntity = await this.userRepository.findByEmailHash(emailHash);
     if (!userEntity) {
       throw USER_NOT_FOUND(data.email);
     }
 
-    const userModel = UserMapper.toModel(
-      userEntity,
-      config.security.encryptionKey,
-    );
-
-    const isPasswordValid = await userModel.checkPassword(
+    const isPasswordValid = await userEntity.checkPassword(
       data.password,
       CryptoService.comparePassword,
     );
@@ -132,7 +110,7 @@ export class UserService extends BaseService {
       throw new UnauthorizedError("Invalid credentials");
     }
 
-    const userDto = UserMapper.toDto(userModel);
+    const userDto = UserMapper.toDto(userEntity);
     const accessToken = CryptoService.sign(
       { userId: userDto.id, role: userDto.role, type: TokenType.ACCESS },
       config.auth.access.privateKeyPath,
@@ -200,7 +178,7 @@ export class UserService extends BaseService {
       logger.warn({ cacheError, userId }, "Valkey cache get failed");
     }
 
-    /** @type {import('../entities/user.entity.js').UserEntity | null} */
+    /** @type {import('../core/entities/user.entity.js').UserEntity | null} */
     let userEntity;
     try {
       userEntity = await this.userRepository.findOne(userId);
@@ -212,23 +190,19 @@ export class UserService extends BaseService {
       throw USER_NOT_FOUND(userId);
     }
 
-    const userModel = UserMapper.toModel(
-      userEntity,
-      config.security.encryptionKey,
-    );
-    const dto = UserMapper.toDto(userModel);
+    const userDto = UserMapper.toDto(userEntity);
 
     try {
       await this.userRepository.valkeyRepository.set(
         `user:${userId}`,
-        dto,
+        userDto,
         config.valkey.ttl,
       );
     } catch (cacheError) {
       logger.warn({ cacheError, userId }, "Valkey cache set failed");
     }
 
-    return dto;
+    return userDto;
   }
 
   /**
@@ -244,7 +218,7 @@ export class UserService extends BaseService {
       logger.warn({ cacheError }, "Valkey cache get all failed");
     }
 
-    /** @type {import('../entities/user.entity.js').UserEntity[]} */
+    /** @type {import('../core/entities/user.entity.js').UserEntity[]} */
     let entities;
     try {
       entities = await this.userRepository.findAll();
@@ -252,8 +226,7 @@ export class UserService extends BaseService {
       throw DATABASE_ERROR(/** @type {Error} */ (error));
     }
 
-    const models = UserMapper.toModels(entities, config.security.encryptionKey);
-    const dtos = UserMapper.toDtos(models);
+    const dtos = UserMapper.toDtos(entities);
 
     try {
       await this.userRepository.valkeyRepository.set(
@@ -282,7 +255,7 @@ export class UserService extends BaseService {
       },
       "Admin is granting permissions",
     );
-    /** @type {import('../entities/user.entity.js').UserEntity | null} */
+    /** @type {import('../core/entities/user.entity.js').UserEntity | null} */
     let userEntity;
     try {
       userEntity = await this.userRepository.findOne(data.user_id);
@@ -290,7 +263,7 @@ export class UserService extends BaseService {
       throw DATABASE_ERROR(/** @type {Error} */ (error));
     }
 
-    if (!userEntity) {
+    if (!userEntity || !userEntity.id) {
       throw USER_NOT_FOUND(data.user_id);
     }
 
@@ -306,16 +279,12 @@ export class UserService extends BaseService {
         logger.warn({ cacheError }, "Valkey cache invalidate failed");
       }
 
-      const updated = await this.userRepository.findOne(userEntity.id);
-      if (!updated) {
-        throw USER_NOT_FOUND(userEntity.id);
+      const updatedUserEntity = await this.userRepository.findOne(data.user_id);
+      if (!updatedUserEntity) {
+        throw USER_NOT_FOUND(data.user_id);
       }
 
-      const userModel = UserMapper.toModel(
-        updated,
-        config.security.encryptionKey,
-      );
-      return UserMapper.toDto(userModel);
+      return UserMapper.toDto(updatedUserEntity);
     } catch (error) {
       throw DATABASE_ERROR(/** @type {Error} */ (error));
     }
@@ -351,7 +320,7 @@ export class UserService extends BaseService {
    * @returns {Promise<import('../contracts/user.dto.js').UserResponseDto>}
    */
   async updateUser(userId, data) {
-    /** @type {import('../entities/user.entity.js').UserEntity | null} */
+    /** @type {import('../core/entities/user.entity.js').UserEntity | null} */
     const userEntity = await this.userRepository.findOne(userId);
     if (!userEntity) {
       throw USER_NOT_FOUND(userId);
@@ -359,27 +328,26 @@ export class UserService extends BaseService {
 
     if (data.email) {
       const emailHash = CryptoService.sha256Hash(data.email);
-      /** @type {import('../entities/user.entity.js').UserEntity | null} */
+      /** @type {import('../core/entities/user.entity.js').UserEntity | null} */
       const existingUser = await this.userRepository.findByEmailHash(emailHash);
       if (existingUser && existingUser.id !== userId) {
         throw USER_CONFLICT(data.email);
       }
     }
 
-    const model = UserMapper.toModel(userEntity, config.security.encryptionKey);
-    await model.updateFromDto(
+    const entity = await this.userRepository.findOne(userId);
+    if (!entity) {
+      throw USER_NOT_FOUND(userId);
+    }
+
+    await entity.updateFromDto(
       data,
       config.security.encryptionKey,
       CryptoService.hashPassword,
     );
 
-    const updateData = UserMapper.toEntity(
-      model,
-      config.security.encryptionKey,
-    );
-
     try {
-      await this.userRepository.update(userId, updateData);
+      await this.userRepository.update(userId, entity);
 
       try {
         await Promise.all([
