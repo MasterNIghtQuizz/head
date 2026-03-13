@@ -1,9 +1,10 @@
-// @ts-nocheck
+/* eslint-disable no-unused-vars */
 /**
  * @interface IUserRepository
  */
 export class IUserRepository {
   /** @type {import('common-valkey').ValkeyRepository} */
+  // @ts-ignore
   valkeyRepository;
 
   /**
