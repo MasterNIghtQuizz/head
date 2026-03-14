@@ -1,3 +1,4 @@
+import "reflect-metadata";
 import Fastify from "fastify";
 import logger from "common-logger";
 import { config } from "./config.js";
