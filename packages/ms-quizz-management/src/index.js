@@ -11,14 +11,14 @@ import { createKafkaClient, KafkaConsumer } from "common-kafka";
 import { UserEventsConsumer } from "./infrastructure/kafka/consumers/user-events.consumer.js";
 import { ValkeyService, ValkeyRepository } from "common-valkey";
 import { QuizService } from "./modules/quiz/services/quiz.service.js";
-import { QuizRepository } from "./modules/quiz/repositories/quiz.repository.js";
+import { TypeOrmQuizRepository as QuizRepository } from "./modules/quiz/infra/persistence/typeorm-quiz.repository.js";
 import { ControllerFactory } from "common-core";
 import { QuizController } from "./modules/quiz/controllers/quiz.controller.js";
 import { TestingController } from "./modules/quiz/controllers/testing.controller.js";
-import { ChoiceRepository } from "./modules/quiz/repositories/choice.repository.js";
+import { TypeOrmChoiceRepository as ChoiceRepository } from "./modules/quiz/infra/persistence/typeorm-choice.repository.js";
 import { ChoiceService } from "./modules/quiz/services/choice.service.js";
 import { QuestionService } from "./modules/quiz/services/question.service.js";
-import { QuestionRepository } from "./modules/quiz/repositories/question.repository.js";
+import { TypeOrmQuestionRepository as QuestionRepository } from "./modules/quiz/infra/persistence/typeorm-question.repository.js";
 import { ChoiceController } from "./modules/quiz/controllers/choice.controller.js";
 import { QuestionController } from "./modules/quiz/controllers/question.controller.js";
 import { ChoiceResponseSchema } from "./modules/quiz/contracts/choice.dto.js";
@@ -71,21 +71,25 @@ export async function createServer() {
     await kafkaConsumer.start();
   }
 
+  const questionRepository = new QuestionRepository(db.instance, valkeyRepository);
+  const quizRepository = new QuizRepository(db.instance, valkeyRepository);
+  const choiceRepository = new ChoiceRepository(db.instance, valkeyRepository);
+
   const quizService = new QuizService(
-    new QuizRepository(db.instance),
-    valkeyRepository,
+    quizRepository,
     valkeyTtl,
   );
   ControllerFactory.register(fastify, QuizController, [quizService]);
+
   const choiceService = new ChoiceService(
-    new ChoiceRepository(db.instance),
-    valkeyRepository,
+    choiceRepository,
+    questionRepository,
     valkeyTtl,
   );
   ControllerFactory.register(fastify, ChoiceController, [choiceService]);
+
   const questionService = new QuestionService(
-    new QuestionRepository(db.instance),
-    valkeyRepository,
+    questionRepository,
     valkeyTtl,
   );
   ControllerFactory.register(fastify, QuestionController, [questionService]);

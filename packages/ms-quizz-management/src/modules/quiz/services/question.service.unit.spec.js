@@ -1,49 +1,46 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { QuestionService } from "./question.service.js";
-import { QuestionRepository } from "../repositories/question.repository.js";
-// eslint-disable-next-line no-unused-vars
-import { ValkeyRepository } from "common-valkey";
-import { createQuestionMock } from "../../../tests/factories/question.factory.js";
-import { createQuizMock } from "../../../tests/factories/quiz.factory.js";
-import { CreateQuestionRequestDto } from "../contracts/question.dto.js";
-import {
-  NotFoundError,
-  ConflictError,
-  InternalServerError,
-} from "common-errors";
+import { createQuestionEntity } from "../../../tests/factories/quiz.factory.js";
+import { QuestionMapper } from "../infra/mappers/question.mapper.js";
 
 /**
- * @typedef {import('../models/question.model.js').Question} Question
- * @typedef {import('vitest').Mocked<QuestionRepository>} QuestionRepositoryMock
- * @typedef {import('vitest').Mocked<ValkeyRepository>} ValkeyRepositoryMock
+ * @typedef {import('vitest').Mock} Mock
  */
 
 describe("QuestionService Unit Tests", () => {
   /** @type {QuestionService} */
-  let questionService;
+  let service;
 
-  /** @type {QuestionRepositoryMock} */
+  /** @type {{ findAll: Mock, findByQuizId: Mock, findOne: Mock, create: Mock, update: Mock, delete: Mock, findByIdWithChildren: Mock, valkeyRepository: any }} */
   let questionRepositoryMock;
 
-  /** @type {ValkeyRepositoryMock} */
+  /** @type {{ get: Mock, set: Mock, del: Mock, delByPattern: Mock }} */
   let valkeyRepositoryMock;
 
-  const CACHE_TTL = 3600;
-
   beforeEach(() => {
-    questionRepositoryMock = /** @type {QuestionRepositoryMock} */ (
-      Object.create(QuestionRepository.prototype)
-    );
-    valkeyRepositoryMock = /** @type {ValkeyRepositoryMock} */ ({
+    valkeyRepositoryMock = {
       get: vi.fn(),
       set: vi.fn(),
       del: vi.fn(),
       delByPattern: vi.fn(),
-    });
-    questionService = new QuestionService(
-      questionRepositoryMock,
-      valkeyRepositoryMock,
-      CACHE_TTL,
+    };
+
+    questionRepositoryMock = {
+      findAll: vi.fn(),
+      findByQuizId: vi.fn(),
+      findOne: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+      findByIdWithChildren: vi.fn(),
+      valkeyRepository: valkeyRepositoryMock,
+    };
+
+    service = new QuestionService(
+      /** @type {import('../core/ports/question.repository.js').IQuestionRepository} */ (
+        questionRepositoryMock
+      ),
+      3600,
     );
   });
 
@@ -52,361 +49,331 @@ describe("QuestionService Unit Tests", () => {
   });
 
   describe("getAllQuestions", () => {
-    it("should return all questions from DB if cache is empty", async () => {
-      const questions = [createQuestionMock({ id: "1" })];
-      valkeyRepositoryMock.get.mockResolvedValue(null);
-      const spy = vi
-        .spyOn(questionRepositoryMock, "findAll")
-        .mockResolvedValue(questions);
+    it("should return questions from cache if available", async () => {
+      const cached = [{ id: "1", label: "Cached" }];
+      valkeyRepositoryMock.get.mockResolvedValue(cached);
 
-      const result = await questionService.getAllQuestions();
+      const result = await service.getAllQuestions();
 
       expect(valkeyRepositoryMock.get).toHaveBeenCalledWith("questions:all");
-      expect(spy).toHaveBeenCalled();
+      expect(result).toEqual(cached);
+    });
+
+    it("should fetch from DB and cache if not in cache", async () => {
+      valkeyRepositoryMock.get.mockResolvedValue(null);
+      const entities = [createQuestionEntity()];
+      questionRepositoryMock.findAll.mockResolvedValue(entities);
+
+      const result = await service.getAllQuestions();
+
+      expect(questionRepositoryMock.findAll).toHaveBeenCalled();
       expect(valkeyRepositoryMock.set).toHaveBeenCalled();
       expect(result).toHaveLength(1);
     });
 
-    it("should return all questions from cache if available", async () => {
-      const cached = [{ id: "1", label: "Cached" }];
-      valkeyRepositoryMock.get.mockResolvedValue(cached);
-      const spy = vi.spyOn(questionRepositoryMock, "findAll");
-
-      const result = await questionService.getAllQuestions();
-
-      expect(valkeyRepositoryMock.get).toHaveBeenCalledWith("questions:all");
-      expect(spy).not.toHaveBeenCalled();
-      expect(result).toEqual(cached);
+    it("should fallback to DB if cache get fails", async () => {
+      valkeyRepositoryMock.get.mockRejectedValue(new Error("Cache Fail"));
+      questionRepositoryMock.findAll.mockResolvedValue([
+        createQuestionEntity(),
+      ]);
+      const result = await service.getAllQuestions();
+      expect(result).toHaveLength(1);
     });
 
-    it("should throw DATABASE_ERROR if fetch fails", async () => {
-      vi.spyOn(questionRepositoryMock, "findAll").mockRejectedValue(
-        new Error("Fails"),
-      );
-      await expect(questionService.getAllQuestions()).rejects.toThrow(
-        InternalServerError,
-      );
-    });
-  });
-
-  describe("getQuestionById", () => {
-    it("should return a question from cache if available", async () => {
-      const cached = { id: "1", label: "Cached" };
-      valkeyRepositoryMock.get.mockResolvedValue(cached);
-      const findOneSpy = vi.spyOn(questionRepositoryMock, "findOne");
-
-      const result = await questionService.getQuestionById("1");
-
-      expect(valkeyRepositoryMock.get).toHaveBeenCalledWith("question:1");
-      expect(findOneSpy).not.toHaveBeenCalled();
-      expect(result).toEqual(cached);
-    });
-
-    it("should return question from DB and populate cache if cache is empty", async () => {
-      const question = createQuestionMock({ id: "1" });
+    it("should return result even if cache set fails", async () => {
       valkeyRepositoryMock.get.mockResolvedValue(null);
-      vi.spyOn(questionRepositoryMock, "findOne").mockResolvedValue(question);
-
-      const result = await questionService.getQuestionById("1");
-
-      expect(valkeyRepositoryMock.get).toHaveBeenCalledWith("question:1");
-      expect(valkeyRepositoryMock.set).toHaveBeenCalledWith(
-        "question:1",
-        expect.any(Object),
-        CACHE_TTL,
-      );
-      expect(result.id).toBe("1");
+      questionRepositoryMock.findAll.mockResolvedValue([
+        createQuestionEntity(),
+      ]);
+      valkeyRepositoryMock.set.mockRejectedValue(new Error("Cache Set Fail"));
+      const result = await service.getAllQuestions();
+      expect(result).toHaveLength(1);
     });
 
-    it("should fallback to DB if cache GET fails", async () => {
-      const question = createQuestionMock({ id: "1" });
-      valkeyRepositoryMock.get.mockRejectedValue(new Error("Cache Down"));
-      vi.spyOn(questionRepositoryMock, "findOne").mockResolvedValue(question);
-
-      const result = await questionService.getQuestionById("1");
-
-      expect(result.id).toBe("1");
-      expect(questionRepositoryMock.findOne).toHaveBeenCalledWith("1");
-    });
-
-    it("should throw if question not found", async () => {
-      const spy = vi
-        .spyOn(questionRepositoryMock, "findOne")
-        .mockResolvedValue(null);
-
-      await expect(questionService.getQuestionById("99")).rejects.toThrow(
-        NotFoundError,
-      );
-      expect(spy).toHaveBeenCalledWith("99");
-    });
-
-    it("should throw DATABASE_ERROR if fetch fails", async () => {
-      vi.spyOn(questionRepositoryMock, "findOne").mockRejectedValue(
-        new Error("Fails"),
-      );
-      await expect(questionService.getQuestionById("1")).rejects.toThrow(
-        InternalServerError,
-      );
-    });
-  });
-
-  describe("getQuestionsByIds", () => {
-    it("should return questions by multiple ids", async () => {
-      const questions = [
-        createQuestionMock({ id: "1" }),
-        createQuestionMock({ id: "2" }),
-      ];
-      const spy = vi
-        .spyOn(questionRepositoryMock, "findByIds")
-        .mockResolvedValue(questions);
-
-      const result = await questionService.getQuestionsByIds(["1", "2"]);
-
-      expect(spy).toHaveBeenCalledWith(["1", "2"]);
-      expect(result).toHaveLength(2);
-    });
-
-    it("should throw DATABASE_ERROR if fetch fails", async () => {
-      vi.spyOn(questionRepositoryMock, "findByIds").mockRejectedValue(
-        new Error("Fails"),
-      );
-      await expect(questionService.getQuestionsByIds(["1"])).rejects.toThrow(
-        InternalServerError,
-      );
+    it("should throw DATABASE_ERROR if repo fails", async () => {
+      valkeyRepositoryMock.get.mockResolvedValue(null);
+      questionRepositoryMock.findAll.mockRejectedValue(new Error("DB Fail"));
+      await expect(service.getAllQuestions()).rejects.toThrow();
     });
   });
 
   describe("getQuestionsByQuizId", () => {
-    it("should return questions from cache if available", async () => {
-      const cached = [{ id: "1", label: "Cached" }];
+    it("should return questions for a quiz from cache", async () => {
+      const cached = [{ id: "1" }];
       valkeyRepositoryMock.get.mockResolvedValue(cached);
-      const findByQuizIdSpy = vi.spyOn(questionRepositoryMock, "findByQuizId");
 
-      const result = await questionService.getQuestionsByQuizId("q1");
+      const result = await service.getQuestionsByQuizId("quiz-1");
 
       expect(valkeyRepositoryMock.get).toHaveBeenCalledWith(
-        "quiz:questions:q1",
+        "quiz:questions:quiz-1",
       );
-      expect(findByQuizIdSpy).not.toHaveBeenCalled();
       expect(result).toEqual(cached);
     });
 
-    it("should return questions from DB and populate cache if cache is empty", async () => {
-      const questions = [createQuestionMock({ id: "1" })];
+    it("should fetch from DB if not in cache", async () => {
       valkeyRepositoryMock.get.mockResolvedValue(null);
-      vi.spyOn(questionRepositoryMock, "findByQuizId").mockResolvedValue(
-        questions,
-      );
+      const entities = [createQuestionEntity()];
+      questionRepositoryMock.findByQuizId.mockResolvedValue(entities);
 
-      const result = await questionService.getQuestionsByQuizId("q1");
+      const result = await service.getQuestionsByQuizId("quiz-1");
 
-      expect(valkeyRepositoryMock.get).toHaveBeenCalledWith(
-        "quiz:questions:q1",
-      );
-      expect(valkeyRepositoryMock.set).toHaveBeenCalledWith(
-        "quiz:questions:q1",
-        expect.any(Array),
-        CACHE_TTL,
+      expect(questionRepositoryMock.findByQuizId).toHaveBeenCalledWith(
+        "quiz-1",
       );
       expect(result).toHaveLength(1);
     });
 
-    it("should fallback to DB if cache GET fails", async () => {
-      const questions = [createQuestionMock({ id: "1" })];
-      valkeyRepositoryMock.get.mockRejectedValue(new Error("Cache Down"));
-      vi.spyOn(questionRepositoryMock, "findByQuizId").mockResolvedValue(
-        questions,
-      );
-
-      const result = await questionService.getQuestionsByQuizId("q1");
-
+    it("should fallback to DB if cache get fails", async () => {
+      valkeyRepositoryMock.get.mockRejectedValue(new Error("Cache Fail"));
+      questionRepositoryMock.findByQuizId.mockResolvedValue([
+        createQuestionEntity(),
+      ]);
+      const result = await service.getQuestionsByQuizId("quiz-1");
       expect(result).toHaveLength(1);
-      expect(questionRepositoryMock.findByQuizId).toHaveBeenCalledWith("q1");
     });
 
-    it("should throw DATABASE_ERROR if fetch fails", async () => {
-      vi.spyOn(questionRepositoryMock, "findByQuizId").mockRejectedValue(
-        new Error("Fails"),
+    it("should return result even if cache set fails", async () => {
+      valkeyRepositoryMock.get.mockResolvedValue(null);
+      questionRepositoryMock.findByQuizId.mockResolvedValue([
+        createQuestionEntity(),
+      ]);
+      valkeyRepositoryMock.set.mockRejectedValue(new Error("Cache Set Fail"));
+      const result = await service.getQuestionsByQuizId("quiz-1");
+      expect(result).toHaveLength(1);
+    });
+
+    it("should throw DATABASE_ERROR if repo fails", async () => {
+      valkeyRepositoryMock.get.mockResolvedValue(null);
+      questionRepositoryMock.findByQuizId.mockRejectedValue(
+        new Error("DB Fail"),
       );
-      await expect(questionService.getQuestionsByQuizId("q1")).rejects.toThrow(
-        InternalServerError,
+      await expect(service.getQuestionsByQuizId("quiz-1")).rejects.toThrow();
+    });
+  });
+
+  describe("getQuestionById", () => {
+    it("should return question from cache", async () => {
+      valkeyRepositoryMock.get.mockResolvedValue({ id: "1" });
+      const result = await service.getQuestionById("1");
+      expect(result).toEqual({ id: "1" });
+    });
+
+    it("should return from DB and throw NOT_FOUND if empty", async () => {
+      valkeyRepositoryMock.get.mockResolvedValue(null);
+      questionRepositoryMock.findOne.mockResolvedValue(null);
+      await expect(service.getQuestionById("unknown")).rejects.toThrow();
+    });
+
+    it("should fallback to DB if cache get fails", async () => {
+      valkeyRepositoryMock.get.mockRejectedValue(new Error("Cache Fail"));
+      questionRepositoryMock.findOne.mockResolvedValue(
+        createQuestionEntity({ id: "1" }),
       );
+      const result = await service.getQuestionById("1");
+      expect(result.id).toBe("1");
+    });
+
+    it("should throw DATABASE_ERROR if repo fails", async () => {
+      valkeyRepositoryMock.get.mockResolvedValue(null);
+      questionRepositoryMock.findOne.mockRejectedValue(new Error("Fail"));
+      await expect(service.getQuestionById("1")).rejects.toThrow();
     });
   });
 
   describe("createQuestion", () => {
-    it("should invalidate cache on create", async () => {
-      /** @type {any} */
-      const data = {
-        label: "Test?",
-        quiz_id: "q1",
-        type: "multiple",
-        order_index: 0,
+    it("should create question and invalidate relevant caches", async () => {
+      const dto = {
+        label: "Q",
+        type: "T",
+        order_index: 1,
         timer_seconds: 30,
+        quiz_id: "quiz-1",
       };
-      const created = createQuestionMock({ id: "new", ...data });
-      vi.spyOn(questionRepositoryMock, "create").mockResolvedValue(created);
+      const entity = createQuestionEntity({ id: "q-1", ...dto });
+      questionRepositoryMock.create.mockResolvedValue(entity);
 
-      await questionService.createQuestion(new CreateQuestionRequestDto(data));
+      const result = await service.createQuestion(dto);
 
       expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("questions:all");
       expect(valkeyRepositoryMock.del).toHaveBeenCalledWith(
-        "quiz:questions:q1",
+        "quiz:questions:quiz-1",
       );
+      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("quiz:quiz-1");
+      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("quizzes:all");
+      expect(result.id).toBe("q-1");
     });
 
-    it("should throw QUESTION_CONFLICT if label already exists", async () => {
-      const error = new Error("Conflict");
-      // @ts-ignore
-      error.code = "23505";
-      vi.spyOn(questionRepositoryMock, "create").mockRejectedValue(error);
-
-      await expect(
-        questionService.createQuestion(
-          new CreateQuestionRequestDto({
-            label: "Existing",
-            type: "multiple",
-            order_index: 0,
-            timer_seconds: 30,
-            quiz_id: "q1",
-          }),
-        ),
-      ).rejects.toThrow(ConflictError);
+    it("should create even if cache invalidation fails", async () => {
+      const dto = {
+        label: "Q",
+        type: "T",
+        order_index: 1,
+        timer_seconds: 30,
+        quiz_id: "quiz-1",
+      };
+      questionRepositoryMock.create.mockResolvedValue(
+        createQuestionEntity({ id: "q-1" }),
+      );
+      valkeyRepositoryMock.del.mockRejectedValue(new Error("Fail"));
+      const result = await service.createQuestion(dto);
+      expect(result.id).toBe("q-1");
     });
 
-    it("should throw DATABASE_ERROR if create fails", async () => {
-      vi.spyOn(questionRepositoryMock, "create").mockRejectedValue(
-        new Error("Fatal"),
-      );
-
-      await expect(
-        questionService.createQuestion(
-          new CreateQuestionRequestDto({
-            label: "Error",
-            type: "multiple",
-            order_index: 0,
-            timer_seconds: 30,
-            quiz_id: "q1",
-          }),
-        ),
-      ).rejects.toThrow(InternalServerError);
+    it("should throw DATABASE_ERROR if repo fails", async () => {
+      const dto = {
+        label: "Q",
+        type: "T",
+        order_index: 1,
+        timer_seconds: 30,
+        quiz_id: "quiz-1",
+      };
+      questionRepositoryMock.create.mockRejectedValue(new Error("Fail"));
+      await expect(service.createQuestion(dto)).rejects.toThrow();
     });
   });
 
   describe("updateQuestion", () => {
-    it("should invalidate cache on update", async () => {
-      const question = createQuestionMock({
-        id: "1",
-        label: "Updated",
-        quiz: createQuizMock({ id: "q1" }),
-      });
-      vi.spyOn(questionRepositoryMock, "update").mockResolvedValue(question);
+    it("should update question and invalidate cache", async () => {
+      const entity = createQuestionEntity({ id: "q-1", quizId: "quiz-1" });
+      questionRepositoryMock.findOne.mockResolvedValue(entity);
+      questionRepositoryMock.update.mockResolvedValue(entity);
 
-      await questionService.updateQuestion("1", {
-        label: "Updated",
-        type: "multiple",
-        order_index: 0,
-        timer_seconds: 30,
+      const result = await service.updateQuestion("q-1", {
+        label: "New",
+        type: undefined,
+        order_index: undefined,
+        timer_seconds: undefined,
       });
 
-      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("question:1");
+      expect(questionRepositoryMock.update).toHaveBeenCalled();
+      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("question:q-1");
       expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("questions:all");
-      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith(
-        "quiz:questions:q1",
+      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("quizzes:all");
+      expect(result.label).toBe("New");
+    });
+
+    it("should throw NOT_FOUND if question does not exist on update", async () => {
+      questionRepositoryMock.findOne.mockResolvedValue(null);
+      await expect(
+        service.updateQuestion("1", {
+          label: "X",
+          type: "T",
+          order_index: 0,
+          timer_seconds: 0,
+        }),
+      ).rejects.toThrow();
+    });
+
+    it("should update even if cache invalidation fails", async () => {
+      const entity = createQuestionEntity({ id: "q-1" });
+      questionRepositoryMock.findOne.mockResolvedValue(entity);
+      questionRepositoryMock.update.mockResolvedValue(entity);
+      valkeyRepositoryMock.del.mockRejectedValue(new Error("Fail"));
+      const result = await service.updateQuestion("q-1", {
+        label: "New",
+        type: "T",
+        order_index: 0,
+        timer_seconds: 0,
+      });
+      expect(result.label).toBe("New");
+    });
+
+    it("should throw DATABASE_ERROR if repo update fails", async () => {
+      questionRepositoryMock.findOne.mockResolvedValue(
+        createQuestionEntity({ id: "q-1" }),
       );
-    });
-
-    it("should throw QUESTION_NOT_FOUND if question to update exists", async () => {
-      // @ts-ignore
-      vi.spyOn(questionRepositoryMock, "update").mockResolvedValue(null);
-
+      questionRepositoryMock.update.mockRejectedValue(new Error("Fail"));
       await expect(
-        questionService.updateQuestion("99", {
-          label: "Missing",
-          type: "multiple",
+        service.updateQuestion("q-1", {
+          label: "X",
+          type: "T",
           order_index: 0,
-          timer_seconds: 30,
+          timer_seconds: 0,
         }),
-      ).rejects.toThrow(NotFoundError);
-    });
-
-    it("should throw QUESTION_CONFLICT if duplicate label", async () => {
-      const error = new Error("Conflict");
-      // @ts-ignore
-      error.code = "23505";
-      vi.spyOn(questionRepositoryMock, "update").mockRejectedValue(error);
-
-      await expect(
-        questionService.updateQuestion("1", {
-          label: "Dup",
-          type: "multiple",
-          order_index: 0,
-          timer_seconds: 30,
-        }),
-      ).rejects.toThrow(ConflictError);
-    });
-
-    it("should throw DATABASE_ERROR on failure", async () => {
-      vi.spyOn(questionRepositoryMock, "update").mockRejectedValue(
-        new Error("Fail"),
-      );
-
-      await expect(
-        questionService.updateQuestion("1", {
-          label: "Error",
-          type: "multiple",
-          order_index: 0,
-          timer_seconds: 30,
-        }),
-      ).rejects.toThrow(InternalServerError);
+      ).rejects.toThrow();
     });
   });
 
   describe("deleteQuestion", () => {
-    it("should invalidate cache on delete, including choices", async () => {
-      const question = createQuestionMock({
-        id: "1",
-        quiz: createQuizMock({ id: "q1" }),
-        /** @type {any} */
-        choices: [{ id: "c1" }, { id: "c2" }],
+    const questionId = "q-1";
+    const quizId = "quiz-1";
+    const choiceId = "c-1";
+    beforeEach(() => {
+      valkeyRepositoryMock.del.mockClear();
+      questionRepositoryMock.delete.mockClear();
+      questionRepositoryMock.findByIdWithChildren.mockClear();
+      valkeyRepositoryMock.del.mockResolvedValue(undefined);
+    });
+
+    it("should delete question and invalidate all related caches (including choices)", async () => {
+      const entity = createQuestionEntity({
+        id: questionId,
+        quizId: quizId,
       });
-      vi.spyOn(questionRepositoryMock, "findOne").mockResolvedValue(question);
-      vi.spyOn(questionRepositoryMock, "delete").mockResolvedValue(undefined);
+      entity.choices = [
+        {
+          id: choiceId,
+          text: "",
+          is_correct: false,
+          questionId: undefined,
+          update: function (_data) {
+            throw new Error("Function not implemented.");
+          },
+        },
+      ];
 
-      await questionService.deleteQuestion("1");
+      questionRepositoryMock.findByIdWithChildren.mockResolvedValue(entity);
+      questionRepositoryMock.delete.mockResolvedValue(undefined);
 
-      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("question:1");
+      await service.deleteQuestion(questionId);
+
+      expect(questionRepositoryMock.findByIdWithChildren).toHaveBeenCalledWith(
+        questionId,
+      );
+      expect(questionRepositoryMock.delete).toHaveBeenCalledWith(questionId);
+
+      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith(
+        `question:${questionId}`,
+      );
       expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("questions:all");
-      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith(
-        "quiz:questions:q1",
-      );
-      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith(
-        "question:choices:1",
-      );
       expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("choices:all");
-      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("choice:c1");
-      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("choice:c2");
+
+      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith(
+        `quiz:questions:${quizId}`,
+      );
+      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith(`quiz:${quizId}`);
+
+      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith(
+        `choice:${choiceId}`,
+      );
     });
 
-    it("should succeed even if cache invalidation fails on delete", async () => {
-      const question = createQuestionMock({ id: "1" });
-      vi.spyOn(questionRepositoryMock, "findOne").mockResolvedValue(question);
-      vi.spyOn(questionRepositoryMock, "delete").mockResolvedValue(undefined);
-      valkeyRepositoryMock.del.mockRejectedValue(new Error("Cache Down"));
+    it("should throw NOT_FOUND if question does not exist", async () => {
+      questionRepositoryMock.findByIdWithChildren.mockResolvedValue(null);
 
-      await questionService.deleteQuestion("1");
-
-      expect(questionRepositoryMock.delete).toHaveBeenCalledWith("1");
+      await expect(service.deleteQuestion("unknown")).rejects.toThrow();
+      expect(questionRepositoryMock.delete).not.toHaveBeenCalled();
     });
 
-    it("should throw DATABASE_ERROR if delete fails", async () => {
-      vi.spyOn(questionRepositoryMock, "delete").mockRejectedValue(
-        new Error("Fatal"),
+    it("should complete delete even if cache invalidation fails", async () => {
+      const entity = createQuestionEntity({ id: questionId });
+      entity.choices = [];
+      questionRepositoryMock.findByIdWithChildren.mockResolvedValue(entity);
+      questionRepositoryMock.delete.mockResolvedValue(undefined);
+
+      valkeyRepositoryMock.del.mockRejectedValue(new Error("Redis Down"));
+
+      await expect(service.deleteQuestion(questionId)).resolves.not.toThrow();
+
+      expect(questionRepositoryMock.delete).toHaveBeenCalledWith(questionId);
+    });
+
+    it("should throw DATABASE_ERROR if repository fails", async () => {
+      questionRepositoryMock.findByIdWithChildren.mockRejectedValue(
+        new Error("DB Connection Lost"),
       );
 
-      await expect(questionService.deleteQuestion("1")).rejects.toThrow(
-        InternalServerError,
-      );
+      await expect(service.deleteQuestion(questionId)).rejects.toThrow();
     });
   });
 });

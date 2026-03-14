@@ -1,15 +1,15 @@
-import { Choice } from "../../modules/quiz/models/choice.model.js";
+import { ChoiceEntity } from "../../modules/quiz/core/entities/choice.entity.js";
 
 /**
- * @param {Partial<Choice>} overrides
- * @returns {Choice}
+ * @param {Partial<ChoiceEntity>} overrides
+ * @returns {ChoiceEntity}
  */
 export const createChoiceMock = (overrides = {}) => {
-  const choice = new Choice({
-    id: "1a2b3c4d-5e6f-7g8h-9i0j-1k2l3m4n5o6p",
+  return new ChoiceEntity({
+    id: "5588294a-8f35-430c-ab23-1f19f6880da3",
     text: "Paris",
     is_correct: true,
+    questionId: "4478294a-8f35-430c-ab23-1f19f6880da3",
     ...overrides,
   });
-  return choice;
 };

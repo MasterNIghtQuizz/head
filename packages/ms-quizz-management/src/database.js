@@ -5,9 +5,9 @@ import {
   ProcessedEventEntity,
 } from "common-database";
 import { config } from "./config.js";
-import { QuizEntity } from "./modules/quiz/entities/quiz.entity.js";
-import { QuestionEntity } from "./modules/quiz/entities/question.entity.js";
-import { ChoiceEntity } from "./modules/quiz/entities/choice.entity.js";
+import { TypeOrmQuizModel as QuizEntity } from "./modules/quiz/infra/models/quiz.model.js";
+import { TypeOrmQuestionModel as QuestionEntity } from "./modules/quiz/infra/models/question.model.js";
+import { TypeOrmChoiceModel as ChoiceEntity } from "./modules/quiz/infra/models/choice.model.js";
 import { CreateProcessedEventsTable1710000000000 } from "./migrations/1710000000000-CreateProcessedEventsTable.js";
 import { CreateQuizTables1710000000001 } from "./migrations/1710000000001-CreateQuizTables.js";
 

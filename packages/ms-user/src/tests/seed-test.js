@@ -6,12 +6,10 @@ import { config } from "../config.js";
  * @param {import('typeorm').DataSource} datasource
  */
 export async function seedTestData(datasource) {
-  // Truncate users table
   await datasource.query("TRUNCATE TABLE users CASCADE");
 
   const secretKey = config.security.encryptionKey;
 
-  // Create an admin user
   const adminEmail = "admin@test.com";
   const adminPassword = await CryptoService.hashPassword(adminEmail);
   const adminEmailHash = CryptoService.sha256Hash(adminEmail);
@@ -28,7 +26,6 @@ export async function seedTestData(datasource) {
     ],
   );
 
-  // Create a regular user
   const userEmail = "user@test.com";
   const userPassword = await CryptoService.hashPassword("user123");
   const userEmailHash = CryptoService.sha256Hash(userEmail);

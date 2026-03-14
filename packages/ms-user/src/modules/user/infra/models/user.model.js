@@ -1,4 +1,4 @@
-import { EntitySchema } from "common-database";
+import { EntitySchema } from "typeorm";
 
 export class UserModel {
   constructor() {
