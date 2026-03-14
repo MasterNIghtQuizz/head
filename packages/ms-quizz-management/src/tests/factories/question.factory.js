@@ -1,17 +1,18 @@
-import { Question } from "../../modules/quiz/models/question.model.js";
+import { QuestionEntity } from "../../modules/quiz/core/entities/question.entity.js";
 
 /**
- * @param {Partial<Question>} overrides
- * @returns {Question}
+ * @param {Partial<QuestionEntity>} overrides
+ * @returns {QuestionEntity}
  */
 export const createQuestionMock = (overrides = {}) => {
-  const question = new Question({
-    id: "9f8e7d6c-5b4a-3210-9f8e-7d6c5b4a3210",
+  return new QuestionEntity({
+    id: "4478294a-8f35-430c-ab23-1f19f6880da3",
     label: "What is the capital of France?",
-    type: "MCQ",
+    type: "MULTIPLE_CHOICE",
     order_index: 0,
     timer_seconds: 30,
+    quizId: "3368294a-8f35-430c-ab23-1f19f6880da3",
+    choices: [],
     ...overrides,
   });
-  return question;
 };

@@ -1,25 +1,22 @@
 import { BaseService } from "common-core";
 import logger from "common-logger";
-import { QuestionMapper } from "../mappers/question.mapper.js";
-import {
-  QUESTION_NOT_FOUND,
-  QUESTION_CONFLICT,
-} from "../errors/question.errors.js";
+import { QUESTION_NOT_FOUND } from "../errors/question.errors.js";
 import { DATABASE_ERROR } from "../errors/internal.errors.js";
 import { BaseError } from "common-errors";
+import { QuestionEntity } from "../core/entities/question.entity.js";
+import { QuestionMapper } from "../infra/mappers/question.mapper.js";
 
 export class QuestionService extends BaseService {
   /**
-   * @param {import('../repositories/question.repository.js').QuestionRepository} questionRepository
-   * @param {import('common-valkey').ValkeyRepository} valkeyRepository
+   * @param {import('../core/ports/question.repository.js').IQuestionRepository} questionRepository
    * @param {number} cacheTtl
    */
-  constructor(questionRepository, valkeyRepository, cacheTtl) {
+  constructor(questionRepository, cacheTtl) {
     super();
-    /** @type {import('../repositories/question.repository.js').QuestionRepository} */
+    /** @type {import('../core/ports/question.repository.js').IQuestionRepository} */
     this.questionRepository = questionRepository;
     /** @type {import('common-valkey').ValkeyRepository} */
-    this.valkeyRepository = valkeyRepository;
+    this.valkeyRepository = questionRepository.valkeyRepository;
     /** @type {number} */
     this.cacheTtl = cacheTtl;
   }
@@ -41,11 +38,11 @@ export class QuestionService extends BaseService {
     }
 
     try {
-      const questions = await this.questionRepository.findAll();
-      const response = questions.map(QuestionMapper.toResponse);
+      const entities = await this.questionRepository.findAll();
+      const dtos = QuestionMapper.toDtos(entities);
 
       try {
-        await this.valkeyRepository.set(cacheKey, response, this.cacheTtl);
+        await this.valkeyRepository.set(cacheKey, dtos, this.cacheTtl);
       } catch (cacheError) {
         logger.warn(
           { error: /** @type {Error} */ (cacheError) },
@@ -53,12 +50,58 @@ export class QuestionService extends BaseService {
         );
       }
 
-      logger.info({ count: questions.length }, "Questions fetched from DB");
-      return response;
+      logger.info({ count: entities.length }, "Questions fetched from DB");
+      return dtos;
     } catch (error) {
       logger.error(
         { error: /** @type {Error} */ (error) },
         "Error fetching all questions from DB",
+      );
+      throw DATABASE_ERROR(/** @type {Error} */ (error));
+    }
+  }
+
+  /**
+   * @param {string} quizId
+   */
+  async getQuestionsByQuizId(quizId) {
+    logger.info({ quizId }, "Fetching questions by quizId...");
+    const cacheKey = `quiz:questions:${quizId}`;
+    try {
+      const cached = await this.valkeyRepository.get(cacheKey);
+      if (cached) {
+        logger.info({ quizId }, "Questions fetched from cache");
+        return cached;
+      }
+    } catch (error) {
+      logger.warn(
+        { error: /** @type {Error} */ (error), quizId },
+        "Valkey cache get failed, falling back to DB",
+      );
+    }
+
+    try {
+      const entities = await this.questionRepository.findByQuizId(quizId);
+      const dtos = QuestionMapper.toDtos(entities);
+
+      try {
+        await this.valkeyRepository.set(cacheKey, dtos, this.cacheTtl);
+      } catch (cacheError) {
+        logger.warn(
+          { error: /** @type {Error} */ (cacheError), quizId },
+          "Valkey cache set failed",
+        );
+      }
+
+      logger.info(
+        { quizId, count: entities.length },
+        "Questions fetched from DB",
+      );
+      return dtos;
+    } catch (error) {
+      logger.error(
+        { error: /** @type {Error} */ (error), quizId },
+        "Error fetching questions by quizId from DB",
       );
       throw DATABASE_ERROR(/** @type {Error} */ (error));
     }
@@ -84,15 +127,15 @@ export class QuestionService extends BaseService {
     }
 
     try {
-      const question = await this.questionRepository.findOne(id);
-      if (!question) {
+      const entity = await this.questionRepository.findOne(id);
+      if (!entity) {
         logger.warn({ id }, "Question not found in DB");
         throw QUESTION_NOT_FOUND(id);
       }
 
-      const response = QuestionMapper.toResponse(question);
+      const dto = QuestionMapper.toDto(entity);
       try {
-        await this.valkeyRepository.set(cacheKey, response, this.cacheTtl);
+        await this.valkeyRepository.set(cacheKey, dto, this.cacheTtl);
       } catch (cacheError) {
         logger.warn(
           { error: /** @type {Error} */ (cacheError), id },
@@ -101,7 +144,7 @@ export class QuestionService extends BaseService {
       }
 
       logger.info({ id }, "Question fetched from DB");
-      return response;
+      return dto;
     } catch (error) {
       if (/** @type {BaseError} */ (error).statusCode) {
         throw error;
@@ -115,97 +158,39 @@ export class QuestionService extends BaseService {
   }
 
   /**
-   * @param {string[]} ids
-   */
-  async getQuestionsByIds(ids) {
-    logger.info({ ids }, "Fetching questions by ids...");
-    try {
-      const questions = await this.questionRepository.findByIds(ids);
-      logger.info({ count: questions.length }, "Questions fetched by ids");
-      return questions.map(QuestionMapper.toResponse);
-    } catch (error) {
-      logger.error(
-        { error: /** @type {Error} */ (error), ids },
-        "Error fetching questions by ids",
-      );
-      throw DATABASE_ERROR(/** @type {Error} */ (error));
-    }
-  }
-
-  /**
-   * @param {string} quizId
-   */
-  async getQuestionsByQuizId(quizId) {
-    logger.info({ quizId }, "Fetching questions for quiz...");
-    const cacheKey = `quiz:questions:${quizId}`;
-    try {
-      const cached = await this.valkeyRepository.get(cacheKey);
-      if (cached) {
-        logger.info({ quizId }, "Questions for quiz fetched from cache");
-        return cached;
-      }
-    } catch (error) {
-      logger.warn(
-        { error: /** @type  {Error} */ (error), quizId },
-        "Valkey cache get failed, falling back to DB",
-      );
-    }
-
-    try {
-      const questions = await this.questionRepository.findByQuizId(quizId);
-      const response = questions.map(QuestionMapper.toResponse);
-
-      try {
-        await this.valkeyRepository.set(cacheKey, response, this.cacheTtl);
-      } catch (cacheError) {
-        logger.warn(
-          { error: /** @type {Error} */ (cacheError), quizId },
-          "Valkey cache set failed",
-        );
-      }
-
-      logger.info(
-        { quizId, count: questions.length },
-        "Questions for quiz fetched from DB",
-      );
-      return response;
-    } catch (error) {
-      logger.error(
-        { error: /** @type {Error} */ (error), quizId },
-        "Error fetching questions for quiz from DB",
-      );
-      throw DATABASE_ERROR(/** @type {Error} */ (error));
-    }
-  }
-
-  /**
    * @param {import('../contracts/question.dto.js').CreateQuestionRequestDto} data
    */
   async createQuestion(data) {
     logger.info({ label: data.label }, "Creating new question...");
     try {
-      const question = await this.questionRepository.create(data);
+      const entity = new QuestionEntity({
+        label: data.label,
+        type: data.type,
+        order_index: data.order_index,
+        timer_seconds: data.timer_seconds,
+        quizId: data.quiz_id,
+      });
+      const createdEntity = await this.questionRepository.create(entity);
       try {
         await Promise.all([
           this.valkeyRepository.del("questions:all"),
           data.quiz_id
             ? this.valkeyRepository.del(`quiz:questions:${data.quiz_id}`)
             : Promise.resolve(),
+          data.quiz_id
+            ? this.valkeyRepository.del(`quiz:${data.quiz_id}`)
+            : Promise.resolve(),
+          this.valkeyRepository.del("quizzes:all"),
         ]);
       } catch (cacheError) {
         logger.warn(
           { error: /** @type {Error} */ (cacheError) },
-          "Valkey cache invalidation failed during create",
+          "Valkey cache invalidation failed",
         );
       }
-      logger.info({ id: question.id }, "Question created successfully");
-      return QuestionMapper.toResponse(question);
+      logger.info({ id: createdEntity.id }, "Question created successfully");
+      return QuestionMapper.toDto(createdEntity);
     } catch (error) {
-      // @ts-ignore
-      if (error?.code === "23505") {
-        logger.warn({ label: data.label }, "Question conflict");
-        throw QUESTION_CONFLICT(data.label);
-      }
       logger.error(
         { error: /** @type {Error} */ (error), data },
         "Error creating question",
@@ -221,25 +206,33 @@ export class QuestionService extends BaseService {
   async updateQuestion(id, data) {
     logger.info({ id }, "Updating question...");
     try {
-      const question = await this.questionRepository.update(id, data);
-      if (!question) {
+      const entity = await this.questionRepository.findOne(id);
+      if (!entity) {
         logger.warn({ id }, "Question not found for update");
         throw QUESTION_NOT_FOUND(id);
       }
 
-      const response = QuestionMapper.toResponse(question);
+      entity.update(data);
+      const updatedEntity = await this.questionRepository.update(id, entity);
+      if (!updatedEntity) {
+        throw QUESTION_NOT_FOUND(id);
+      }
+
+      const dto = QuestionMapper.toDto(updatedEntity);
       try {
         const invalidations = [
           this.valkeyRepository.del(`question:${id}`),
           this.valkeyRepository.del("questions:all"),
+          this.valkeyRepository.del("quizzes:all"),
         ];
-
-        if (question.quiz?.id) {
+        if (updatedEntity.quizId) {
           invalidations.push(
-            this.valkeyRepository.del(`quiz:questions:${question.quiz.id}`),
+            this.valkeyRepository.del(`quiz:questions:${updatedEntity.quizId}`),
+          );
+          invalidations.push(
+            this.valkeyRepository.del(`quiz:${updatedEntity.quizId}`),
           );
         }
-
         await Promise.all(invalidations);
       } catch (cacheError) {
         logger.warn(
@@ -247,17 +240,11 @@ export class QuestionService extends BaseService {
           "Valkey cache invalidation failed during update",
         );
       }
-
       logger.info({ id }, "Question updated successfully");
-      return response;
+      return dto;
     } catch (error) {
       if (/** @type {BaseError} */ (error).statusCode) {
         throw error;
-      }
-      // @ts-ignore
-      if (error?.code === "23505") {
-        logger.warn({ id, label: data.label }, "Question update conflict");
-        throw QUESTION_CONFLICT(data.label ?? "unknown");
       }
       logger.error(
         { error: /** @type {Error} */ (error), id, data },
@@ -273,41 +260,38 @@ export class QuestionService extends BaseService {
   async deleteQuestion(id) {
     logger.info({ id }, "Deleting question...");
     try {
-      const question = await this.questionRepository.findOne(id);
+      const entity = await this.questionRepository.findByIdWithChildren(id);
+      if (!entity) {
+        logger.warn({ id }, "Question not found for deletion");
+        throw QUESTION_NOT_FOUND(id);
+      }
       await this.questionRepository.delete(id);
-
-      try {
-        const invalidations = [
-          this.valkeyRepository.del(`question:${id}`),
-          this.valkeyRepository.del("questions:all"),
-          this.valkeyRepository.del(`question:choices:${id}`),
-          this.valkeyRepository.del("choices:all"),
-        ];
-
-        if (question?.quiz?.id) {
-          invalidations.push(
-            this.valkeyRepository.del(`quiz:questions:${question.quiz.id}`),
-          );
-        }
-
-        if (question?.choices) {
-          for (const choice of question.choices) {
-            invalidations.push(
-              this.valkeyRepository.del(`choice:${choice.id}`),
-            );
-          }
-        }
-
-        await Promise.all(invalidations);
-      } catch (cacheError) {
-        logger.warn(
-          { error: /** @type {Error} */ (cacheError), id },
-          "Valkey cache invalidation failed during delete",
-        );
+      const invalidations = [
+        this.valkeyRepository.del(`question:${id}`),
+        this.valkeyRepository.del("questions:all"),
+        this.valkeyRepository.del(`question:choices:${id}`),
+        this.valkeyRepository.del("choices:all"),
+        this.valkeyRepository.del("quizzes:all"),
+      ];
+      if (entity.choices && entity.choices.length > 0) {
+        entity.choices.forEach((choice) => {
+          invalidations.push(this.valkeyRepository.del(`choice:${choice.id}`));
+        });
       }
 
+      if (entity.quizId) {
+        invalidations.push(
+          this.valkeyRepository.del(`quiz:questions:${entity.quizId}`),
+        );
+        invalidations.push(this.valkeyRepository.del(`quiz:${entity.quizId}`));
+      }
+
+      await Promise.all(invalidations);
       logger.info({ id }, "Question deleted successfully");
     } catch (error) {
+      if (/** @type {BaseError} */ (error).statusCode) {
+        throw error;
+      }
       logger.error(
         { error: /** @type {Error} */ (error), id },
         "Error deleting question",

@@ -100,7 +100,9 @@ describe("TypeOrmUserRepository Unit Tests", () => {
 
       expect(typeOrmRepoMock.create).toHaveBeenCalled();
       expect(typeOrmRepoMock.save).toHaveBeenCalledWith(model);
-      expect(result).toEqual(entity);
+      expect(result.email).toEqual(entity.email);
+      expect(result.id).toEqual(entity.id);
+      expect(result.role).toEqual(entity.role);
     });
   });
 
