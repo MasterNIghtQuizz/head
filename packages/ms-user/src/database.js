@@ -1,3 +1,5 @@
+import "reflect-metadata";
+import logger from "common-logger";
 import {
   DatabaseContext,
   TypeORMStrategy,
@@ -28,6 +30,10 @@ export const initDatabase = async () => {
       CreateUsersTable1710000000001,
     ],
   });
+
+  logger.info({ 
+    entityNames: [TypeOrmUserModel, ProcessedEventEntity].map(e => e.options.name) 
+  }, "Entities passed to db.connect");
 
   if (config.valkey) {
     await valkey.connect();

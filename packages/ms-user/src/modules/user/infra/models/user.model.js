@@ -1,4 +1,4 @@
-import { EntitySchema } from "typeorm";
+import { EntitySchema } from "common-database";
 
 export class UserModel {
   constructor() {
@@ -20,7 +20,7 @@ export class UserModel {
 }
 
 export const TypeOrmUserModel = new EntitySchema({
-  name: "User",
+  name: "UserModel",
   target: UserModel,
   tableName: "users",
   columns: {

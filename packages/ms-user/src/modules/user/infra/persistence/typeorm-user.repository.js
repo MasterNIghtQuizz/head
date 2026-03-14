@@ -14,9 +14,16 @@ export class TypeOrmUserRepository extends IUserRepository {
    */
   constructor(datasource, valkeyRepository, encryptionKey) {
     super();
-    this.typeOrmRepo = datasource.getRepository(TypeOrmUserModel);
+    this.datasource = datasource;
     this.valkeyRepository = valkeyRepository;
     this.encryptionKey = encryptionKey;
+  }
+
+  /**
+   * @private
+   */
+  get typeOrmRepo() {
+    return this.datasource.getRepository(TypeOrmUserModel);
   }
 
   /**
