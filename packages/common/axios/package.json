@@ -7,10 +7,12 @@
   "scripts": {
     "lint": "yarn run -T eslint .",
     "lint:fix": "yarn run -T eslint . --fix",
-    "build": "echo 'Pure JS package - no build step'"
+    "build": "echo 'Pure JS package - no build step'",
+    "test": "vitest run"
   },
   "dependencies": {
     "axios": "^1.7.7",
+    "axios-retry": "^4.5.0",
     "common-errors": "workspace:*"
   },
   "devDependencies": {

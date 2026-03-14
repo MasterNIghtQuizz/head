@@ -1,13 +1,16 @@
 import { CryptoService } from "common-crypto";
 import logger from "common-logger";
-
+import { UnauthorizedError } from "common-errors";
 /**
  * @param {import('../types.d.ts').AuthHookOptions} options
  * @returns {import('fastify').onRequestHookHandler}
  */
 export function hookRefreshToken(options) {
   return function refreshTokenHook(request, reply, done) {
-    if (request.routeOptions?.config?.isPublic) {
+    if (
+      request.routeOptions?.config?.isPublic ||
+      !request.routeOptions?.config?.useRefreshToken
+    ) {
       done();
       return;
     }
@@ -18,8 +21,7 @@ export function hookRefreshToken(options) {
 
     if (!token) {
       logger.warn({ url: request.url }, "Missing refresh-token header");
-      reply.code(401).send({ error: "Missing refresh-token header" });
-      return;
+      return done(new UnauthorizedError("Missing refresh-token header"));
     }
 
     try {
@@ -28,11 +30,12 @@ export function hookRefreshToken(options) {
           CryptoService.verify(token, options.publicKeyPath)
         );
 
-      request.refreshTokenPayload = payload;
+      request.user = payload;
+      logger.info({ user: request.user }, "Refresh token verified");
       done();
     } catch (error) {
       logger.warn({ url: request.url, error }, "Invalid refresh token");
-      reply.code(401).send({ error: "Invalid or expired refresh token" });
+      return done(new UnauthorizedError("Invalid or expired refresh token"));
     }
   };
 }

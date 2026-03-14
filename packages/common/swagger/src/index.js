@@ -167,6 +167,7 @@ export const registerSwagger = async (
     uiConfig: {
       docExpansion: "list",
       deepLinking: false,
+      persistAuthorization: true,
     },
     staticCSP: true,
     transformStaticCSP: /** @param {string} header */ (header) => header,

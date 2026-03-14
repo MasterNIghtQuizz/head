@@ -1,5 +1,6 @@
 import { CryptoService } from "common-crypto";
 import logger from "common-logger";
+import { UnauthorizedError } from "common-errors";
 
 /**
  * @param {import('../types.d.ts').AuthHookOptions} options
@@ -11,6 +12,10 @@ export function hookAccessToken(options) {
       done();
       return;
     }
+    if (request.routeOptions?.config?.useRefreshToken) {
+      done();
+      return;
+    }
 
     const token = /** @type {string | undefined} */ (
       request.headers["access-token"]
@@ -18,8 +23,7 @@ export function hookAccessToken(options) {
 
     if (!token) {
       logger.warn({ url: request.url }, "Missing access-token header");
-      reply.code(401).send({ error: "Missing access-token header" });
-      return;
+      return done(new UnauthorizedError("Missing access-token header"));
     }
 
     try {
@@ -32,7 +36,7 @@ export function hookAccessToken(options) {
       done();
     } catch (error) {
       logger.warn({ url: request.url, error }, "Invalid access token");
-      reply.code(401).send({ error: "Invalid or expired access token" });
+      return done(new UnauthorizedError("Invalid or expired access token"));
     }
   };
 }

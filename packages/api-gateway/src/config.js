@@ -36,6 +36,13 @@ const schema = Joi.object({
   kafka: Joi.object({
     brokers: Joi.array().items(Joi.string()).required(),
   }).required(),
+  valkey: Joi.object({
+    host: Joi.string().required(),
+    port: Joi.number().required(),
+    password: Joi.string().allow("").optional(),
+    db: Joi.number().optional().default(0),
+    ttl: Joi.number().optional().default(3600),
+  }).optional(),
 });
 
 Config.init({ directory: configDirectory, schema });
@@ -73,4 +80,5 @@ export const config = {
       publicKeyPath: resolveKeyPath(rawAuth.internal.publicKeyPath),
     },
   },
+  valkey: /** @type {typeof config.valkey} */ (Config.get("valkey")),
 };

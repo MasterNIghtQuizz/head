@@ -8,10 +8,11 @@ export const MetadataKeys = {
   ROUTES: "routes",
   SCHEMA: "schema",
   IS_PUBLIC: "isPublic",
+  ROLES: "roles",
+  USE_REFRESH_TOKEN: "useRefreshToken",
 };
 
 /**
- * Controller decorator to mark classes as Fastify controllers.
  * @param {string} prefix
  */
 export function Controller(prefix = "") {
@@ -22,7 +23,6 @@ export function Controller(prefix = "") {
 }
 
 /**
- * Route decorator factory
  * @param {string} method
  */
 function createRouteDecorator(method) {
@@ -52,8 +52,23 @@ export const Put = createRouteDecorator("PUT");
 export const Delete = createRouteDecorator("DELETE");
 export const Patch = createRouteDecorator("PATCH");
 
+export function Public() {
+  /**
+   * @param {any} target
+   * @param {string} propertyKey
+   * @param {PropertyDescriptor} _descriptor
+   */
+  return function (target, propertyKey, _descriptor) {
+    Reflect.defineMetadata(
+      MetadataKeys.IS_PUBLIC,
+      true,
+      target.constructor,
+      propertyKey,
+    );
+  };
+}
+
 /**
- * Schema decorator for Swagger documentation
  * @param {any} schema
  */
 export function Schema(schema) {
@@ -73,7 +88,6 @@ export function Schema(schema) {
 }
 
 /**
- * Utility to apply multiple decorators to a class method
  * @param {Function} targetClass
  * @param {string} methodName
  * @param {Array<Function>} decorators
@@ -89,4 +103,39 @@ export function ApplyMethodDecorators(targetClass, methodName, decorators) {
   for (const decorator of decorators) {
     decorator(targetClass.prototype, methodName, descriptor);
   }
+}
+
+/**
+ * @param {string[]} roles
+ */
+export function Roles(roles) {
+  /**
+   * @param {any} target
+   * @param {string} propertyKey
+   * @param {PropertyDescriptor} _descriptor
+   */
+  return function (target, propertyKey, _descriptor) {
+    Reflect.defineMetadata(
+      MetadataKeys.ROLES,
+      roles,
+      target.constructor,
+      propertyKey,
+    );
+  };
+}
+
+export function UseRefreshToken() {
+  /**
+   * @param {any} target
+   * @param {string} propertyKey
+   * @param {PropertyDescriptor} _descriptor
+   */
+  return function (target, propertyKey, _descriptor) {
+    Reflect.defineMetadata(
+      MetadataKeys.USE_REFRESH_TOKEN,
+      true,
+      target.constructor,
+      propertyKey,
+    );
+  };
 }

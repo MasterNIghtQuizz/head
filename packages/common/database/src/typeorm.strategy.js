@@ -1,3 +1,4 @@
+import "reflect-metadata";
 import { DataSource } from "typeorm";
 import { DatabaseStrategy } from "./strategy.js";
 import logger from "common-logger";
@@ -45,9 +46,18 @@ export class TypeORMStrategy extends DatabaseStrategy {
       database: database,
       entities,
       migrations,
-      synchronize: env === "development",
+      synchronize: env === "development" || env === "test",
       logging: env === "development",
     });
+
+    logger.info(
+      {
+        entities: entities.map((e) =>
+          typeof e === "string" ? e : e.options?.name || e.name,
+        ),
+      },
+      `Initializing DataSource with entities for ${database}`,
+    );
 
     try {
       await this.#dataSource.initialize();

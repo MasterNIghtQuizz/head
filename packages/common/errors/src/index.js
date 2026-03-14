@@ -40,6 +40,12 @@ export class NotFoundError extends BaseError {
   }
 }
 
+export class UserNotFoundError extends NotFoundError {
+  constructor(message = "User Not Found", metadata = {}) {
+    super(message, metadata);
+  }
+}
+
 export class ConflictError extends BaseError {
   constructor(message = "Conflict", metadata = {}) {
     super(message, 409, metadata);

@@ -12,6 +12,7 @@
   "dependencies": {
     "common-core": "workspace:*",
     "common-crypto": "workspace:*",
+    "common-errors": "workspace:*",
     "common-logger": "workspace:*",
     "fastify": "^5.0.0",
     "reflect-metadata": "^0.2.2"

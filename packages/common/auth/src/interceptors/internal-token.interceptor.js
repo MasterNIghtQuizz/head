@@ -1,6 +1,8 @@
+// @ts-nocheck
 import { CryptoService } from "common-crypto";
 import { TokenType } from "../enums.js";
 import logger from "common-logger";
+import { InternalServerError, UnauthorizedError } from "common-errors";
 
 /**
  * @param {import('../types.d.ts').InternalTokenInterceptorOptions} options
@@ -17,11 +19,10 @@ export function hookInternalTokenInterceptor(options) {
 
     if (!request.user || !request.user.userId || !request.user.role) {
       logger.error(
-        { url: request.url },
+        { url: request.url, user: request.user },
         "Cannot generate internal token: missing or incomplete request.user (route is not public)",
       );
-      reply.code(401).send({ error: "Unauthorized: Missing user context" });
-      return;
+      return done(new UnauthorizedError("Unauthorized: Missing user context"));
     }
 
     try {
@@ -45,7 +46,7 @@ export function hookInternalTokenInterceptor(options) {
       done();
     } catch (error) {
       logger.error({ error }, "Failed to generate internal token");
-      reply.code(500).send({ error: "Internal token generation failed" });
+      return done(new InternalServerError("Internal token generation failed"));
     }
   };
 }

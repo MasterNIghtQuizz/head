@@ -6,6 +6,10 @@
   "logger": {
     "level": "LOG_LEVEL"
   },
+  "services": {
+    "user": "USER_SERVICE_URL",
+    "quizz": "QUIZZ_SERVICE_URL"
+  },
   "auth": {
     "access": {
       "privateKeyPath": "AUTH_ACCESS_PRIVATE_KEY_PATH",
@@ -31,5 +35,12 @@
       "__name": "KAFKA_BROKERS",
       "__format": "json"
     }
+  },
+  "valkey": {
+    "host": "VALKEY_HOST",
+    "port": "VALKEY_PORT",
+    "password": "VALKEY_PASSWORD",
+    "db": "VALKEY_DB",
+    "ttl": "VALKEY_TTL"
   }
 }

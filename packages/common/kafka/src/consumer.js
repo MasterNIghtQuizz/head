@@ -68,7 +68,7 @@ export class KafkaConsumer {
                 if (existing) {
                   logger.info(
                     { eventId: payload.eventId, topic },
-                    "Event already processed, skipping. (Idempotency check passed)"
+                    "Event already processed, skipping. (Idempotency check passed)",
                   );
                   return;
                 }

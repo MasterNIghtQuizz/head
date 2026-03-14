@@ -6,9 +6,11 @@
   "scripts": {
     "lint": "yarn run -T eslint .",
     "lint:fix": "yarn run -T eslint . --fix",
-    "build": "echo 'Pure JS package - no build step'"
+    "build": "echo 'Pure JS package - no build step'",
+    "test": "vitest run"
   },
   "dependencies": {
+    "bcrypt": "^5.1.1",
     "common-logger": "workspace:*",
     "jsonwebtoken": "^9.0.2"
   },

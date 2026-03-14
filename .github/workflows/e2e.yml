@@ -1,0 +1,92 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [feat/CI-1.0, main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate RSA keys
+        run: bash scripts/generate-keys.sh
+
+      - name: Build test images
+        run: |
+          docker compose --profile test build \
+            api-gateway-test \
+            ms-user-test \
+            ms-quizz-management-test
+
+      - name: Start infrastructure and ms-quizz-management
+        run: |
+          docker compose --profile test up -d \
+            postgres-test \
+            ms-user-test \
+            ms-quizz-management-test
+
+      - name: Wait for ms-quizz-management to be healthy
+        run: |
+          echo "Waiting for ms-quizz-management-test to become healthy..."
+          timeout 60 bash -c '
+            until [ "$(docker compose --profile test ps ms-quizz-management-test --format "{{.Health}}")" == "healthy" ]; do
+              STATUS=$(docker compose --profile test ps ms-quizz-management-test --format "{{.Health}}")
+              if [ "$STATUS" == "unhealthy" ]; then
+                echo "Error: ms-quizz-management-test is UNHEALTHY"
+                docker compose --profile test logs ms-quizz-management-test
+                exit 1
+              fi
+              echo "  Current status: ${STATUS:-starting}..."
+              sleep 5
+            done
+          '
+          echo "ms-quizz-management-test is healthy ✓"
+
+      - name: Wait for ms-user to be healthy
+        run: |
+          echo "Waiting for ms-user-test to become healthy..."
+          timeout 60 bash -c '
+            until [ "$(docker compose --profile test ps ms-user-test --format "{{.Health}}")" == "healthy" ]; do
+              STATUS=$(docker compose --profile test ps ms-user-test --format "{{.Health}}")
+              if [ "$STATUS" == "unhealthy" ]; then
+                echo "Error: ms-user-test is UNHEALTHY"
+                docker compose --profile test logs ms-user-test
+                exit 1
+              fi
+              echo "  Current status: ${STATUS:-starting}..."
+              sleep 5
+            done
+          '
+          echo "ms-user-test is healthy ✓"
+
+      - name: Run E2E tests
+        run: |
+          docker compose --profile test run \
+            --rm \
+            --no-deps \
+            -e QUIZZ_SERVICE_URL=http://ms-quizz-management-test:4012 \
+            api-gateway-test \
+            sh ./scripts/run-e2e.sh
+
+      - name: Dump service logs on failure
+        if: failure()
+        run: |
+          echo "=== ms-quizz-management-test logs ==="
+          docker compose --profile test logs ms-quizz-management-test --tail=100
+          echo ""
+          echo "=== ms-user-test logs ==="
+          docker compose --profile test logs ms-user-test --tail=100
+          echo ""
+          echo "=== postgres-test logs ==="
+          docker compose --profile test logs postgres-test --tail=50
+
+      - name: Cleanup
+        if: always()
+        run: docker compose --profile test down -v --remove-orphans

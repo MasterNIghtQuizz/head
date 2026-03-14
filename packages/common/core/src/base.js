@@ -6,12 +6,19 @@ export class BaseService {
 }
 
 /**
+ * @template {import('typeorm').ObjectLiteral} T
  * @abstract Base class for all repositories.
  */
 export class BaseRepository {
   /**
-   * @param {any} datasource - The TypeORM DataSource instance
-   * @param {any} entity - The TypeORM EntitySchema or Entity
+   * @public
+   * @type {import('typeorm').Repository<T>}
+   */
+  repo;
+
+  /**
+   * @param {import('typeorm').DataSource} datasource
+   * @param {import('typeorm').EntitySchema<T>|import('typeorm').EntityTarget<T>} entity
    */
   constructor(datasource, entity) {
     this.datasource = datasource;
@@ -20,23 +27,24 @@ export class BaseRepository {
   }
 
   /**
-   * @returns {Promise<any[]>}
+   * @returns {Promise<T[]>}
    */
   async findAll() {
     return this.repo.find();
   }
 
   /**
-   * @param {string|number} id
-   * @returns {Promise<any|null>}
+   * @param {string|number|any} id
+   * @returns {Promise<T|null>}
    */
   async findOne(id) {
+    // @ts-ignore
     return this.repo.findOneBy({ id });
   }
 
   /**
-   * @param {any} data
-   * @returns {Promise<any>}
+   * @param {import('typeorm').DeepPartial<T>} data
+   * @returns {Promise<T>}
    */
   async create(data) {
     const entry = this.repo.create(data);
@@ -44,9 +52,9 @@ export class BaseRepository {
   }
 
   /**
-   * @param {string|number} id
-   * @param {any} data
-   * @returns {Promise<any>}
+   * @param {string|number|any} id
+   * @param {import('typeorm').QueryDeepPartialEntity<T>} data
+   * @returns {Promise<T|null>}
    */
   async update(id, data) {
     await this.repo.update(id, data);
@@ -54,7 +62,7 @@ export class BaseRepository {
   }
 
   /**
-   * @param {string|number} id
+   * @param {string|number|any} id
    * @returns {Promise<void>}
    */
   async delete(id) {

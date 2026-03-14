@@ -1,18 +1,13 @@
-import { loadConfig } from "./config-loader.js";
+import { loadConfig, merge } from "./config-loader.js";
 import logger from "common-logger";
 
 /** @type {typeof import('./config.d.ts').Config} */
 export class Config {
-  /** @type {Record<string, unknown> | null} */
+  /** @type {any | null} */
   static #config = null;
 
   /** @param {import('./config.d.ts').ConfigOptions} options */
   static init({ directory, schema }) {
-    if (this.#config) {
-      logger.warn("Config already initialized");
-      return;
-    }
-
     const rawConfig = loadConfig(directory);
     const { value, error } = schema.validate(rawConfig, {
       allowUnknown: true,
@@ -24,8 +19,13 @@ export class Config {
       throw new Error("Config validation failed");
     }
 
-    this.#config = value;
-    logger.info("Config initialized successfully");
+    if (this.#config) {
+      this.#config = merge(this.#config, value);
+      logger.info("Config merged successfully");
+    } else {
+      this.#config = value;
+      logger.info("Config initialized successfully");
+    }
   }
 
   /** @param {string} path */

@@ -1,0 +1,61 @@
+name: QuizzApp CI
+on:
+  push:
+    branches: [feat/CI-1.0, main]
+    paths:
+      - "packages/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - "packages/**"
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - "@monorepo/api-gateway"
+          - "@monorepo/ms-quizz-management"
+          - "@monorepo/ms-user"
+          - "common-auth"
+          - "common-axios"
+          - "common-config"
+          - "common-contracts"
+          - "common-core"
+          - "common-crypto"
+          - "common-database"
+          - "common-errors"
+          - "common-kafka"
+          - "common-logger"
+          - "common-swagger"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Enable Corepack
+        shell: bash
+        run: corepack enable
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.14.0"
+          cache: "yarn"
+
+      - name: Install Dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Lint ${{ matrix.package }}
+        run: yarn workspace ${{ matrix.package }} lint
+
+      - name: Test ${{ matrix.package }}
+        run: |
+          export PATH=$PATH:$(pwd)/node_modules/.bin
+          if yarn workspace ${{ matrix.package }} run | grep -q 'test'; then
+            echo "Test script found, running tests"
+            yarn workspace ${{ matrix.package }} run test
+          else
+            echo "No test script, skipping"
+          fi
