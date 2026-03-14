@@ -266,28 +266,34 @@ export class QuestionService extends BaseService {
         throw QUESTION_NOT_FOUND(id);
       }
       await this.questionRepository.delete(id);
-      const invalidations = [
-        this.valkeyRepository.del(`question:${id}`),
-        this.valkeyRepository.del("questions:all"),
-        this.valkeyRepository.del(`question:choices:${id}`),
-        this.valkeyRepository.del("choices:all"),
-        this.valkeyRepository.del("quizzes:all"),
+      const keys = [
+        `question:${id}`,
+        "questions:all",
+        `question:choices:${id}`,
+        "choices:all",
+        "quizzes:all",
       ];
-      if (entity.choices && entity.choices.length > 0) {
-        entity.choices.forEach((choice) => {
-          invalidations.push(this.valkeyRepository.del(`choice:${choice.id}`));
-        });
-      }
 
       if (entity.quizId) {
-        invalidations.push(
-          this.valkeyRepository.del(`quiz:questions:${entity.quizId}`),
-        );
-        invalidations.push(this.valkeyRepository.del(`quiz:${entity.quizId}`));
+        keys.push(`quiz:questions:${entity.quizId}`, `quiz:${entity.quizId}`);
       }
 
-      await Promise.all(invalidations);
-      logger.info({ id }, "Question deleted successfully");
+      if (entity.choices?.length > 0) {
+        entity.choices.forEach((c) => keys.push(`choice:${c.id}`));
+      }
+
+      await Promise.all(
+        keys.map((key) =>
+          this.valkeyRepository
+            .del(key)
+            .catch((err) =>
+              logger.warn(
+                { key, err: err.message },
+                "Failed to delete a specific cache key",
+              ),
+            ),
+        ),
+      );
     } catch (error) {
       if (/** @type {BaseError} */ (error).statusCode) {
         throw error;

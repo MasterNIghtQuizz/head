@@ -203,39 +203,69 @@ export class QuizService extends BaseService {
    * @param {string} id
    */
   async deleteQuiz(id) {
+    logger.info({ id }, "Deleting quiz and cascading cache invalidation...");
     try {
       const entity = await this.quizRepository.findByIdWithChildren(id);
+
+      if (!entity) {
+        logger.warn({ id }, "Quiz not found for deletion");
+        throw QUIZ_NOT_FOUND(id);
+      }
       await this.quizRepository.delete(id);
 
-      const invalidations = [
-        this.valkeyRepository.del(`quiz:${id}`),
-        this.valkeyRepository.del("quizzes:all"),
-        this.valkeyRepository.del(`quiz:questions:${id}`),
-        this.valkeyRepository.del("questions:all"),
-        this.valkeyRepository.del("choices:all"),
-      ];
+      const keysToInvalidate = new Set([
+        `quiz:${id}`,
+        "quizzes:all",
+        `quiz:questions:${id}`,
+        "questions:all",
+        "choices:all",
+      ]);
 
-      if (entity?.questions) {
-        for (const question of entity.questions) {
-          invalidations.push(
-            this.valkeyRepository.del(`question:${question.id}`),
-          );
-          invalidations.push(
-            this.valkeyRepository.del(`question:choices:${question.id}`),
-          );
+      if (entity.questions?.length > 0) {
+        entity.questions.forEach((question) => {
+          keysToInvalidate.add(`question:${question.id}`);
+          keysToInvalidate.add(`question:choices:${question.id}`);
 
-          if (question.choices) {
-            for (const choice of question.choices) {
-              invalidations.push(
-                this.valkeyRepository.del(`choice:${choice.id}`),
-              );
-            }
+          if (question.choices?.length > 0) {
+            question.choices.forEach((choice) => {
+              keysToInvalidate.add(`choice:${choice.id}`);
+            });
           }
-        }
+        });
+      }
+      try {
+        await Promise.all(
+          Array.from(keysToInvalidate).map((key) =>
+            this.valkeyRepository
+              .del(key)
+              ?.catch?.((err) =>
+                logger.warn(
+                  { key, err: err.message },
+                  "Failed to delete cache key during quiz delete",
+                ),
+              ),
+          ),
+        );
+      } catch (cacheError) {
+        logger.error(
+          { error: cacheError },
+          "Global cache invalidation failed during quiz delete",
+        );
       }
 
-      await Promise.all(invalidations);
+      logger.info(
+        { id },
+        "Quiz and all related sub-resources deleted successfully",
+      );
     } catch (error) {
+      if (/** @type {BaseError} */ (error).statusCode) {
+        throw error;
+      } // Relance les erreurs métier (404)
+
+      logger.error(
+        { error: /** @type {Error} */ (error), id },
+        "Error during quiz deletion",
+      );
       throw DATABASE_ERROR(/** @type {Error} */ (error));
     }
   }

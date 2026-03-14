@@ -295,34 +295,85 @@ describe("QuestionService Unit Tests", () => {
   });
 
   describe("deleteQuestion", () => {
-    it("should delete question and invalidate caches", async () => {
-      const entity = createQuestionEntity({ id: "q-1", quizId: "quiz-1" });
-      questionRepositoryMock.findOne.mockResolvedValue(entity);
+    const questionId = "q-1";
+    const quizId = "quiz-1";
+    const choiceId = "c-1";
+    beforeEach(() => {
+      valkeyRepositoryMock.del.mockClear();
+      questionRepositoryMock.delete.mockClear();
+      questionRepositoryMock.findByIdWithChildren.mockClear();
+      valkeyRepositoryMock.del.mockResolvedValue(undefined);
+    });
 
-      await service.deleteQuestion("q-1");
+    it("should delete question and invalidate all related caches (including choices)", async () => {
+      const entity = createQuestionEntity({
+        id: questionId,
+        quizId: quizId,
+      });
+      entity.choices = [
+        {
+          id: choiceId,
+          text: "",
+          is_correct: false,
+          questionId: undefined,
+          update: function (_data) {
+            throw new Error("Function not implemented.");
+          },
+        },
+      ];
 
-      expect(questionRepositoryMock.delete).toHaveBeenCalledWith("q-1");
-      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("question:q-1");
-      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("questions:all");
+      questionRepositoryMock.findByIdWithChildren.mockResolvedValue(entity);
+      questionRepositoryMock.delete.mockResolvedValue(undefined);
+
+      await service.deleteQuestion(questionId);
+
+      expect(questionRepositoryMock.findByIdWithChildren).toHaveBeenCalledWith(
+        questionId,
+      );
+      expect(questionRepositoryMock.delete).toHaveBeenCalledWith(questionId);
+
       expect(valkeyRepositoryMock.del).toHaveBeenCalledWith(
-        "quiz:questions:quiz-1",
+        `question:${questionId}`,
       );
-      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("quiz:quiz-1");
-      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("quizzes:all");
+      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("questions:all");
+      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("choices:all");
+
+      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith(
+        `quiz:questions:${quizId}`,
+      );
+      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith(`quiz:${quizId}`);
+
+      expect(valkeyRepositoryMock.del).toHaveBeenCalledWith(
+        `choice:${choiceId}`,
+      );
     });
 
-    it("should throw DB error if delete fails", async () => {
-      questionRepositoryMock.findOne.mockRejectedValue(new Error("Fail"));
-      await expect(service.deleteQuestion("1")).rejects.toThrow();
+    it("should throw NOT_FOUND if question does not exist", async () => {
+      questionRepositoryMock.findByIdWithChildren.mockResolvedValue(null);
+
+      await expect(service.deleteQuestion("unknown")).rejects.toThrow();
+      expect(questionRepositoryMock.delete).not.toHaveBeenCalled();
     });
 
-    it("should complete delete even if cache fails", async () => {
-      questionRepositoryMock.findOne.mockResolvedValue(
-        createQuestionEntity({ id: "1" }),
+    it("should complete delete even if cache invalidation fails", async () => {
+      const entity = createQuestionEntity({ id: questionId });
+      entity.choices = [];
+      questionRepositoryMock.findByIdWithChildren.mockResolvedValue(entity);
+      questionRepositoryMock.delete.mockResolvedValue(undefined);
+
+      valkeyRepositoryMock.del.mockRejectedValue(new Error("Redis Down"));
+
+      await expect(service.deleteQuestion(questionId)).resolves.not.toThrow();
+
+      expect(questionRepositoryMock.delete).toHaveBeenCalledWith(questionId);
+    });
+
+    it("should throw DATABASE_ERROR if repository fails", async () => {
+      questionRepositoryMock.findByIdWithChildren.mockRejectedValue(
+        new Error("DB Connection Lost"),
       );
-      valkeyRepositoryMock.del.mockRejectedValue(new Error("Fail"));
-      await service.deleteQuestion("1");
-      expect(questionRepositoryMock.delete).toHaveBeenCalledWith("1");
+
+      await expect(service.deleteQuestion(questionId)).rejects.toThrow();
     });
   });
 });
