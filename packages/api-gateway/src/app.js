@@ -64,5 +64,9 @@ export async function createServer() {
   const choiceService = new ChoiceService();
   ControllerFactory.register(fastify, ChoiceController, [choiceService]);
 
+  fastify.get("/health", { config: { isPublic: true } }, async () => {
+    return { status: "ok", service: "api-gateway" };
+  });
+
   return fastify;
 }
