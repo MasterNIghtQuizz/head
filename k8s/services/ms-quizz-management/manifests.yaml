@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ms-quizz-management
+  labels:
+    app: ms-quizz-management
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ms-quizz-management
+  template:
+    metadata:
+      labels:
+        app: ms-quizz-management
+    spec:
+      containers:
+        - name: ms-quizz-management
+          image: DOCKER_USER/masterquizz-ms-quizz-management:latest
+          ports:
+            - containerPort: 3000
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: PORT
+              value: "3000"
+            - name: POSTGRES_HOST
+              value: "postgres-service"
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_DB
+              value: "masterquizz_quizz"
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: masterquizz-db-secrets
+                  key: quizz-db-username
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: masterquizz-db-secrets
+                  key: quizz-db-password
+            - name: VALKEY_HOST
+              value: "valkey-service"
+            - name: VALKEY_PORT
+              value: "6379"
+            - name: AUTH_INTERNAL_PUBLIC_KEY_PATH
+              value: "/etc/auth/internal_public.pem"
+          volumeMounts:
+            - name: auth-keys
+              mountPath: "/etc/auth"
+              readOnly: true
+      volumes:
+        - name: auth-keys
+          secret:
+            secretName: masterquizz-auth-keys
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ms-quizz-management
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3000
+      targetPort: 3000
+  selector:
+    app: ms-quizz-management
