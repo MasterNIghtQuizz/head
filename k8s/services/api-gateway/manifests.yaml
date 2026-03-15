@@ -57,10 +57,6 @@ spec:
               value: "/etc/auth/access_private.pem"
             - name: AUTH_ACCESS_PUBLIC_KEY_PATH
               value: "/etc/auth/access_public.pem"
-            - name: COREPACK_HOME
-              value: "/tmp/corepack"
-            - name: YARN_CACHE_FOLDER
-              value: "/tmp/yarn-cache"
           volumeMounts:
             - name: auth-keys
               mountPath: "/etc/auth"
