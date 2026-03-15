@@ -16,7 +16,7 @@ spec:
     spec:
       project: default
       source:
-        repoURL: https://github.com/your-org/masterQuizz.git # Replace with your repo
+        repoURL: "https://github.com/MasterNIghtQuizz/head.git"
         targetRevision: HEAD
         path: "k8s/services/{{service}}"
       destination:
