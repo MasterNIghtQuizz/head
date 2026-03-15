@@ -114,6 +114,10 @@ jobs:
             fi
           done
 
+      - name: Validate Manifests (Dry Run)
+        run: |
+          find k8s/services -name "manifests.yaml" | xargs -I {} kubectl apply --dry-run=client -f {}
+
       - name: Commit and push changes
         run: |
           git config --global user.name "github-actions[bot]"

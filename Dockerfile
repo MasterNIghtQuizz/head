@@ -51,5 +51,4 @@ EXPOSE 3000
 
 USER node
 
-ENTRYPOINT ["yarn", "workspace"]
-CMD ["@monorepo/${SERVICE_NAME}", "start"]
+CMD ["/bin/sh", "-c", "yarn workspace @monorepo/${SERVICE_NAME} start"]
