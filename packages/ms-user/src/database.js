@@ -31,11 +31,16 @@ export const initDatabase = async () => {
     ],
   });
 
-  logger.info({ 
-    entityNames: [TypeOrmUserModel, ProcessedEventEntity].map(e => e.options.name) 
-  }, "Entities passed to db.connect");
+  logger.info(
+    {
+      entityNames: [TypeOrmUserModel, ProcessedEventEntity].map(
+        (e) => e.options.name,
+      ),
+    },
+    "Entities passed to db.connect",
+  );
 
-  if (config.valkey) {
+  if (config.valkey?.enabled) {
     await valkey.connect();
   }
 };

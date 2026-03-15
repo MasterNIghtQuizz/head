@@ -3,6 +3,7 @@ import logger from "common-logger";
 
 /**
  * @typedef {Object} ValkeyConfig
+ * @property {boolean} [enabled]
  * @property {string} host
  * @property {number} port
  * @property {string} [password]

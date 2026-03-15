@@ -53,6 +53,8 @@ spec:
               value: "valkey-service"
             - name: VALKEY_PORT
               value: "6379"
+            - name: VALKEY_ENABLED
+              value: "true"
             - name: COREPACK_HOME
               value: "/tmp/corepack"
             - name: YARN_CACHE_FOLDER

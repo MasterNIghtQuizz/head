@@ -50,7 +50,9 @@ export async function createServer() {
 
   await initDatabase();
   const valkeyService = new ValkeyService(config.valkey);
-  await valkeyService.connect();
+  if (config.valkey.enabled) {
+    await valkeyService.connect();
+  }
   const valkeyRepository = new ValkeyRepository(valkeyService);
   const valkeyTtl = config.valkey.ttl ?? 3600;
 

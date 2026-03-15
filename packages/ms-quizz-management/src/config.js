@@ -33,6 +33,7 @@ const schema = Joi.object({
     brokers: Joi.array().items(Joi.string()).required(),
   }).required(),
   valkey: Joi.object({
+    enabled: Joi.boolean().default(true),
     host: Joi.string().required(),
     port: Joi.number().required(),
     password: Joi.string().allow("").optional(),

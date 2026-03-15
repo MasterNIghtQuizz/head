@@ -1,6 +1,7 @@
 import { Redis } from "ioredis";
 
 export interface ValkeyConfig {
+  enabled: boolean;
   host: string;
   port: number;
   password?: string;

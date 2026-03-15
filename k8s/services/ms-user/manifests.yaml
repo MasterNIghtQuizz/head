@@ -146,6 +146,14 @@ spec:
                 path: access-private.pem
               - key: access_public.pem
                 path: access-public.pem
+              - key: refresh_private.pem
+                path: refresh-private.pem
+              - key: refresh_public.pem
+                path: refresh-public.pem
+              - key: internal_private.pem
+                path: internal-private.pem
+              - key: internal_public.pem
+                path: internal-public.pem
         - name: tmp
           emptyDir: {}
 ---

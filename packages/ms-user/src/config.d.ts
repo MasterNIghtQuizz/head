@@ -16,6 +16,7 @@ export declare const config: {
     encryptionKey: string;
   };
   valkey: {
+    enabled: boolean;
     host: string;
     port: number;
     password?: string;

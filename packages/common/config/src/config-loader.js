@@ -16,14 +16,15 @@ const readJson = (configPath) => {
  */
 const merge = (target, source) => {
   for (const key of Object.keys(source)) {
-    if (source[key] instanceof Object && !Array.isArray(source[key])) {
-      if (!target[key]) {
-        target[key] = /** @type {Record<string, unknown>} */ ({});
+    if (
+      source[key] !== null &&
+      typeof source[key] === "object" &&
+      !Array.isArray(source[key])
+    ) {
+      if (!target[key] || typeof target[key] !== "object") {
+        target[key] = {};
       }
-      merge(
-        /** @type {Record<string, unknown>} */ (target[key]),
-        /** @type {Record<string, unknown>} */ (source[key]),
-      );
+      merge(target[key], source[key]);
     } else {
       target[key] = source[key];
     }
