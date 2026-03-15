@@ -20,7 +20,7 @@ spec:
         fsGroup: 1000
       initContainers:
         - name: migrate-ms-quizz
-          image: victorcra/masterquizz-ms-quizz-management:2eeb2c3dcbd7728e4b673c5391ce4f1b2bb50cb4
+          image: victorcra/masterquizz-ms-quizz-management:c495c7c728967e400e1450dc1c574d4d358326ed
           securityContext:
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
@@ -68,7 +68,7 @@ spec:
               mountPath: /tmp
       containers:
         - name: ms-quizz-management
-          image: victorcra/masterquizz-ms-quizz-management:2eeb2c3dcbd7728e4b673c5391ce4f1b2bb50cb4
+          image: victorcra/masterquizz-ms-quizz-management:c495c7c728967e400e1450dc1c574d4d358326ed
           securityContext:
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
