@@ -8,6 +8,9 @@ on:
       - 'README.md'
       - '.gitignore'
 
+permissions:
+  contents: write
+
 jobs:
   filter:
     runs-on: ubuntu-latest
