@@ -78,10 +78,10 @@ spec:
               value: '["kafka-service:29092"]'
             - name: AUTH_INTERNAL_PUBLIC_KEY_PATH
               value: "/etc/auth/internal_public.pem"
-              volumeMounts:
-                - name: auth-keys
-                  mountPath: "/etc/auth"
-                  readOnly: true
+      volumeMounts:
+        - name: auth-keys
+          mountPath: "/etc/auth"
+          readOnly: true
       volumes:
         - name: auth-keys
           secret:

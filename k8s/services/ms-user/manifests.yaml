@@ -74,10 +74,10 @@ spec:
               value: "/etc/auth/access_private.pem"
             - name: AUTH_ACCESS_PUBLIC_KEY_PATH
               value: "/etc/auth/access_public.pem"
-              volumeMounts:
-                - name: auth-keys
-                  mountPath: "/etc/auth"
-                  readOnly: true
+        volumeMounts:
+        - name: auth-keys
+          mountPath: "/etc/auth"
+          readOnly: true
       volumes:
         - name: auth-keys
           secret:
