@@ -48,11 +48,19 @@ spec:
             - name: SERVICES_QUIZZ
               value: "http://ms-quizz-management:3000"
             - name: KAFKA_BROKERS
-              value: '["kafka-service:9092"]'
+              value: '["kafka-service:29092"]'
+            - name: COREPACK_HOME
+              value: "/tmp/corepack"
+            - name: YARN_CACHE_FOLDER
+              value: "/tmp/yarn-cache"
             - name: AUTH_ACCESS_PRIVATE_KEY_PATH
               value: "/etc/auth/access_private.pem"
             - name: AUTH_ACCESS_PUBLIC_KEY_PATH
               value: "/etc/auth/access_public.pem"
+            - name: COREPACK_HOME
+              value: "/tmp/corepack"
+            - name: YARN_CACHE_FOLDER
+              value: "/tmp/yarn-cache"
           volumeMounts:
             - name: auth-keys
               mountPath: "/etc/auth"

@@ -111,6 +111,10 @@ spec:
               value: '["kafka-service:29092"]'
             - name: AUTH_INTERNAL_PUBLIC_KEY_PATH
               value: "/etc/auth/internal_public.pem"
+            - name: COREPACK_HOME
+              value: "/tmp/corepack"
+            - name: YARN_CACHE_FOLDER
+              value: "/tmp/yarn-cache"
           volumeMounts:
             - name: auth-keys
               mountPath: "/etc/auth"
