@@ -43,12 +43,16 @@ spec:
               value: "3000"
             - name: LOG_LEVEL
               value: "info"
-            - name: SERVICES_USER
+            - name: USER_SERVICE_URL
               value: "http://ms-user:3000"
-            - name: SERVICES_QUIZZ
+            - name: QUIZZ_SERVICE_URL
               value: "http://ms-quizz-management:3000"
             - name: KAFKA_BROKERS
               value: '["kafka-service:29092"]'
+            - name: VALKEY_HOST
+              value: "valkey-service"
+            - name: VALKEY_PORT
+              value: "6379"
             - name: COREPACK_HOME
               value: "/tmp/corepack"
             - name: YARN_CACHE_FOLDER

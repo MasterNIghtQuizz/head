@@ -36,13 +36,15 @@ spec:
               memory: "128Mi"
           command:
             [
-              "yarn",
-              "workspace",
-              "@monorepo/ms-quizz-management",
-              "run",
-              "migrations:run",
+              "/bin/sh",
+              "-c",
+              "until nc -z $POSTGRES_HOST $POSTGRES_PORT; do echo waiting for postgres; sleep 2; done && yarn workspace @monorepo/ms-quizz-management run migrations:run",
             ]
           env:
+            - name: COREPACK_HOME
+              value: "/tmp/corepack"
+            - name: YARN_CACHE_FOLDER
+              value: "/tmp/yarn-cache"
             - name: NODE_ENV
               value: "production"
             - name: POSTGRES_HOST
@@ -107,6 +109,8 @@ spec:
               value: "valkey-service"
             - name: VALKEY_PORT
               value: "6379"
+            - name: KAFKA_ENABLED
+              value: "true"
             - name: KAFKA_BROKERS
               value: '["kafka-service:29092"]'
             - name: AUTH_INTERNAL_PUBLIC_KEY_PATH
