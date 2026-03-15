@@ -2,15 +2,15 @@ name: CI/CD MasterQuizz
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
     paths-ignore:
-      - 'k8s/**'
-      - 'README.md'
-      - '.gitignore'
+      - "k8s/**"
+      - "README.md"
+      - ".gitignore"
   workflow_dispatch:
     inputs:
       deploy_all:
-        description: 'Force redeploy all services?'
+        description: "Force redeploy all services?"
         required: true
         type: boolean
         default: true
@@ -48,7 +48,7 @@ jobs:
               - 'Dockerfile'
               - 'package.json'
               - 'yarn.lock'
-      
+
       - name: Set services list
         id: set-services
         run: |
@@ -85,7 +85,7 @@ jobs:
           file: ./Dockerfile
           push: true
           build-args: |
-             SERVICE_NAME=${{ matrix.service }}
+            SERVICE_NAME=${{ matrix.service }}
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/masterquizz-${{ matrix.service }}:${{ github.sha }}
             ${{ secrets.DOCKERHUB_USERNAME }}/masterquizz-${{ matrix.service }}:latest
@@ -97,19 +97,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GH_PAT }}
 
       - name: Update Image Tags in K8s Manifests
         run: |
           SERVICES='${{ needs.filter.outputs.services }}'
           SHA='${{ github.sha }}'
           REGISTRY='${{ secrets.DOCKERHUB_USERNAME }}'
-          
+
           echo "$SERVICES" | jq -r '.[]' | while read service; do
-            echo "Updating manifest for $service with image $REGISTRY/masterquizz-$service:$SHA"
             FILE="k8s/services/$service/manifests.yaml"
             if [ -f "$FILE" ]; then
-              # Dynamic replacement: works regardless of what was in the YAML before
               sed -i "s|image: .*/masterquizz-$service:.*|image: $REGISTRY/masterquizz-$service:$SHA|g" "$FILE"
             else
               echo "Warning: $FILE not found"
@@ -120,7 +118,6 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -b init-gitops-bot
           git add k8s/
-          git commit -m "chore(gitops): thermal trigger to reveal bot actor [skip ci]" || echo "No changes to commit"
-          git push origin init-gitops-bot --force
+          git commit -m "chore(gitops): update k8s manifests to tag ${{ github.sha }} [skip ci]" || echo "No changes to commit"
+          git push origin main
