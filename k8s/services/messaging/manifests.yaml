@@ -68,7 +68,7 @@ spec:
           value: "1"
         - name: KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR
           value: "1"
-        - name: KAFKA_CLUSTER_ID
+        - name: CLUSTER_ID
           value: "MkU3OEVBNTcwNTJENDM2Qk"
         volumeMounts:
         - name: kafka-storage
