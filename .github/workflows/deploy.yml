@@ -7,6 +7,13 @@ on:
       - 'k8s/**'
       - 'README.md'
       - '.gitignore'
+  workflow_dispatch:
+    inputs:
+      deploy_all:
+        description: 'Force redeploy all services?'
+        required: true
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -15,11 +22,12 @@ jobs:
   filter:
     runs-on: ubuntu-latest
     outputs:
-      services: ${{ steps.filter.outputs.changes }}
+      services: ${{ steps.set-services.outputs.services }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
         id: filter
+        if: github.event_name == 'push'
         with:
           filters: |
             api-gateway:
@@ -40,6 +48,15 @@ jobs:
               - 'Dockerfile'
               - 'package.json'
               - 'yarn.lock'
+      
+      - name: Set services list
+        id: set-services
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.deploy_all }}" == "true" ]]; then
+            echo 'services=["api-gateway", "ms-user", "ms-quizz-management"]' >> $GITHUB_OUTPUT
+          else
+            echo "services=${{ steps.filter.outputs.changes }}" >> $GITHUB_OUTPUT
+          fi
 
   build-and-push:
     needs: filter
