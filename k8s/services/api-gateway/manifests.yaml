@@ -58,12 +58,20 @@ spec:
             - name: YARN_CACHE_FOLDER
               value: "/tmp/yarn-cache"
             - name: AUTH_ACCESS_PRIVATE_KEY_PATH
-              value: "/etc/auth/access_private.pem"
+              value: "/app/keys/access-private.pem"
             - name: AUTH_ACCESS_PUBLIC_KEY_PATH
-              value: "/etc/auth/access_public.pem"
+              value: "/app/keys/access-public.pem"
+            - name: AUTH_REFRESH_PRIVATE_KEY_PATH
+              value: "/app/keys/refresh-private.pem"
+            - name: AUTH_REFRESH_PUBLIC_KEY_PATH
+              value: "/app/keys/refresh-public.pem"
+            - name: AUTH_INTERNAL_PRIVATE_KEY_PATH
+              value: "/app/keys/internal-private.pem"
+            - name: AUTH_INTERNAL_PUBLIC_KEY_PATH
+              value: "/app/keys/internal-public.pem"
           volumeMounts:
             - name: auth-keys
-              mountPath: "/etc/auth"
+              mountPath: "/app/keys"
               readOnly: true
             - name: tmp
               mountPath: /tmp
@@ -71,6 +79,19 @@ spec:
         - name: auth-keys
           secret:
             secretName: masterquizz-auth-keys
+            items:
+              - key: access_private.pem
+                path: access-private.pem
+              - key: access_public.pem
+                path: access-public.pem
+              - key: refresh_private.pem
+                path: refresh-private.pem
+              - key: refresh_public.pem
+                path: refresh-public.pem
+              - key: internal_private.pem
+                path: internal-private.pem
+              - key: internal_public.pem
+                path: internal-public.pem
         - name: tmp
           emptyDir: {}
 ---

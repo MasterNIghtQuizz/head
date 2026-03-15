@@ -124,16 +124,16 @@ spec:
             - name: KAFKA_BROKERS
               value: '["kafka-service:29092"]'
             - name: AUTH_ACCESS_PRIVATE_KEY_PATH
-              value: "/etc/auth/access_private.pem"
+              value: "/app/keys/access-private.pem"
             - name: AUTH_ACCESS_PUBLIC_KEY_PATH
-              value: "/etc/auth/access_public.pem"
+              value: "/app/keys/access-public.pem"
             - name: COREPACK_HOME
               value: "/tmp/corepack"
             - name: YARN_CACHE_FOLDER
               value: "/tmp/yarn-cache"
           volumeMounts:
             - name: auth-keys
-              mountPath: "/etc/auth"
+              mountPath: "/app/keys"
               readOnly: true
             - name: tmp
               mountPath: /tmp
@@ -141,6 +141,11 @@ spec:
         - name: auth-keys
           secret:
             secretName: masterquizz-auth-keys
+            items:
+              - key: access_private.pem
+                path: access-private.pem
+              - key: access_public.pem
+                path: access-public.pem
         - name: tmp
           emptyDir: {}
 ---
