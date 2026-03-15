@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: masterquizz-microservices
+  namespace: argocd
+spec:
+  generators:
+    - list:
+        elements:
+          - service: api-gateway
+          - service: ms-user
+          - service: ms-quizz-management
+  template:
+    metadata:
+      name: "{{service}}"
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/your-org/masterQuizz.git # Replace with your repo
+        targetRevision: HEAD
+        path: "k8s/services/{{service}}"
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: masterquizz
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true

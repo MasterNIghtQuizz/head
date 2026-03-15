@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  labels:
+    app: api-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+    spec:
+      containers:
+        - name: api-gateway
+          image: masterquizz-api-gateway:latest
+          ports:
+            - containerPort: 3000
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: PORT
+              value: "3000"
+            - name: LOG_LEVEL
+              value: "info"
+            - name: SERVICES_USER
+              value: "http://ms-user:3000"
+            - name: SERVICES_QUIZZ
+              value: "http://ms-quizz-management:3000"
+            - name: KAFKA_BROKERS
+              value: '["kafka-service:9092"]'
+            - name: AUTH_ACCESS_PRIVATE_KEY_PATH
+              value: "/etc/auth/access_private.pem"
+            - name: AUTH_ACCESS_PUBLIC_KEY_PATH
+              value: "/etc/auth/access_public.pem"
+          volumeMounts:
+            - name: auth-keys
+              mountPath: "/etc/auth"
+              readOnly: true
+      volumes:
+        - name: auth-keys
+          secret:
+            secretName: masterquizz-auth-keys
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway
+spec:
+  type: NodePort
+  ports:
+    - port: 80
+      targetPort: 3000
+      nodePort: 30080
+  selector:
+    app: api-gateway
