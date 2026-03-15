@@ -25,9 +25,26 @@ spec:
       labels:
         app: kafka
     spec:
+      securityContext:
+        runAsUser: 1000
+        runAsNonRoot: true
+        fsGroup: 1000
       containers:
       - name: kafka
         image: confluentinc/cp-kafka:7.8.0
+        securityContext:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+          limits:
+            cpu: "1"
+            memory: "2Gi"
         ports:
         - containerPort: 9092
         env:
@@ -56,10 +73,22 @@ spec:
         volumeMounts:
         - name: kafka-storage
           mountPath: /var/lib/kafka/data
+        - name: tmp
+          mountPath: /tmp
+        - name: etc-kafka
+          mountPath: /etc/kafka
+        - name: var-log
+          mountPath: /var/log
       volumes:
       - name: kafka-storage
         persistentVolumeClaim:
           claimName: kafka-pvc
+      - name: tmp
+        emptyDir: {}
+      - name: etc-kafka
+        emptyDir: {}
+      - name: var-log
+        emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
@@ -93,9 +122,26 @@ spec:
       labels:
         app: kafka-ui
     spec:
+      securityContext:
+        runAsUser: 1000
+        runAsNonRoot: true
+        fsGroup: 1000
       containers:
       - name: kafka-ui
         image: provectuslabs/kafka-ui:master
+        securityContext:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "200m"
+            memory: "256Mi"
         ports:
         - containerPort: 8080
         env:
@@ -103,6 +149,12 @@ spec:
           value: "k3s-cluster"
         - name: KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS
           value: "kafka-service:29092"
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      - name: tmp
+        emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

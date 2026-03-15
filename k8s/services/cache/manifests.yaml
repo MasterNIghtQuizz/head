@@ -25,18 +25,39 @@ spec:
       labels:
         app: valkey
     spec:
+      securityContext:
+        runAsUser: 999
+        runAsNonRoot: true
+        fsGroup: 999
       containers:
       - name: valkey
         image: valkey/valkey:8
+        securityContext:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "64Mi"
+          limits:
+            cpu: "200m"
+            memory: "128Mi"
         ports:
         - containerPort: 6379
         volumeMounts:
         - name: valkey-storage
           mountPath: /data
+        - name: tmp
+          mountPath: /tmp
       volumes:
       - name: valkey-storage
         persistentVolumeClaim:
           claimName: valkey-pvc
+      - name: tmp
+        emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

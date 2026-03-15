@@ -40,9 +40,26 @@ spec:
       labels:
         app: postgres
     spec:
+      securityContext:
+        fsGroup: 999
       containers:
       - name: postgres
         image: postgres:16
+        securityContext:
+          runAsUser: 999
+          runAsNonRoot: true
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "256Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
         ports:
         - containerPort: 5432
         env:
@@ -58,11 +75,17 @@ spec:
             secretKeyRef:
               name: masterquizz-db-secrets
               key: postgres-password
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
         volumeMounts:
         - name: postgres-storage
           mountPath: /var/lib/postgresql/data
         - name: init-scripts
           mountPath: /docker-entrypoint-initdb.d
+        - name: tmp
+          mountPath: /tmp
+        - name: run-psql
+          mountPath: /var/run/postgresql
       volumes:
       - name: postgres-storage
         persistentVolumeClaim:
@@ -70,6 +93,10 @@ spec:
       - name: init-scripts
         configMap:
           name: postgres-init-script
+      - name: tmp
+        emptyDir: {}
+      - name: run-psql
+        emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

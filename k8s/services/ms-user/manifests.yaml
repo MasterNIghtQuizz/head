@@ -14,9 +14,26 @@ spec:
       labels:
         app: ms-user
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
       initContainers:
         - name: migrate-ms-user
-          image: victorcra/masterquizz-ms-user:7bcfd16fddb6d7b74f39d9744fb331f661e67a85
+          image: victorcra/masterquizz-ms-user:1.0.0
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "100m"
+              memory: "128Mi"
           command:
             ["yarn", "workspace", "@monorepo/ms-user", "run", "migrations:run"]
           env:
@@ -38,9 +55,25 @@ spec:
                 secretKeyRef:
                   name: masterquizz-db-secrets
                   key: postgres-password
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
       containers:
         - name: ms-user
-          image: victorcra/masterquizz-ms-user:7bcfd16fddb6d7b74f39d9744fb331f661e67a85
+          image: victorcra/masterquizz-ms-user:1.0.0
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "200m"
+              memory: "256Mi"
           ports:
             - containerPort: 3000
           env:
@@ -74,14 +107,18 @@ spec:
               value: "/etc/auth/access_private.pem"
             - name: AUTH_ACCESS_PUBLIC_KEY_PATH
               value: "/etc/auth/access_public.pem"
-        volumeMounts:
-        - name: auth-keys
-          mountPath: "/etc/auth"
-          readOnly: true
+          volumeMounts:
+            - name: auth-keys
+              mountPath: "/etc/auth"
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
       volumes:
         - name: auth-keys
           secret:
             secretName: masterquizz-auth-keys
+        - name: tmp
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
