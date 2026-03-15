@@ -120,6 +120,7 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b init-gitops-bot
           git add k8s/
-          git commit -m "chore(gitops): update k8s manifests to tag ${{ github.sha }} [skip ci]" || echo "No changes to commit"
-          git push
+          git commit -m "chore(gitops): thermal trigger to reveal bot actor [skip ci]" || echo "No changes to commit"
+          git push origin init-gitops-bot --force
