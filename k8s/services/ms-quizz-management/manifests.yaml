@@ -34,12 +34,10 @@ spec:
             limits:
               cpu: "100m"
               memory: "128Mi"
-          command:
-            [
-              "/bin/sh",
-              "-c",
-              'node -e "const net = require(\'net\'); const s = () => { const c = net.createConnection(process.env.POSTGRES_PORT, process.env.POSTGRES_HOST).on(\'connect\', () => process.exit(0)).on(\'error\', () => { console.log(\'waiting for postgres...\'); setTimeout(s, 2000); }); }; s();" && yarn workspace @monorepo/ms-quizz-management run migrations:run',
-            ]
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              node -e "const net = require('net'); const s = () => { const c = net.createConnection(process.env.POSTGRES_PORT, process.env.POSTGRES_HOST).on('connect', () => process.exit(0)).on('error', () => { console.log('waiting for postgres...'); setTimeout(s, 2000); }); }; s();" && yarn workspace @monorepo/ms-quizz-management run migrations:run
           env:
             - name: COREPACK_HOME
               value: "/tmp/corepack"
