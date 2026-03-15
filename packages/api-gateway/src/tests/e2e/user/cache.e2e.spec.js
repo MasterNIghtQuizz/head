@@ -29,6 +29,7 @@ describe("User Cache E2E Tests", () => {
       port: config.valkey.port,
       password: config.valkey.password,
       db: config.valkey.db,
+      enabled: true,
     });
 
     await valkeyService.connect();
