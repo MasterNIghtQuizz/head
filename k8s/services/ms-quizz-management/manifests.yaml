@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: ms-quizz-management
-          image: DOCKER_USER/masterquizz-ms-quizz-management:latest
+          image: victorcra/masterquizz-ms-quizz-management:9e9da195bc2daac484ab4f62777346fc971efcb8
           ports:
             - containerPort: 3000
           env:

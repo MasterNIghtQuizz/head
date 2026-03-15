@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: ms-user
-          image: DOCKER_USER/masterquizz-ms-user:latest
+          image: victorcra/masterquizz-ms-user:9e9da195bc2daac484ab4f62777346fc971efcb8
           ports:
             - containerPort: 3000
           env:
