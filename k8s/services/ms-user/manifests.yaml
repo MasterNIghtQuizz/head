@@ -61,6 +61,16 @@ spec:
                 secretKeyRef:
                   name: masterquizz-db-secrets
                   key: postgres-password
+            - name: VALKEY_HOST
+              value: "valkey-service"
+            - name: VALKEY_PORT
+              value: "6379"
+            - name: VALKEY_ENABLED
+              value: "false"
+            - name: KAFKA_ENABLED
+              value: "false"
+            - name: KAFKA_BROKERS
+              value: '["kafka-service:29092"]'
           volumeMounts:
             - name: tmp
               mountPath: /tmp
