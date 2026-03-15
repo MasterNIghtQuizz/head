@@ -16,7 +16,7 @@ spec:
     spec:
       initContainers:
         - name: migrate-ms-user
-          image: victorcra/masterquizz-ms-user:latest
+          image: victorcra/masterquizz-ms-user:7bcfd16fddb6d7b74f39d9744fb331f661e67a85
           command:
             ["yarn", "workspace", "@monorepo/ms-user", "run", "migrations:run"]
           env:
@@ -40,7 +40,7 @@ spec:
                   key: postgres-password
       containers:
         - name: ms-user
-          image: DOCKER_USER/masterquizz-ms-user:latest
+          image: victorcra/masterquizz-ms-user:7bcfd16fddb6d7b74f39d9744fb331f661e67a85
           ports:
             - containerPort: 3000
           env:

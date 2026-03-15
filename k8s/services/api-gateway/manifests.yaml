@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: api-gateway
-          image: victorcra/masterquizz-api-gateway:9e9da195bc2daac484ab4f62777346fc971efcb8
+          image: victorcra/masterquizz-api-gateway:7bcfd16fddb6d7b74f39d9744fb331f661e67a85
           ports:
             - containerPort: 3000
           env:

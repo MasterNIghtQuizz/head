@@ -16,7 +16,7 @@ spec:
     spec:
       initContainers:
         - name: migrate-ms-quizz
-          image: victorcra/masterquizz-ms-quizz-management:latest
+          image: victorcra/masterquizz-ms-quizz-management:7bcfd16fddb6d7b74f39d9744fb331f661e67a85
           command:
             [
               "yarn",
@@ -46,7 +46,7 @@ spec:
                   key: postgres-password
       containers:
         - name: ms-quizz-management
-          image: DOCKER_USER/masterquizz-ms-quizz-management:latest
+          image: victorcra/masterquizz-ms-quizz-management:7bcfd16fddb6d7b74f39d9744fb331f661e67a85
           ports:
             - containerPort: 3000
           env:
