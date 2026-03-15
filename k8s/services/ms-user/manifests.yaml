@@ -20,7 +20,7 @@ spec:
         fsGroup: 1000
       initContainers:
         - name: migrate-ms-user
-          image: victorcra/masterquizz-ms-user:c495c7c728967e400e1450dc1c574d4d358326ed
+          image: victorcra/masterquizz-ms-user:9748563d3d63e6e5524d8fe57c4ca19b0bc07f20
           securityContext:
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
@@ -76,7 +76,7 @@ spec:
               mountPath: /tmp
       containers:
         - name: ms-user
-          image: victorcra/masterquizz-ms-user:c495c7c728967e400e1450dc1c574d4d358326ed
+          image: victorcra/masterquizz-ms-user:9748563d3d63e6e5524d8fe57c4ca19b0bc07f20
           securityContext:
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
