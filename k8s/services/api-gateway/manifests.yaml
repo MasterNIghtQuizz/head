@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: api-gateway
-          image: masterquizz-api-gateway:latest
+          image: DOCKER_USER/masterquizz-api-gateway:latest
           ports:
             - containerPort: 3000
           env:
