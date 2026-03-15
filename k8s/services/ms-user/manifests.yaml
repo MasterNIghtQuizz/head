@@ -14,9 +14,33 @@ spec:
       labels:
         app: ms-user
     spec:
+      initContainers:
+        - name: migrate-ms-user
+          image: victorcra/masterquizz-ms-user:latest
+          command:
+            ["yarn", "workspace", "@monorepo/ms-user", "run", "migrations:run"]
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: POSTGRES_HOST
+              value: "postgres-service"
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_DB
+              value: "ms_user_db"
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: masterquizz-db-secrets
+                  key: postgres-user
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: masterquizz-db-secrets
+                  key: postgres-password
       containers:
         - name: ms-user
-          image: victorcra/masterquizz-ms-user:9e9da195bc2daac484ab4f62777346fc971efcb8
+          image: DOCKER_USER/masterquizz-ms-user:latest
           ports:
             - containerPort: 3000
           env:
@@ -29,17 +53,19 @@ spec:
             - name: POSTGRES_PORT
               value: "5432"
             - name: POSTGRES_DB
-              value: "masterquizz_user"
+              value: "ms_user_db"
             - name: POSTGRES_USER
               valueFrom:
                 secretKeyRef:
                   name: masterquizz-db-secrets
-                  key: user-db-username
+                  key: postgres-user
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: masterquizz-db-secrets
-                  key: user-db-password
+                  key: postgres-password
+            - name: KAFKA_BROKERS
+              value: '["kafka-service:29092"]'
             - name: VALKEY_HOST
               value: "valkey-service"
             - name: VALKEY_PORT
@@ -48,10 +74,10 @@ spec:
               value: "/etc/auth/access_private.pem"
             - name: AUTH_ACCESS_PUBLIC_KEY_PATH
               value: "/etc/auth/access_public.pem"
-          volumeMounts:
-            - name: auth-keys
-              mountPath: "/etc/auth"
-              readOnly: true
+              volumeMounts:
+                - name: auth-keys
+                  mountPath: "/etc/auth"
+                  readOnly: true
       volumes:
         - name: auth-keys
           secret:

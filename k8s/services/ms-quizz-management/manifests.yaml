@@ -14,9 +14,39 @@ spec:
       labels:
         app: ms-quizz-management
     spec:
+      initContainers:
+        - name: migrate-ms-quizz
+          image: victorcra/masterquizz-ms-quizz-management:latest
+          command:
+            [
+              "yarn",
+              "workspace",
+              "@monorepo/ms-quizz-management",
+              "run",
+              "migrations:run",
+            ]
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: POSTGRES_HOST
+              value: "postgres-service"
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_DB
+              value: "ms_quizz_db"
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: masterquizz-db-secrets
+                  key: postgres-user
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: masterquizz-db-secrets
+                  key: postgres-password
       containers:
         - name: ms-quizz-management
-          image: victorcra/masterquizz-ms-quizz-management:9e9da195bc2daac484ab4f62777346fc971efcb8
+          image: DOCKER_USER/masterquizz-ms-quizz-management:latest
           ports:
             - containerPort: 3000
           env:
@@ -29,27 +59,29 @@ spec:
             - name: POSTGRES_PORT
               value: "5432"
             - name: POSTGRES_DB
-              value: "masterquizz_quizz"
+              value: "ms_quizz_db"
             - name: POSTGRES_USER
               valueFrom:
                 secretKeyRef:
                   name: masterquizz-db-secrets
-                  key: quizz-db-username
+                  key: postgres-user
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: masterquizz-db-secrets
-                  key: quizz-db-password
+                  key: postgres-password
             - name: VALKEY_HOST
               value: "valkey-service"
             - name: VALKEY_PORT
               value: "6379"
+            - name: KAFKA_BROKERS
+              value: '["kafka-service:29092"]'
             - name: AUTH_INTERNAL_PUBLIC_KEY_PATH
               value: "/etc/auth/internal_public.pem"
-          volumeMounts:
-            - name: auth-keys
-              mountPath: "/etc/auth"
-              readOnly: true
+              volumeMounts:
+                - name: auth-keys
+                  mountPath: "/etc/auth"
+                  readOnly: true
       volumes:
         - name: auth-keys
           secret:
