@@ -38,7 +38,7 @@ spec:
             [
               "/bin/sh",
               "-c",
-              "until nc -z $POSTGRES_HOST $POSTGRES_PORT; do echo waiting for postgres; sleep 2; done && yarn workspace @monorepo/ms-user run migrations:run",
+              'node -e "const net = require(\'net\'); const s = () => { const c = net.createConnection(process.env.POSTGRES_PORT, process.env.POSTGRES_HOST).on(\'connect\', () => process.exit(0)).on(\'error\', () => { console.log(\'waiting for postgres...\'); setTimeout(s, 2000); }); }; s();" && yarn workspace @monorepo/ms-user run migrations:run',
             ]
           env:
             - name: COREPACK_HOME
