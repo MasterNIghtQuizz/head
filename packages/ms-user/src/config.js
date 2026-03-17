@@ -52,6 +52,7 @@ const schema = Joi.object({
     ttl: Joi.number().optional().default(3600),
   }).optional(),
   otel: Joi.object({
+    enabled: Joi.boolean().default(false),
     exporterUrl: Joi.string().uri().required(),
   }).optional(),
   opensearch: Joi.object({
@@ -99,8 +100,12 @@ export const config = {
   security: {
     encryptionKey: /** @type {string} */ (Config.get("security.encryptionKey")),
   },
-  valkey: /** @type {any} */ (Config.get("valkey")),
-  otel: /** @type {{ exporterUrl: string }} */ (Config.get("otel")),
+  valkey: /** @type {import('common-valkey').ValkeyConfig} */ (
+    Config.get("valkey")
+  ),
+  otel: /** @type {{ enabled: boolean; exporterUrl: string }} */ (
+    Config.get("otel")
+  ),
   opensearch: /** @type {{ enabled: boolean; node: string; index: string }} */ (
     Config.get("opensearch")
   ),

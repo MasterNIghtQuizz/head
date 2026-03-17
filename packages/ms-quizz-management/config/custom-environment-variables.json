@@ -41,6 +41,10 @@
     "ttl": "VALKEY_TTL"
   },
   "otel": {
+    "enabled": {
+      "__name": "OTEL_ENABLED",
+      "__format": "json"
+    },
     "exporterUrl": "OTEL_EXPORTER_OTLP_ENDPOINT"
   },
   "opensearch": {

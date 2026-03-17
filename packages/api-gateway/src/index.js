@@ -1,14 +1,14 @@
 import { initTracing } from "common-monitoring";
-import "./logger.js";
-import logger from "./logger.js";
+import { config } from "./config.js";
 
 initTracing({
   serviceName: "api-gateway",
-  exporterUrl: process.env["OTEL_EXPORTER_OTLP_ENDPOINT"],
+  enabled: config.otel.enabled,
+  exporterUrl: config.otel.exporterUrl,
 });
 
-import { config } from "./config.js";
-import { createServer } from "./app.js";
+const { default: logger } = await import("./logger.js");
+const { createServer } = await import("./app.js");
 
 const fastify = await createServer();
 

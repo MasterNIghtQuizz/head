@@ -1,15 +1,16 @@
 import { initTracing } from "common-monitoring";
-import logger from "./logger.js";
+import { config } from "./config.js";
 
 initTracing({
   serviceName: "ms-quizz-management",
-  exporterUrl: process.env["OTEL_EXPORTER_OTLP_ENDPOINT"],
+  enabled: config.otel.enabled,
+  exporterUrl: config.otel.exporterUrl,
 });
 
 import "reflect-metadata";
 import Fastify from "fastify";
 import { fileURLToPath } from "node:url";
-import { config } from "./config.js";
+import logger from "./logger.js";
 import { initDatabase, db } from "./database.js";
 import { registerSwagger } from "common-swagger";
 import { hookInternalToken } from "common-auth";
@@ -47,14 +48,16 @@ export async function createServer() {
     }),
   );
 
-  fastify.addHook("onResponse", (request, reply, done) => {
-    logger.info({
-      method: request.method,
-      url: request.url,
-      statusCode: reply.statusCode,
-      responseTime: reply.elapsedTime,
-    }, "request completed");
-    done();
+  fastify.addHook("onResponse", async (request, reply) => {
+    logger.info(
+      {
+        method: request.method,
+        url: request.url,
+        statusCode: reply.statusCode,
+        responseTime: Math.round(reply.elapsedTime),
+      },
+      "request completed",
+    );
   });
 
   fastify.get("/health", { config: { isPublic: true } }, async () => {

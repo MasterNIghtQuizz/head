@@ -4,6 +4,7 @@ import { createUserEntityMock } from "../../../tests/factories/user.factory.js";
 import { CryptoService } from "common-crypto";
 import { UnauthorizedError, ConflictError } from "common-errors";
 import { UserRole, TokenType } from "common-auth";
+import logger, { mockLogger } from "common-logger";
 
 vi.mock("common-crypto", () => ({
   CryptoService: {
@@ -18,18 +19,7 @@ vi.mock("common-crypto", () => ({
   },
 }));
 
-vi.mock("common-logger", () => {
-  const loggerMock = {
-    info: vi.fn(),
-    error: vi.fn(),
-    warn: vi.fn(),
-    debug: vi.fn(),
-  };
-  return {
-    logger: loggerMock,
-    default: loggerMock,
-  };
-});
+
 
 /**
  * @typedef {import('vitest').Mocked<import('../core/ports/user.repository.js').IUserRepository>} UserRepositoryMock
@@ -51,6 +41,7 @@ describe("UserService Unit Tests", () => {
   let valkeyRepositoryMock;
 
   beforeEach(() => {
+    mockLogger(vi);
     // @ts-ignore
     valkeyRepositoryMock = /** @type {ValkeyRepositoryMock} */ ({
       get: vi.fn(),

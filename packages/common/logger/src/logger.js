@@ -1,5 +1,5 @@
 import pino from "pino";
-import { trace, context } from "@opentelemetry/api";
+import { trace, context, isSpanContextValid } from "@opentelemetry/api";
 
 const redactFields = [
   "req.headers.authorization",
@@ -81,8 +81,17 @@ export const createLogger = ({
         if (!span) {
           return {};
         }
-        const { traceId, spanId } = span.spanContext();
-        return { traceId, spanId };
+
+        const spanContext = span.spanContext();
+        if (!isSpanContextValid(spanContext)) {
+          return {};
+        }
+
+        return {
+          traceId: spanContext.traceId,
+          spanId: spanContext.spanId,
+          traceFlags: `0${spanContext.traceFlags.toString(16)}`,
+        };
       },
       redact: {
         paths: redactFields,
@@ -114,17 +123,55 @@ export const setLogger = (newLogger) => {
   currentLogger = newLogger;
 };
 
-const loggerProxy = new Proxy(
-  {},
-  {
-    get(_target, prop, receiver) {
-      const value = Reflect.get(currentLogger, prop, receiver);
-      if (typeof value === "function") {
-        return value.bind(currentLogger);
+export const silenceLogger = () => {
+  currentLogger = pino({ level: "silent" });
+};
+
+export const mockLogger = (/** @type {{ fn: () => any; }} */ vi) => {
+  const mock = {
+    info: vi?.fn() || (() => {}),
+    error: vi?.fn() || (() => {}),
+    warn: vi?.fn() || (() => {}),
+    debug: vi?.fn() || (() => {}),
+    fatal: vi?.fn() || (() => {}),
+    trace: vi?.fn() || (() => {}),
+    silent: vi?.fn() || (() => {}),
+    child:
+      vi?.fn() ||
+      (() => ({
+        info: vi?.fn() || (() => {}),
+        error: vi?.fn() || (() => {}),
+        warn: vi?.fn() || (() => {}),
+        debug: vi?.fn() || (() => {}),
+        fatal: vi?.fn() || (() => {}),
+        trace: vi?.fn() || (() => {}),
+      })),
+  };
+  // @ts-ignore
+  currentLogger = mock;
+  return mock;
+};
+
+const loggerProxy = new Proxy(currentLogger, {
+  get(_target, prop, receiver) {
+    const value = Reflect.get(currentLogger, prop, receiver);
+    if (typeof value === "function") {
+      if (value.mock !== undefined || value._isMockFunction) {
+        return value;
       }
-      return value;
-    },
+      return value.bind(currentLogger);
+    }
+    return value;
   },
-);
+  has(_target, prop) {
+    return Reflect.has(currentLogger, prop);
+  },
+  ownKeys(_target) {
+    return Reflect.ownKeys(currentLogger);
+  },
+  getOwnPropertyDescriptor(_target, prop) {
+    return Reflect.getOwnPropertyDescriptor(currentLogger, prop);
+  },
+});
 
 export default /** @type {import('pino').Logger} */ (loggerProxy);

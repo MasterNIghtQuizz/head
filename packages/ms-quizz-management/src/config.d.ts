@@ -12,6 +12,7 @@ export declare const config: {
   };
   valkey: import("common-valkey").ValkeyConfig & { ttl: number };
   otel: {
+    enabled: boolean;
     exporterUrl: string;
   };
   opensearch: {

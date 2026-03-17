@@ -24,6 +24,7 @@ export declare const config: {
     ttl?: number;
   };
   otel: {
+    enabled: boolean;
     exporterUrl: string;
   };
   opensearch: {

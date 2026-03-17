@@ -1,17 +1,26 @@
 import { initTracing } from "common-monitoring";
-import logger from "./logger.js";
+import { config } from "./config.js";
 
 initTracing({
   serviceName: "ms-user",
-  exporterUrl: process.env["OTEL_EXPORTER_OTLP_ENDPOINT"],
+  enabled: config.otel.enabled,
+  exporterUrl: config.otel.exporterUrl,
 });
 
 import "reflect-metadata";
 import Fastify from "fastify";
-import { config } from "./config.js";
+import logger from "./logger.js";
 import { initDatabase } from "./database.js";
 import { registerSwagger } from "common-swagger";
 import { hookInternalToken } from "common-auth";
+import { ControllerFactory } from "common-core";
+import { UserController } from "./modules/user/controllers/user.controller.js";
+import { TestingController } from "./modules/user/controllers/testing.controller.js";
+import { UserService } from "./modules/user/services/user.service.js";
+import { createKafkaClient, KafkaProducer } from "common-kafka";
+import { TypeOrmUserRepository } from "./modules/user/infra/persistence/typeorm-user.repository.js";
+import { ValkeyRepository } from "common-valkey";
+import { db, valkey } from "./database.js";
 
 const fastify = Fastify({
   loggerInstance: logger,
@@ -25,27 +34,17 @@ fastify.addHook(
   }),
 );
 
-fastify.addHook("onResponse", (request, reply, done) => {
+fastify.addHook("onResponse", async (request, reply) => {
   logger.info(
     {
       method: request.method,
       url: request.url,
       statusCode: reply.statusCode,
-      responseTime: reply.elapsedTime,
+      responseTime: Math.round(reply.elapsedTime),
     },
     "request completed",
   );
-  done();
 });
-
-import { ControllerFactory } from "common-core";
-import { UserController } from "./modules/user/controllers/user.controller.js";
-import { TestingController } from "./modules/user/controllers/testing.controller.js";
-import { UserService } from "./modules/user/services/user.service.js";
-import { createKafkaClient, KafkaProducer } from "common-kafka";
-import { TypeOrmUserRepository } from "./modules/user/infra/persistence/typeorm-user.repository.js";
-import { ValkeyRepository } from "common-valkey";
-import { db, valkey } from "./database.js";
 
 // @ts-ignore
 await registerSwagger(fastify, {

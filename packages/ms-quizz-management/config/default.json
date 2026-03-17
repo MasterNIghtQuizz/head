@@ -32,6 +32,7 @@
     "ttl": 3600
   },
   "otel": {
+    "enabled": false,
     "exporterUrl": "http://localhost:4317"
   },
   "opensearch": {

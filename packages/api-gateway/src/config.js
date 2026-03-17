@@ -45,6 +45,7 @@ const schema = Joi.object({
     ttl: Joi.number().optional().default(3600),
   }).optional(),
   otel: Joi.object({
+    enabled: Joi.boolean().default(false),
     exporterUrl: Joi.string().uri().required(),
   }).optional(),
   opensearch: Joi.object({
@@ -90,7 +91,7 @@ export const config = {
     },
   },
   valkey: /** @type {typeof config.valkey} */ (Config.get("valkey")),
-  otel: /** @type {{ exporterUrl: string }} */ (Config.get("otel")),
+  otel: /** @type {{ enabled: boolean; exporterUrl: string }} */ (Config.get("otel")),
   opensearch: /** @type {{ enabled: boolean; node: string; index: string }} */ (
     Config.get("opensearch")
   ),

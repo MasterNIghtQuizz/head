@@ -12,6 +12,7 @@ import { resourceFromAttributes } from "@opentelemetry/resources";
 /**
  * @typedef {Object} TracingOptions
  * @property {string} serviceName
+ * @property {boolean} [enabled=true]
  * @property {string} [serviceVersion]
  * @property {string} [exporterUrl]
  * @property {number} [metricExportIntervalMs]
@@ -19,9 +20,14 @@ import { resourceFromAttributes } from "@opentelemetry/resources";
 
 /**
  * @param {TracingOptions} options
- * @returns {NodeSDK}
+ * @returns {NodeSDK | null}
  */
 export function initTracing(options) {
+  if (options.enabled === false) {
+    return null;
+  }
+  console.log(`[OTel] Initializing tracing for ${options.serviceName}...`);
+
   const exporterUrl =
     options.exporterUrl ??
     process.env["OTEL_EXPORTER_OTLP_ENDPOINT"] ??

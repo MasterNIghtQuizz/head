@@ -18,5 +18,7 @@ export interface LoggerOptions {
 
 export declare const createLogger: (options: LoggerOptions) => Logger;
 export declare const setLogger: (newLogger: Logger) => void;
+export declare const silenceLogger: () => void;
+export declare const mockLogger: (vi?: any) => any;
 declare const logger: Logger;
 export default logger;
