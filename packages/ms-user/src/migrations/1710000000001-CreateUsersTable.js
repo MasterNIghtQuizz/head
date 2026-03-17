@@ -7,7 +7,7 @@ export class CreateUsersTable1710000000001 {
    */
   async up(queryRunner) {
     await queryRunner.query(`
-      CREATE TABLE "users" (
+      CREATE TABLE IF NOT EXISTS "users" (
         "id" uuid NOT NULL DEFAULT gen_random_uuid(),
         "email" character varying NOT NULL,
         "emailHash" character varying NOT NULL,

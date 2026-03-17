@@ -30,5 +30,14 @@
     "password": "",
     "db": 0,
     "ttl": 3600
+  },
+  "otel": {
+    "enabled": false,
+    "exporterUrl": "http://localhost:4317"
+  },
+  "opensearch": {
+    "enabled": false,
+    "node": "http://localhost:9200",
+    "index": "logs-ms-quizz-management"
   }
 }

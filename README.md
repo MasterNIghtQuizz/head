@@ -69,6 +69,31 @@ To protect against this, we implemented robust **Consumer-Side Idempotency**:
 
 We rely on **TypeORM** automated migrations (`yarn migrations:run`) to ensure that the `processed_events` table exists and is synchronized across all domains that implement Kafka listeners.
 
+## 📊 Monitoring & Observability
+
+The project integrates a complete observability stack for distributed tracing and log centralization via **OpenTelemetry**.
+
+### 🛠 Monitoring Architecture
+- **OpenTelemetry (OTEL)**: Collects traces and logs from all microservices.
+- **Jaeger**: Used for visualizing request paths through services (Tracing).
+- **OpenSearch**: Search and analytics engine for centralized log storage.
+- **OpenSearch Dashboards**: Visualization interface for logs (equivalent to Kibana).
+
+### 🔗 Service Links
+- **Jaeger UI**: [http://localhost:16686](http://localhost:16686)
+- **OpenSearch Dashboards**: [http://localhost:5601](http://localhost:5601)
+- **OpenSearch API**: [http://localhost:9200](http://localhost:9200)
+
+### 🚀 Running with Monitoring
+To enable data exportation and start the full monitoring infrastructure:
+
+```bash
+MONITORING_ENABLED=true docker compose --profile app --profile monitoring up -d
+```
+
+> [!TIP]
+> Setting `MONITORING_ENABLED=true` tells the services to send their data to the OTEL collector. The `monitoring` profile starts the OpenSearch and Jaeger containers.
+
 ## 📦 Project Structure
 
 ### `/packages/common`
@@ -85,6 +110,7 @@ Shared libraries providing cross-cutting concerns.
 - **`common-axios`**: Pre-configured Axios instances for inter-service communication.
 - **`common-swagger`**: OpenAPI generators utilizing Fastify-Swagger.
 - **`common-config`**: Configuration validation relying on config/joi.
+- **`common-monitoring`**: OpenTelemetry setup for tracing and OpenSearch integration for log centralization.
 
 _(See `packages/common/README.md` for more details on internal libraries)_
 
@@ -123,8 +149,11 @@ The easiest way to bootstrap the databases alongside the services:
 
 ```bash
 docker compose --profile infra up -d
-# Si vous voulez lancer vos services sur docker
+# Start services in docker
 docker compose --profile app up -d
+
+# Start services with full monitoring (OpenSearch + Tracing)
+MONITORING_ENABLED=true docker compose --profile app --profile monitoring up -d
 ```
 
 _Note: Make sure port 5432 is free on your host, or configure `docker-compose.yml` accordingly._

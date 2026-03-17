@@ -5,7 +5,7 @@ export class CreateQuizTables1710000000001 {
   // @ts-ignore
   async up(queryRunner) {
     await queryRunner.query(`
-      CREATE TABLE "quizzes" (
+      CREATE TABLE IF NOT EXISTS "quizzes" (
         "id"          uuid              NOT NULL DEFAULT gen_random_uuid(),
         "title"       character varying NOT NULL,
         "description" text,
@@ -16,7 +16,7 @@ export class CreateQuizTables1710000000001 {
     `);
 
     await queryRunner.query(`
-      CREATE TABLE "question" (
+      CREATE TABLE IF NOT EXISTS "question" (
         "id"            uuid              NOT NULL DEFAULT gen_random_uuid(),
         "label"         character varying NOT NULL,
         "type"          character varying NOT NULL,
@@ -28,7 +28,7 @@ export class CreateQuizTables1710000000001 {
     `);
 
     await queryRunner.query(`
-      CREATE TABLE "choice" (
+      CREATE TABLE IF NOT EXISTS "choice" (
         "id"          uuid              NOT NULL DEFAULT gen_random_uuid(),
         "text"        character varying NOT NULL,
         "is_correct"  boolean           NOT NULL,

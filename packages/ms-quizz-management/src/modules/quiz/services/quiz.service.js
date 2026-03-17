@@ -1,5 +1,5 @@
 import { BaseService } from "common-core";
-import logger from "common-logger";
+import logger from "../../../logger.js";
 import { QUIZ_NOT_FOUND, QUIZ_CONFLICT } from "../errors/quiz.errors.js";
 import { DATABASE_ERROR } from "../errors/internal.errors.js";
 import { BaseError } from "common-errors";

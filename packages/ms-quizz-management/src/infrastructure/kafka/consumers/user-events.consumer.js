@@ -1,4 +1,4 @@
-import logger from "common-logger";
+import logger from "../../../logger.js";
 import { Topics, UserEventTypes } from "common-contracts";
 
 export class UserEventsConsumer {

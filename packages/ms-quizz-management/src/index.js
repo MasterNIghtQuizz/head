@@ -1,8 +1,16 @@
+import { initTracing } from "common-monitoring";
+import { config } from "./config.js";
+
+initTracing({
+  serviceName: "ms-quizz-management",
+  enabled: config.otel.enabled,
+  exporterUrl: config.otel.exporterUrl,
+});
+
 import "reflect-metadata";
 import Fastify from "fastify";
-import logger from "common-logger";
 import { fileURLToPath } from "node:url";
-import { config } from "./config.js";
+import logger from "./logger.js";
 import { initDatabase, db } from "./database.js";
 import { registerSwagger } from "common-swagger";
 import { hookInternalToken } from "common-auth";
@@ -26,7 +34,10 @@ import { QuestionResponseSchema } from "./modules/quiz/contracts/question.dto.js
 import { QuizResponseSchema } from "./modules/quiz/contracts/quiz.dto.js";
 
 export async function createServer() {
-  const fastify = Fastify({ loggerInstance: logger });
+  const fastify = Fastify({
+    loggerInstance: logger,
+    disableRequestLogging: true,
+  });
   fastify.addSchema(ChoiceResponseSchema);
   fastify.addSchema(QuestionResponseSchema);
   fastify.addSchema(QuizResponseSchema);
@@ -36,6 +47,18 @@ export async function createServer() {
       publicKeyPath: config.auth.internal.publicKeyPath,
     }),
   );
+
+  fastify.addHook("onResponse", async (request, reply) => {
+    logger.info(
+      {
+        method: request.method,
+        url: request.url,
+        statusCode: reply.statusCode,
+        responseTime: Math.round(reply.elapsedTime),
+      },
+      "request completed",
+    );
+  });
 
   fastify.get("/health", { config: { isPublic: true } }, async () => {
     return { status: "ok", service: "ms-quizz-management" };
@@ -73,14 +96,14 @@ export async function createServer() {
     await kafkaConsumer.start();
   }
 
-  const questionRepository = new QuestionRepository(db.instance, valkeyRepository);
+  const questionRepository = new QuestionRepository(
+    db.instance,
+    valkeyRepository,
+  );
   const quizRepository = new QuizRepository(db.instance, valkeyRepository);
   const choiceRepository = new ChoiceRepository(db.instance, valkeyRepository);
 
-  const quizService = new QuizService(
-    quizRepository,
-    valkeyTtl,
-  );
+  const quizService = new QuizService(quizRepository, valkeyTtl);
   ControllerFactory.register(fastify, QuizController, [quizService]);
 
   const choiceService = new ChoiceService(
@@ -90,10 +113,7 @@ export async function createServer() {
   );
   ControllerFactory.register(fastify, ChoiceController, [choiceService]);
 
-  const questionService = new QuestionService(
-    questionRepository,
-    valkeyTtl,
-  );
+  const questionService = new QuestionService(questionRepository, valkeyTtl);
   ControllerFactory.register(fastify, QuestionController, [questionService]);
   ControllerFactory.register(fastify, TestingController, []);
 

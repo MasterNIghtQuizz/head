@@ -1,7 +1,7 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import { hookInternalToken } from "../hooks/internal-token.hook.js";
 import { CryptoService } from "common-crypto";
-import logger from "common-logger";
+import logger, { mockLogger } from "common-logger";
 import { createExecutionContext } from "./test-helpers.js";
 import { UserRole } from "../enums.js";
 import { UnauthorizedError } from "common-errors";
@@ -11,6 +11,7 @@ describe("hookInternalToken (Guard/Hook Unit Test)", () => {
   let hook;
 
   beforeEach(() => {
+    mockLogger(vi);
     hook = hookInternalToken(options);
   });
 
@@ -20,6 +21,7 @@ describe("hookInternalToken (Guard/Hook Unit Test)", () => {
 
   it("should call done() immediately and not process if the route is public", async () => {
     const { request, reply, done, fastify } = createExecutionContext();
+    // @ts-ignore
     request.routeOptions = { config: { isPublic: true } };
 
     await hook.call(fastify, request, reply, done);
@@ -30,7 +32,7 @@ describe("hookInternalToken (Guard/Hook Unit Test)", () => {
 
   it("should call done(error) if internal-token header is missing", async () => {
     const { request, reply, done, fastify } = createExecutionContext();
-    const loggerSpy = vi.spyOn(logger, "warn").mockImplementation(() => {});
+    const loggerSpy = logger.warn;
 
     await hook.call(fastify, request, reply, done);
 
@@ -49,7 +51,7 @@ describe("hookInternalToken (Guard/Hook Unit Test)", () => {
       .mockImplementation(() => {
         throw new Error("Invalid signature");
       });
-    const loggerSpy = vi.spyOn(logger, "warn").mockImplementation(() => {});
+    const loggerSpy = logger.warn;
 
     await hook.call(fastify, request, reply, done);
 

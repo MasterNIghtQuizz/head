@@ -55,7 +55,7 @@ jobs:
           if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.deploy_all }}" == "true" ]]; then
             echo 'services=["api-gateway", "ms-user", "ms-quizz-management"]' >> $GITHUB_OUTPUT
           else
-            echo "services=${{ steps.filter.outputs.changes }}" >> $GITHUB_OUTPUT
+            echo 'services=${{ steps.filter.outputs.changes }}' >> $GITHUB_OUTPUT
           fi
 
   build-and-push:

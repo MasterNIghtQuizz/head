@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import logger from "common-logger";
+import logger from "./logger.js";
 import {
   DatabaseContext,
   TypeORMStrategy,

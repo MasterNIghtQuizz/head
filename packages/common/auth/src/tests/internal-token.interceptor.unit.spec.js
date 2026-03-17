@@ -2,7 +2,7 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import { hookInternalTokenInterceptor } from "../interceptors/internal-token.interceptor.js";
 import { CryptoService } from "common-crypto";
-import logger from "common-logger";
+import logger, { mockLogger } from "common-logger";
 import { createExecutionContext } from "./test-helpers.js";
 import { UserRole, TokenType } from "../enums.js";
 import { InternalServerError, UnauthorizedError } from "common-errors";
@@ -17,6 +17,7 @@ describe("hookInternalTokenInterceptor (Interceptor Unit Test)", () => {
   let hook;
 
   beforeEach(() => {
+    mockLogger(vi);
     hook = hookInternalTokenInterceptor(options);
   });
 
@@ -36,7 +37,7 @@ describe("hookInternalTokenInterceptor (Interceptor Unit Test)", () => {
 
   it("should call done(error) if request.user is missing or incomplete", async () => {
     const { request, reply, done, fastify } = createExecutionContext();
-    const loggerSpy = vi.spyOn(logger, "error").mockImplementation(() => {});
+    const loggerSpy = logger.error;
 
     await hook.call(fastify, request, reply, done);
 
@@ -94,7 +95,7 @@ describe("hookInternalTokenInterceptor (Interceptor Unit Test)", () => {
     vi.spyOn(CryptoService, "sign").mockImplementation(() => {
       throw new Error("Sign failure");
     });
-    const loggerSpy = vi.spyOn(logger, "error").mockImplementation(() => {});
+    const loggerSpy = logger.error;
 
     await hook.call(fastify, request, reply, done);
 
