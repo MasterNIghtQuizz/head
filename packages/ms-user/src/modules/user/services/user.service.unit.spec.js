@@ -19,8 +19,6 @@ vi.mock("common-crypto", () => ({
   },
 }));
 
-
-
 /**
  * @typedef {import('vitest').Mocked<import('../core/ports/user.repository.js').IUserRepository>} UserRepositoryMock
  * @typedef {import('vitest').Mocked<import('common-kafka').KafkaProducer>} KafkaProducerMock

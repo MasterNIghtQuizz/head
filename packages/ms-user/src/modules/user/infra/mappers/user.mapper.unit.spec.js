@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { UserMapper } from "./user.mapper.js";
-import { createUserEntityMock, createUserModelMock } from "../../../../tests/factories/user.factory.js";
+import {
+  createUserEntityMock,
+  createUserModelMock,
+} from "../../../../tests/factories/user.factory.js";
 
 /**
  * @typedef {import('vitest').Mocked<typeof import('common-crypto').CryptoService>} CryptoServiceMock
@@ -35,9 +38,9 @@ describe("UserMapper Unit Tests", () => {
 
   describe("toDomain", () => {
     it("should transform model to entity correctly", () => {
-      const model = createUserModelMock({ 
-        id: "1", 
-        email: "encrypted-test@example.com" 
+      const model = createUserModelMock({
+        id: "1",
+        email: "encrypted-test@example.com",
       });
 
       const entity = UserMapper.toDomain(model, encryptionKey);
@@ -50,9 +53,9 @@ describe("UserMapper Unit Tests", () => {
 
   describe("toPersistence", () => {
     it("should transform entity to database model correctly", () => {
-      const entity = createUserEntityMock({ 
+      const entity = createUserEntityMock({
         email: "test@example.com",
-        role: "ADMIN"
+        role: "ADMIN",
       });
 
       const persistence = UserMapper.toPersistence(entity, encryptionKey);
@@ -66,7 +69,7 @@ describe("UserMapper Unit Tests", () => {
   describe("toDto", () => {
     it("should transform entity to public response DTO", () => {
       const entity = createUserEntityMock({ id: "1", email: "test@test.com" });
-      
+
       const dto = UserMapper.toDto(entity);
 
       expect(dto.id).toBe("1");

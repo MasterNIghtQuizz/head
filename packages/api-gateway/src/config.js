@@ -91,7 +91,9 @@ export const config = {
     },
   },
   valkey: /** @type {typeof config.valkey} */ (Config.get("valkey")),
-  otel: /** @type {{ enabled: boolean; exporterUrl: string }} */ (Config.get("otel")),
+  otel: /** @type {{ enabled: boolean; exporterUrl: string }} */ (
+    Config.get("otel")
+  ),
   opensearch: /** @type {{ enabled: boolean; node: string; index: string }} */ (
     Config.get("opensearch")
   ),
