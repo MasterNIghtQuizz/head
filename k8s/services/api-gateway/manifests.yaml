@@ -20,7 +20,7 @@ spec:
         fsGroup: 1000
       containers:
         - name: api-gateway
-          image: victorcra/masterquizz-api-gateway:9748563d3d63e6e5524d8fe57c4ca19b0bc07f20
+          image: victorcra/masterquizz-api-gateway:7fe26e58b360ddf8b097504860b4561b4362eb10
           securityContext:
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
