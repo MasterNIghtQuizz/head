@@ -11,4 +11,12 @@ export declare const config: {
     internal: { privateKeyPath: string; publicKeyPath: string };
   };
   valkey: import("common-valkey").ValkeyConfig & { ttl: number };
+  otel: {
+    exporterUrl: string;
+  };
+  opensearch: {
+    enabled: boolean;
+    node: string;
+    index: string;
+  };
 };

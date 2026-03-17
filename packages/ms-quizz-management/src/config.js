@@ -40,6 +40,14 @@ const schema = Joi.object({
     db: Joi.number().optional(),
     ttl: Joi.number().optional(),
   }).required(),
+  otel: Joi.object({
+    exporterUrl: Joi.string().uri().required(),
+  }).optional(),
+  opensearch: Joi.object({
+    enabled: Joi.boolean().default(false),
+    node: Joi.string().uri().required(),
+    index: Joi.string().required(),
+  }).optional(),
 });
 
 Config.init({ directory: configDirectory, schema });
@@ -73,4 +81,8 @@ export const config = {
     /** @type {import('common-valkey').ValkeyConfig & { ttl: number }} */ (
       Config.get("valkey")
     ),
+  otel: /** @type {{ exporterUrl: string }} */ (Config.get("otel")),
+  opensearch: /** @type {{ enabled: boolean; node: string; index: string }} */ (
+    Config.get("opensearch")
+  ),
 };

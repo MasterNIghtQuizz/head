@@ -51,6 +51,14 @@ const schema = Joi.object({
     db: Joi.number().optional().default(0),
     ttl: Joi.number().optional().default(3600),
   }).optional(),
+  otel: Joi.object({
+    exporterUrl: Joi.string().uri().required(),
+  }).optional(),
+  opensearch: Joi.object({
+    enabled: Joi.boolean().default(false),
+    node: Joi.string().uri().required(),
+    index: Joi.string().required(),
+  }).optional(),
 });
 
 Config.init({ directory: configDirectory, schema });
@@ -92,4 +100,8 @@ export const config = {
     encryptionKey: /** @type {string} */ (Config.get("security.encryptionKey")),
   },
   valkey: /** @type {any} */ (Config.get("valkey")),
+  otel: /** @type {{ exporterUrl: string }} */ (Config.get("otel")),
+  opensearch: /** @type {{ enabled: boolean; node: string; index: string }} */ (
+    Config.get("opensearch")
+  ),
 };

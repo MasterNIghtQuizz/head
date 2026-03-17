@@ -16,6 +16,7 @@
     "common-core": "workspace:*",
     "common-crypto": "workspace:*",
     "common-logger": "workspace:*",
+    "common-monitoring": "workspace:*",
     "common-swagger": "workspace:*",
     "fastify": "^5.6.2",
     "joi": "^18.0.2"

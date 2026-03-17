@@ -23,4 +23,12 @@ export declare const config: {
     db?: number;
     ttl?: number;
   };
+  otel: {
+    exporterUrl: string;
+  };
+  opensearch: {
+    enabled: boolean;
+    node: string;
+    index: string;
+  };
 };

@@ -4,7 +4,11 @@
     "env": "NODE_ENV"
   },
   "logger": {
-    "level": "LOG_LEVEL"
+    "level": "LOG_LEVEL",
+    "pretty": {
+      "__name": "LOG_PRETTY",
+      "__format": "json"
+    }
   },
   "services": {
     "user": "USER_SERVICE_URL",
@@ -43,5 +47,16 @@
     "password": "VALKEY_PASSWORD",
     "db": "VALKEY_DB",
     "ttl": "VALKEY_TTL"
+  },
+  "otel": {
+    "exporterUrl": "OTEL_EXPORTER_OTLP_ENDPOINT"
+  },
+  "opensearch": {
+    "enabled": {
+      "__name": "OPENSEARCH_ENABLED",
+      "__format": "json"
+    },
+    "node": "OPENSEARCH_NODE",
+    "index": "OPENSEARCH_INDEX"
   }
 }

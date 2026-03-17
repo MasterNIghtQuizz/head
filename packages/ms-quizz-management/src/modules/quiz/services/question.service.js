@@ -1,5 +1,5 @@
 import { BaseService } from "common-core";
-import logger from "common-logger";
+import logger from "../../../logger.js";
 import { QUESTION_NOT_FOUND } from "../errors/question.errors.js";
 import { DATABASE_ERROR } from "../errors/internal.errors.js";
 import { BaseError } from "common-errors";

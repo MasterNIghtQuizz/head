@@ -1,12 +1,22 @@
+import { initTracing } from "common-monitoring";
+import logger from "./logger.js";
+
+initTracing({
+  serviceName: "ms-user",
+  exporterUrl: process.env["OTEL_EXPORTER_OTLP_ENDPOINT"],
+});
+
 import "reflect-metadata";
 import Fastify from "fastify";
-import logger from "common-logger";
 import { config } from "./config.js";
 import { initDatabase } from "./database.js";
 import { registerSwagger } from "common-swagger";
 import { hookInternalToken } from "common-auth";
 
-const fastify = Fastify({ loggerInstance: logger });
+const fastify = Fastify({
+  loggerInstance: logger,
+  disableRequestLogging: true,
+});
 
 fastify.addHook(
   "onRequest",

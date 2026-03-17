@@ -1,5 +1,5 @@
 import Fastify from "fastify";
-import logger from "common-logger";
+import logger from "./logger.js";
 import { config } from "./config.js";
 import { registerSwagger } from "common-swagger";
 import { ControllerFactory } from "common-core";
@@ -21,7 +21,10 @@ import { ChoiceController } from "./modules/quiz/controllers/choice.controller.j
 import { ChoiceService } from "./modules/quiz/services/choice.service.js";
 
 export async function createServer() {
-  const fastify = Fastify({ loggerInstance: logger });
+  const fastify = Fastify({
+    loggerInstance: logger,
+    disableRequestLogging: true,
+  });
 
   fastify.addHook(
     "onRequest",
