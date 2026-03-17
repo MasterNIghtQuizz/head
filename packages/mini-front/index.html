@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WebSocket Test Client</title>
+    <style>
+      :root {
+        --bg: #f4f6fb;
+        --card: #ffffff;
+        --text: #1f2937;
+        --muted: #6b7280;
+        --accent: #0f766e;
+        --accent-hover: #115e59;
+        --danger: #b91c1c;
+        --border: #d1d5db;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: radial-gradient(
+          circle at top right,
+          #e6fffb 0%,
+          var(--bg) 55%
+        );
+        color: var(--text);
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 16px;
+      }
+
+      .card {
+        width: min(900px, 100%);
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+      }
+
+      .header {
+        padding: 20px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .header h1 {
+        margin: 0;
+        font-size: 1.2rem;
+      }
+
+      .header p {
+        margin: 6px 0 0;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+
+      .content {
+        padding: 16px;
+        display: grid;
+        gap: 16px;
+      }
+
+      .row {
+        display: grid;
+        gap: 8px;
+      }
+
+      .row.inline {
+        grid-template-columns: 1fr auto auto;
+        align-items: end;
+      }
+
+      label {
+        font-size: 0.9rem;
+        color: var(--muted);
+      }
+
+      input,
+      textarea,
+      button {
+        font: inherit;
+      }
+
+      input,
+      textarea {
+        width: 100%;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 10px 12px;
+        color: var(--text);
+        background: #fff;
+      }
+
+      textarea {
+        min-height: 90px;
+        resize: vertical;
+      }
+
+      button {
+        border: 0;
+        border-radius: 10px;
+        padding: 10px 14px;
+        cursor: pointer;
+        color: #fff;
+        background: var(--accent);
+        transition: background 0.2s ease;
+        white-space: nowrap;
+      }
+
+      button:hover {
+        background: var(--accent-hover);
+      }
+
+      button.secondary {
+        background: var(--danger);
+      }
+
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .status {
+        padding: 8px 10px;
+        border-radius: 8px;
+        background: #ecfeff;
+        color: #155e75;
+        border: 1px solid #bae6fd;
+        font-size: 0.9rem;
+      }
+
+      .status.disconnected {
+        background: #fef2f2;
+        color: #7f1d1d;
+        border-color: #fecaca;
+      }
+
+      .logs {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: #0f172a;
+        color: #e2e8f0;
+        min-height: 240px;
+        max-height: 320px;
+        overflow: auto;
+        padding: 10px;
+        font-family:
+          ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          "Liberation Mono", "Courier New", monospace;
+        font-size: 0.85rem;
+        line-height: 1.45;
+      }
+
+      .log-line {
+        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+
+      .hint {
+        color: var(--muted);
+        font-size: 0.85rem;
+        margin-top: -4px;
+      }
+
+      @media (max-width: 700px) {
+        .row.inline {
+          grid-template-columns: 1fr;
+        }
+
+        button {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <section class="header">
+        <h1>WebSocket Test Client</h1>
+        <p>Connect to a WebSocket server and quickly test message exchange.</p>
+      </section>
+
+      <section class="content">
+        <div class="row inline">
+          <div>
+            <label for="ws-url">WebSocket URL</label>
+            <input
+              id="ws-url"
+              type="text"
+              value="ws://localhost:3000"
+              placeholder="ws://localhost:3000"
+            />
+          </div>
+          <button id="connect-btn">Connect</button>
+          <button id="disconnect-btn" class="secondary" disabled>
+            Disconnect
+          </button>
+        </div>
+
+        <div class="row">
+          <label for="user-id">Generated userId (sent as query param)</label>
+          <input id="user-id" type="text" readonly />
+        </div>
+
+        <div class="row">
+          <label for="user-name"
+            >Generated userName (sent as query param)</label
+          >
+          <input id="user-name" type="text" readonly />
+        </div>
+
+        <div id="status" class="status disconnected">Disconnected</div>
+
+        <div class="row">
+          <label for="message">Message to send</label>
+          <textarea
+            id="message"
+            placeholder='Type text or JSON, e.g. {"type":"ping"}'
+          ></textarea>
+          <div class="row inline">
+            <div class="hint">
+              If message is valid JSON, it will be sent as JSON string.
+            </div>
+            <button id="send-btn" disabled>Send Message</button>
+            <button id="clear-btn" type="button" class="secondary">
+              Clear Logs
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label>Logs</label>
+          <div id="logs" class="logs" aria-live="polite"></div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const urlInput = document.getElementById("ws-url");
+      const connectBtn = document.getElementById("connect-btn");
+      const disconnectBtn = document.getElementById("disconnect-btn");
+      const sendBtn = document.getElementById("send-btn");
+      const clearBtn = document.getElementById("clear-btn");
+      const messageInput = document.getElementById("message");
+      const userIdInput = document.getElementById("user-id");
+      const userNameInput = document.getElementById("user-name");
+      const logs = document.getElementById("logs");
+      const status = document.getElementById("status");
+
+      let socket = null;
+      const userId = createUuid();
+      const userName = createUserName();
+      userIdInput.value = userId;
+      userNameInput.value = userName;
+
+      function createUuid() {
+        if (
+          globalThis.crypto &&
+          typeof globalThis.crypto.randomUUID === "function"
+        ) {
+          return globalThis.crypto.randomUUID();
+        }
+
+        return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+          const r = Math.floor(Math.random() * 16);
+          const v = c === "x" ? r : (r & 0x3) | 0x8;
+          return v.toString(16);
+        });
+      }
+
+      function createUserName() {
+        const adjectives = [
+          "brave",
+          "calm",
+          "quick",
+          "curious",
+          "sharp",
+          "kind",
+          "bright",
+          "bold",
+        ];
+        const animals = [
+          "otter",
+          "falcon",
+          "lynx",
+          "tiger",
+          "fox",
+          "panda",
+          "wolf",
+          "dolphin",
+        ];
+
+        const adjective = adjectives[Math.floor(Math.random() * adjectives.length)];
+        const animal = animals[Math.floor(Math.random() * animals.length)];
+        const suffix = Math.floor(Math.random() * 9000) + 1000;
+
+        return `${adjective}-${animal}-${suffix}`;
+      }
+
+      function setConnectedUI(isConnected) {
+        connectBtn.disabled = isConnected;
+        disconnectBtn.disabled = !isConnected;
+        sendBtn.disabled = !isConnected;
+        status.textContent = isConnected ? "Connected" : "Disconnected";
+        status.classList.toggle("disconnected", !isConnected);
+      }
+
+      function addLog(type, data) {
+        const time = new Date().toLocaleTimeString();
+        const line = document.createElement("p");
+        line.className = "log-line";
+        line.textContent = `[${time}] ${type}: ${data}`;
+        logs.appendChild(line);
+        logs.scrollTop = logs.scrollHeight;
+      }
+
+      connectBtn.addEventListener("click", () => {
+        const url = urlInput.value.trim();
+        if (!url) {
+          addLog("error", "Please provide a WebSocket URL.");
+          return;
+        }
+
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          addLog("info", "Already connected.");
+          return;
+        }
+
+        try {
+          const wsUrl = new URL(url);
+          wsUrl.searchParams.set("userId", userId);
+          wsUrl.searchParams.set("userName", userName);
+          socket = new WebSocket(wsUrl.toString());
+          addLog("system", `Connecting to ${wsUrl.toString()} ...`);
+        } catch (error) {
+          addLog("error", error.message || "Failed to create WebSocket.");
+          return;
+        }
+
+        socket.addEventListener("open", () => {
+          setConnectedUI(true);
+          addLog("system", "Connection opened.");
+        });
+
+        socket.addEventListener("message", (event) => {
+          addLog("recv", event.data);
+        });
+
+        socket.addEventListener("close", (event) => {
+          setConnectedUI(false);
+          addLog(
+            "system",
+            `Connection closed (code=${event.code}, reason=${event.reason || "none"}).`,
+          );
+        });
+
+        socket.addEventListener("error", () => {
+          addLog("error", "WebSocket error occurred.");
+        });
+      });
+
+      disconnectBtn.addEventListener("click", () => {
+        if (!socket) return;
+        socket.close(1000, "Client disconnect");
+      });
+
+      sendBtn.addEventListener("click", () => {
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+          addLog("error", "Socket is not connected.");
+          return;
+        }
+
+        const raw = messageInput.value;
+        if (!raw.trim()) {
+          addLog("error", "Message is empty.");
+          return;
+        }
+
+        let payload = raw;
+        try {
+          payload = JSON.stringify(JSON.parse(raw));
+        } catch (_err) {
+          // Keep raw text when it is not JSON.
+        }
+
+        socket.send(payload);
+        addLog("sent", payload);
+      });
+
+      clearBtn.addEventListener("click", () => {
+        logs.textContent = "";
+      });
+
+      setConnectedUI(false);
+    </script>
+  </body>
+</html>
