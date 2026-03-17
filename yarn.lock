@@ -694,6 +694,27 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@monorepo/ms-session@workspace:packages/ms-session":
+  version: 0.0.0-use.local
+  resolution: "@monorepo/ms-session@workspace:packages/ms-session"
+  dependencies:
+    common-auth: "workspace:*"
+    common-config: "workspace:*"
+    common-contracts: "workspace:^"
+    common-core: "workspace:^"
+    common-crypto: "workspace:*"
+    common-database: "workspace:*"
+    common-kafka: "workspace:*"
+    common-logger: "workspace:*"
+    common-swagger: "workspace:*"
+    fastify: "npm:^5.6.2"
+    joi: "npm:^18.0.2"
+    pg: "npm:^8.13.3"
+    reflect-metadata: "npm:^0.2.2"
+    typeorm: "npm:^0.3.20"
+  languageName: unknown
+  linkType: soft
+
 "@monorepo/ms-user@workspace:packages/ms-user":
   version: 0.0.0-use.local
   resolution: "@monorepo/ms-user@workspace:packages/ms-user"
