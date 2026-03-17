@@ -44,6 +44,16 @@ export async function createServer() {
   );
 
   fastify.addHook("preHandler", hookRoles());
+  
+  fastify.addHook("onResponse", (request, reply, done) => {
+    logger.info({
+      method: request.method,
+      url: request.url,
+      statusCode: reply.statusCode,
+      responseTime: reply.elapsedTime,
+    }, "request completed");
+    done();
+  });
 
   // @ts-ignore
   await registerSwagger(fastify, {

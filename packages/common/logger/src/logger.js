@@ -1,4 +1,5 @@
 import pino from "pino";
+import { trace, context } from "@opentelemetry/api";
 
 const redactFields = [
   "req.headers.authorization",
@@ -37,6 +38,7 @@ export const createLogger = ({
 }) => {
   const streams = [];
 
+  // Console stream
   if (pretty) {
     streams.push({
       stream: pino.transport({
@@ -52,6 +54,7 @@ export const createLogger = ({
     streams.push({ stream: pino.destination(1) });
   }
 
+  // OpenSearch stream
   if (opensearch) {
     streams.push({
       level,
@@ -73,6 +76,14 @@ export const createLogger = ({
     {
       name,
       level,
+      mixin() {
+        const span = trace.getSpan(context.active());
+        if (!span) {
+          return {};
+        }
+        const { traceId, spanId } = span.spanContext();
+        return { traceId, spanId };
+      },
       redact: {
         paths: redactFields,
         remove: true,

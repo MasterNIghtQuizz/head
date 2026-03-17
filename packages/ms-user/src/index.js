@@ -25,6 +25,19 @@ fastify.addHook(
   }),
 );
 
+fastify.addHook("onResponse", (request, reply, done) => {
+  logger.info(
+    {
+      method: request.method,
+      url: request.url,
+      statusCode: reply.statusCode,
+      responseTime: reply.elapsedTime,
+    },
+    "request completed",
+  );
+  done();
+});
+
 import { ControllerFactory } from "common-core";
 import { UserController } from "./modules/user/controllers/user.controller.js";
 import { TestingController } from "./modules/user/controllers/testing.controller.js";

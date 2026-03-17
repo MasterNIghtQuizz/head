@@ -47,6 +47,16 @@ export async function createServer() {
     }),
   );
 
+  fastify.addHook("onResponse", (request, reply, done) => {
+    logger.info({
+      method: request.method,
+      url: request.url,
+      statusCode: reply.statusCode,
+      responseTime: reply.elapsedTime,
+    }, "request completed");
+    done();
+  });
+
   fastify.get("/health", { config: { isPublic: true } }, async () => {
     return { status: "ok", service: "ms-quizz-management" };
   });
