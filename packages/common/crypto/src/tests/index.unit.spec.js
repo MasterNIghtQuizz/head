@@ -1,19 +1,18 @@
 // @ts-nocheck
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { CryptoService } from "../index.js";
 import jwt from "jsonwebtoken";
 import fs from "node:fs";
-import logger from "common-logger";
+import logger, { mockLogger } from "common-logger";
 
 vi.mock("jsonwebtoken");
 vi.mock("node:fs");
-vi.mock("common-logger", () => ({
-  default: {
-    error: vi.fn(),
-  },
-}));
 
 describe("CryptoService Unit Tests (Guard/Hook Unit Test)", () => {
+  beforeEach(() => {
+    mockLogger(vi);
+  });
+
   afterEach(() => {
     vi.restoreAllMocks();
   });

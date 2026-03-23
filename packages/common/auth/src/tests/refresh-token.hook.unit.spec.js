@@ -2,7 +2,7 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import { hookRefreshToken } from "../hooks/refresh-token.hook.js";
 import { CryptoService } from "common-crypto";
-import logger from "common-logger";
+import logger, { mockLogger } from "common-logger";
 import { createExecutionContext } from "./test-helpers.js";
 import { UnauthorizedError } from "common-errors";
 
@@ -11,6 +11,7 @@ describe("hookRefreshToken (Guard/Hook Unit Test)", () => {
   let hook;
 
   beforeEach(() => {
+    mockLogger(vi);
     hook = hookRefreshToken(options);
   });
 
@@ -43,7 +44,7 @@ describe("hookRefreshToken (Guard/Hook Unit Test)", () => {
   it("should call done(error) if refresh-token header is missing", async () => {
     const { request, reply, done, fastify } = createExecutionContext();
     request.routeOptions = { config: { useRefreshToken: true } };
-    const loggerSpy = vi.spyOn(logger, "warn").mockImplementation(() => {});
+    const loggerSpy = logger.warn;
 
     await hook.call(fastify, request, reply, done);
 
@@ -63,7 +64,7 @@ describe("hookRefreshToken (Guard/Hook Unit Test)", () => {
       .mockImplementation(() => {
         throw new Error("Invalid signature");
       });
-    const loggerSpy = vi.spyOn(logger, "warn").mockImplementation(() => {});
+    const loggerSpy = logger.warn;
 
     await hook.call(fastify, request, reply, done);
 

@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
+import { mockLogger } from "common-logger";
 import { QuestionService } from "./question.service.js";
 import { createQuestionEntity } from "../../../tests/factories/quiz.factory.js";
 import { QuestionMapper } from "../infra/mappers/question.mapper.js";
@@ -18,6 +19,7 @@ describe("QuestionService Unit Tests", () => {
   let valkeyRepositoryMock;
 
   beforeEach(() => {
+    mockLogger(vi);
     valkeyRepositoryMock = {
       get: vi.fn(),
       set: vi.fn(),

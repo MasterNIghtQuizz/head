@@ -1,5 +1,5 @@
 import { initDatabase, db } from "./database.js";
-import logger from "common-logger";
+import logger from "./logger.js";
 
 const run = async () => {
   try {

@@ -2,7 +2,7 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import { hookAccessToken } from "../hooks/access-token.hook.js";
 import { CryptoService } from "common-crypto";
-import logger from "common-logger";
+import logger, { mockLogger } from "common-logger";
 import { createExecutionContext } from "./test-helpers.js";
 import { UserRole } from "../enums.js";
 import { UnauthorizedError } from "common-errors";
@@ -12,6 +12,7 @@ describe("hookAccessToken (Guard/Hook Unit Test)", () => {
   let hook;
 
   beforeEach(() => {
+    mockLogger(vi);
     hook = hookAccessToken(options);
   });
 
@@ -41,7 +42,7 @@ describe("hookAccessToken (Guard/Hook Unit Test)", () => {
 
   it("should call done(error) if access-token header is missing", async () => {
     const { request, reply, done, fastify } = createExecutionContext();
-    const loggerSpy = vi.spyOn(logger, "warn").mockImplementation(() => {});
+    const loggerSpy = logger.warn;
 
     await hook.call(fastify, request, reply, done);
 
@@ -60,7 +61,7 @@ describe("hookAccessToken (Guard/Hook Unit Test)", () => {
       .mockImplementation(() => {
         throw new Error("Invalid signature");
       });
-    const loggerSpy = vi.spyOn(logger, "warn").mockImplementation(() => {});
+    const loggerSpy = logger.warn;
 
     await hook.call(fastify, request, reply, done);
 

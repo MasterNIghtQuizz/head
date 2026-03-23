@@ -10,7 +10,9 @@
     "build": "echo 'Pure JS package - no build step'"
   },
   "dependencies": {
+    "@opentelemetry/api": "^1.9.0",
     "pino": "^10.1.0",
+    "pino-opensearch": "^1.1.0",
     "pino-pretty": "^13.1.2"
   }
 }

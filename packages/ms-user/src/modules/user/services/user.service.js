@@ -1,7 +1,7 @@
 import { BaseService } from "common-core";
 import { CryptoService } from "common-crypto";
 import { UnauthorizedError } from "common-errors";
-import logger from "common-logger";
+import logger from "../../../logger.js";
 import { UserEntity } from "../core/entities/user.entity.js";
 import { UserMapper } from "../infra/mappers/user.mapper.js";
 import { config } from "../../../config.js";

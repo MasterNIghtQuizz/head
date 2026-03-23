@@ -21,7 +21,7 @@ services:
   #  INFRASTRUCTURE — profiles: infra
   # ────────────────────────────────────────────────────────
   postgres:
-    profiles: [infra]
+    profiles: [infra, app]
     image: postgres:16
     environment:
       <<: *common-env
@@ -38,7 +38,7 @@ services:
       retries: 5
 
   valkey:
-    profiles: [infra]
+    profiles: [infra, app]
     image: valkey/valkey:8
     container_name: valkey
     ports:
@@ -52,7 +52,7 @@ services:
       - valkeydata:/data
 
   kafka:
-    profiles: [infra]
+    profiles: [infra, app]
     image: confluentinc/cp-kafka:7.8.0
     hostname: kafka
     container_name: kafka
@@ -99,43 +99,90 @@ services:
       kafka:
         condition: service_healthy
 
-  # ────────────────────────────────────────────────────────
-  #  MIGRATIONS — profile: app (run once before services)
-  # ────────────────────────────────────────────────────────
-  migrate-ms-user:
-    profiles: [infra]
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.ms-user
-    environment:
-      NODE_ENV: production
-      <<: *ms-user-db
-    command: ["yarn", "workspace", "@monorepo/ms-user", "run", "migrations:run"]
+  otel-collector:
+    profiles: [monitoring]
+    image: otel/opentelemetry-collector:latest
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./monitoring/otel-collector-config.yaml:/etc/otelcol/config.yaml
+    ports:
+      - "1888:1888"
+      - "8888:8888"
+      - "8889:8889"
+      - "13133:13133"
+      - "4317:4317"
+      - "4318:4318"
+      - "55679:55679"
+    healthcheck:
+      test: ["CMD", "/otelcol", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     depends_on:
-      postgres:
-        condition: service_healthy
-    restart: "no"
+      - jaeger
 
-  migrate-ms-quizz-management:
-    profiles: [infra]
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.ms-quizz-management
+  jaeger:
+    profiles: [monitoring]
+    image: jaegertracing/jaeger:latest
+    ports:
+      - "16686:16686"
+      - "4317"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --quiet --tries=1 --spider http://localhost:14269/health || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  opensearch:
+    profiles: [monitoring]
+    image: opensearchproject/opensearch:2.11.0
+    container_name: opensearch
     environment:
-      NODE_ENV: production
-      <<: *ms-quizz-db
-    command:
-      [
-        "yarn",
-        "workspace",
-        "@monorepo/ms-quizz-management",
-        "run",
-        "migrations:run",
-      ]
+      - cluster.name=opensearch-cluster
+      - node.name=opensearch
+      - discovery.type=single-node
+      - bootstrap.memory_lock=false
+      - "OPENSEARCH_JAVA_OPTS=-Xms2g -Xmx2g"
+      - DISABLE_INSTALL_DEMO_CONFIG=true
+      - DISABLE_SECURITY_PLUGIN=true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - opensearchdata:/usr/share/opensearch/data
+    ports:
+      - "9200:9200"
+      - "9600:9600"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"\\|\"status\":\"yellow\"'",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  opensearch-dashboards:
+    profiles: [monitoring]
+    image: opensearchproject/opensearch-dashboards:2.11.0
+    container_name: opensearch-dashboards
+    ports:
+      - "5601:5601"
+    environment:
+      OPENSEARCH_HOSTS: '["http://opensearch:9200"]'
+      DISABLE_SECURITY_DASHBOARDS_PLUGIN: "true"
     depends_on:
-      postgres:
+      opensearch:
         condition: service_healthy
-    restart: "no"
 
   # ────────────────────────────────────────────────────────
   #  APPLICATION SERVICES — profile: app
@@ -150,18 +197,24 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
+      LOG_PRETTY: false
       KAFKA_BROKERS: '["kafka:29092"]'
       USER_SERVICE_URL: "http://ms-user:4001"
       QUIZZ_SERVICE_URL: "http://ms-quizz-management:4002"
       VALKEY_HOST: valkey
       VALKEY_PORT: 6379
+      OTEL_ENABLED: ${MONITORING_ENABLED:-false}
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+      OPENSEARCH_ENABLED: ${MONITORING_ENABLED:-false}
+      OPENSEARCH_NODE: "http://opensearch:9200"
+      OPENSEARCH_INDEX: "logs-api-gateway"
     depends_on:
       kafka:
         condition: service_healthy
-      migrate-ms-user:
-        condition: service_completed_successfully
-      migrate-ms-quizz-management:
-        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
 
   ms-user:
     profiles: [app]
@@ -173,15 +226,26 @@ services:
     environment:
       NODE_ENV: production
       PORT: 4001
+      LOG_PRETTY: false
       <<: *ms-user-db
       KAFKA_BROKERS: '["kafka:29092"]'
+      VALKEY_HOST: valkey
+      VALKEY_PORT: 6379
+      OTEL_ENABLED: ${MONITORING_ENABLED:-false}
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+      OPENSEARCH_ENABLED: ${MONITORING_ENABLED:-false}
+      OPENSEARCH_NODE: "http://opensearch:9200"
+      OPENSEARCH_INDEX: "logs-ms-user"
+    command: >
+      sh -c "yarn workspace @monorepo/ms-user run migrations:run &&
+             yarn workspace @monorepo/ms-user run start"
     depends_on:
       postgres:
         condition: service_healthy
       kafka:
         condition: service_healthy
-      migrate-ms-user:
-        condition: service_completed_successfully
+      valkey:
+        condition: service_healthy
 
   ms-quizz-management:
     profiles: [app]
@@ -193,21 +257,29 @@ services:
     environment:
       NODE_ENV: production
       PORT: 4002
+      LOG_PRETTY: false
       <<: *ms-quizz-db
       KAFKA_BROKERS: '["kafka:29092"]'
       VALKEY_HOST: valkey
       VALKEY_PORT: 6379
+      OTEL_ENABLED: ${MONITORING_ENABLED:-false}
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+      OPENSEARCH_ENABLED: ${MONITORING_ENABLED:-false}
+      OPENSEARCH_NODE: "http://opensearch:9200"
+      OPENSEARCH_INDEX: "logs-ms-quizz-management"
+    command: >
+      sh -c "yarn workspace @monorepo/ms-quizz-management run migrations:run &&
+             yarn workspace @monorepo/ms-quizz-management run start"
     depends_on:
       postgres:
         condition: service_healthy
       kafka:
         condition: service_healthy
-      migrate-ms-quizz-management:
-        condition: service_completed_successfully
+      valkey:
+        condition: service_healthy
 
   # ────────────────────────────────────────────────────────
   #  TEST SERVICES — profile: test
-  #  NODE_ENV=test, Kafka OFF for ms-quizz
   # ────────────────────────────────────────────────────────
   postgres-test:
     image: postgres:16
@@ -353,3 +425,4 @@ volumes:
   kafkadata:
   valkeydata:
   valkeydata-test:
+  opensearchdata:

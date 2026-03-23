@@ -27,6 +27,6 @@ COPY --from=base /app /app
 EXPOSE 4001
 
 HEALTHCHECK --interval=10s --timeout=3s --retries=5 \
-  CMD wget -qO- http://localhost:${PORT:-4001}/health | grep ok || exit 1
+  CMD wget -qO- http://127.0.0.1:${PORT:-4001}/health | grep ok || exit 1
 
 CMD ["yarn", "workspace", "@monorepo/ms-user", "run", "start"]
