@@ -169,6 +169,23 @@
         margin-top: -4px;
       }
 
+      .screen-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: fit-content;
+        text-decoration: none;
+        border-radius: 10px;
+        padding: 10px 14px;
+        color: #fff;
+        background: #1d4ed8;
+        transition: background 0.2s ease;
+      }
+
+      .screen-link:hover {
+        background: #1e40af;
+      }
+
       @media (max-width: 700px) {
         .row.inline {
           grid-template-columns: 1fr;
@@ -217,6 +234,13 @@
         </div>
 
         <div id="status" class="status disconnected">Disconnected</div>
+
+        <div class="row">
+          <label>Navigation Test</label>
+          <a class="screen-link" href="./second-screen.html"
+            >Go to second screen</a
+          >
+        </div>
 
         <div class="row">
           <label for="message">Message to send</label>
