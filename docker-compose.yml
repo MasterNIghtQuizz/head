@@ -16,6 +16,13 @@ x-ms-quizz-db: &ms-quizz-db
   POSTGRES_USER: postgres
   POSTGRES_PASSWORD: postgres_password
 
+x-ms-response-db: &ms-response-db
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: 5432
+  POSTGRES_DB: ms_response_db
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: postgres_password
+
 services:
   # ────────────────────────────────────────────────────────
   #  INFRASTRUCTURE — profiles: infra
@@ -306,6 +313,37 @@ services:
     command: >
       sh -c "yarn workspace @monorepo/ms-session run migrations:run &&
              yarn workspace @monorepo/ms-session run start"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+
+  ms-response:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.ms-quizz-management
+    ports:
+      - "4003:4003"
+    environment:
+      NODE_ENV: production
+      PORT: 4003
+      LOG_PRETTY: false
+      <<: *ms-response-db
+      KAFKA_BROKERS: '["kafka:29092"]'
+      VALKEY_HOST: valkey
+      VALKEY_PORT: 6379
+      OTEL_ENABLED: ${MONITORING_ENABLED:-false}
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+      OPENSEARCH_ENABLED: ${MONITORING_ENABLED:-false}
+      OPENSEARCH_NODE: "http://opensearch:9200"
+      OPENSEARCH_INDEX: "logs-ms-response"
+    command: >
+      sh -c "yarn workspace @monorepo/ms-quizz-management run migrations:run &&
+             yarn workspace @monorepo/ms-quizz-management run start"
     depends_on:
       postgres:
         condition: service_healthy

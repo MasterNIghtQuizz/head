@@ -15,6 +15,11 @@ export const UserEventTypes = {
   USER_DELETED: "USER_DELETED",
 };
 
+export const ResponseEventTypes = {
+  ANSWER_SUBMITTED: "ANSWER_SUBMITTED",
+  SESSION_ENDED: "SESSION_ENDED",
+};
+
 /**
  * @typedef {Object} UserCreatedEventPayload
  * @property {string} userId

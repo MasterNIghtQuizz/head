@@ -1,0 +1,43 @@
+{
+  "app": {
+    "port": 4003,
+    "env": "development"
+  },
+  "logger": {
+    "level": "info",
+    "pretty": true
+  },
+  "postgres": {
+    "host": "localhost",
+    "port": 5433,
+    "database": "ms_response_db",
+    "user": "postgres",
+    "password": "postgres_password"
+  },
+  "auth": {
+    "internal": {
+      "privateKeyPath": "../../keys/internal-private.pem",
+      "publicKeyPath": "../../keys/internal-public.pem"
+    }
+  },
+  "kafka": {
+    "enabled": true,
+    "brokers": ["localhost:9092"]
+  },
+  "valkey": {
+    "host": "localhost",
+    "port": 6379,
+    "password": "",
+    "db": 0,
+    "ttl": 3600
+  },
+  "otel": {
+    "enabled": false,
+    "exporterUrl": "http://localhost:4317"
+  },
+  "opensearch": {
+    "enabled": false,
+    "node": "http://localhost:9200",
+    "index": "logs-ms-response"
+  }
+}
