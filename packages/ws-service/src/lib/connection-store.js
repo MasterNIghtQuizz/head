@@ -2,22 +2,17 @@ const clients = new Map();
 const socketContexts = new Map();
 
 /**
- * @typedef SocketContext
- * @property {string} userId
- * @property {string} userName
- * @property {string | null} roomId
- */
-
-/**
  * @param {string} userId
  * @param {import("ws").WebSocket} ws
  * @returns {void}
  */
 function add(userId, ws) {
-  if (!clients.has(userId)) {
-    clients.set(userId, new Set());
+  const existingSocket = clients.get(userId);
+  if (existingSocket && existingSocket !== ws) {
+    socketContexts.delete(existingSocket);
+    existingSocket.close(1008, "another_connection_opened");
   }
-  clients.get(userId).add(ws);
+  clients.set(userId, ws);
 }
 
 /**
@@ -26,31 +21,29 @@ function add(userId, ws) {
  * @returns {void}
  */
 function remove(userId, ws) {
-  const set = clients.get(userId);
-  if (!set) {
+  const existingSocket = clients.get(userId);
+  if (!existingSocket) {
     socketContexts.delete(ws);
     return;
   }
 
-  set.delete(ws);
-  socketContexts.delete(ws);
-
-  if (set.size === 0) {
+  if (existingSocket === ws) {
     clients.delete(userId);
   }
+  socketContexts.delete(ws);
 }
 
 /**
  * @param {string} userId
- * @returns {Set<import("ws").WebSocket>}
+ * @returns {import("ws").WebSocket | null}
  */
 function get(userId) {
-  return clients.get(userId) || new Set();
+  return clients.get(userId) || null;
 }
 
 /**
  * @param {import("ws").WebSocket} ws
- * @param {SocketContext} context
+ * @param {import("common-websocket").SocketContext} context
  * @returns {void}
  */
 function setSocketContext(ws, context) {
@@ -59,7 +52,7 @@ function setSocketContext(ws, context) {
 
 /**
  * @param {import("ws").WebSocket} ws
- * @returns {SocketContext | null}
+ * @returns {import("common-websocket").SocketContext | null}
  */
 function getSocketContext(ws) {
   return socketContexts.get(ws) || null;
@@ -68,7 +61,7 @@ function getSocketContext(ws) {
 /**
  * @param {import("ws").WebSocket} ws
  * @param {string | null} roomId
- * @returns {SocketContext | null}
+ * @returns {import("common-websocket").SocketContext | null}
  */
 function setSocketRoom(ws, roomId) {
   const context = getSocketContext(ws);

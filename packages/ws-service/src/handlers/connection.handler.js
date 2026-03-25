@@ -1,12 +1,14 @@
 import {
   add,
+  get,
   remove,
   setSocketContext,
   getSocketContext,
-  setSocketRoom,
-} from "../lib/connection-registry.js";
+} from "../lib/connection-store.js";
 import { broadcastToRoom } from "../lib/messaging.js";
-import { messageType } from "../lib/types/message-type.js";
+import { messageType } from "common-websocket";
+import { handleRoomDeparture } from "./room-membership.handler.js";
+import logger from "../logger.js";
 
 /**
  * @param {import("ws").WebSocket} ws
@@ -15,16 +17,16 @@ import { messageType } from "../lib/types/message-type.js";
  */
 function userConnect(ws, req) {
   if (!req.url) {
-    process.stderr.write("URL manquante dans la requete\n");
+    logger.error("URL manquante dans la requete\n");
     ws.close(1002, "URL manquante");
     return null;
   }
   const url = new URL(req.url, `http://${req.headers.host}`);
   const userName = url.searchParams.get("userName") || "anonymous";
   const userId = url.searchParams.get("userId");
-  process.stdout.write(`trying to connect user: ${userName} (ID: ${userId})\n`);
+  logger.info(`trying to connect user: ${userName} (ID: ${userId})`);
   if (!userId) {
-    process.stderr.write("ID utilisateur manquant dans la requete\n");
+    logger.error("ID utilisateur manquant dans la requete\n");
     ws.close(1002, "ID utilisateur manquant");
     return null;
   }
@@ -53,6 +55,10 @@ function userDisconnect(ws, userId, userName) {
     return;
   }
 
+  if (get(userId)) {
+    return;
+  }
+
   broadcastToRoom(
     context.roomId,
     {
@@ -61,6 +67,8 @@ function userDisconnect(ws, userId, userName) {
     },
     userId,
   );
+
+  handleRoomDeparture(context.roomId, userId);
 }
 
 export { userConnect, userDisconnect };

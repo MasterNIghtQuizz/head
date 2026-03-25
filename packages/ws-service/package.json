@@ -10,6 +10,8 @@
     "test": "yarn run -T vitest run"
   },
   "dependencies": {
+    "common-logger": "workspace:*",
+    "common-websocket": "workspace:*",
     "ws": "^8.19.0"
   }
 }

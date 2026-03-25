@@ -2,54 +2,50 @@ import {
   clients,
   getRoomSockets,
   getSocketContext,
-} from "./connection-registry.js";
-import { messageType } from "./types/message-type.js";
+} from "./connection-store.js";
+import { messageType } from "common-websocket";
 
 /**
- * @param {Object} message
+ * @param {import("common-websocket").ServerToClientMessage} message
  * @param {string?} excludeUserId
  * sends a message to all connected clients, except the one with the specified userId (if provided)
  */
 function broadcast(message, excludeUserId) {
-  for (const [userId, sockets] of clients.entries()) {
+  for (const [userId, socket] of clients.entries()) {
     if (userId !== excludeUserId) {
-      for (const socket of sockets) {
-        socket.send(JSON.stringify(message));
-      }
+      socket.send(JSON.stringify(message));
     }
   }
 }
 
 /**
  * @param {string?} senderId
- * @param {Object} message
+ * @param {import("common-websocket").ChatMessagePayload} message
  * @param {string} receiverId
  * @returns {boolean}
  */
 function sendMessageToUser(senderId, message, receiverId) {
-  const sockets = clients.get(receiverId);
-  if (!sockets || sockets.size === 0) {
+  const socket = clients.get(receiverId);
+  if (!socket) {
     return false;
   }
 
-  for (const socket of sockets) {
-    socket.send(
-      JSON.stringify({
-        type: messageType.CHAT_MESSAGE,
-        payload: {
-          ...message,
-          senderId: senderId ?? "anonymous",
-        },
-      }),
-    );
-  }
+  socket.send(
+    JSON.stringify({
+      type: messageType.CHAT_MESSAGE,
+      payload: {
+        ...message,
+        senderId: senderId ?? "anonymous",
+      },
+    }),
+  );
 
   return true;
 }
 
 /**
  * @param {string} roomId
- * @param {Object} message
+ * @param {import("common-websocket").ServerToClientMessage} message
  * @param {string?} excludeUserId
  * @returns {void}
  */

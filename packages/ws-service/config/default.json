@@ -1,0 +1,54 @@
+{
+  "app": {
+    "port": 3333,
+    "env": "development"
+  },
+  "logger": {
+    "level": "info",
+    "pretty": true
+  },
+  "postgres": {
+    "host": "localhost",
+    "port": 5433,
+    "database": "ms_user_db",
+    "user": "postgres",
+    "password": "postgres_password"
+  },
+  "auth": {
+    "access": {
+      "privateKeyPath": "../../keys/access-private.pem",
+      "publicKeyPath": "../../keys/access-public.pem"
+    },
+    "refresh": {
+      "privateKeyPath": "../../keys/refresh-private.pem",
+      "publicKeyPath": "../../keys/refresh-public.pem"
+    },
+    "internal": {
+      "privateKeyPath": "../../keys/internal-private.pem",
+      "publicKeyPath": "../../keys/internal-public.pem"
+    }
+  },
+  "kafka": {
+    "enabled": true,
+    "brokers": ["localhost:9092"]
+  },
+  "security": {
+    "encryptionKey": "1c20db7ae7a3b8d332d4f25f740e835e4c84d91c7d879b6ed700140871f18acb"
+  },
+  "valkey": {
+    "host": "localhost",
+    "port": 6379,
+    "password": "",
+    "db": 0,
+    "ttl": 3600
+  },
+  "otel": {
+    "enabled": false,
+    "exporterUrl": "http://localhost:4317"
+  },
+  "opensearch": {
+    "enabled": false,
+    "node": "http://localhost:9200",
+    "index": "logs-ms-user"
+  }
+}
