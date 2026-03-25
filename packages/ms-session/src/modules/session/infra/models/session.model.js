@@ -1,19 +1,20 @@
 import { EntitySchema } from "@common/database/src/index.js";
+import { SessionStatus } from "../../core/entities/session-status.js";
 
 export class SessionModel {
   constructor() {
     /** @type {string | undefined} */
     this.id = undefined;
     /** @type {string | undefined} */
-    this.publicKey = undefined;
-    /** @type {string | undefined} */
+    this.public_key = undefined;
+    /** @type {SessionStatus | undefined} */
     this.status = undefined;
     /** @type {string | undefined} */
-    this.currentQuestionId = undefined;
+    this.current_question_id = undefined;
     /** @type {string | undefined} */
-    this.quizzId = undefined;
+    this.quizz_id = undefined;
     /** @type {string | undefined} */
-    this.hostId = undefined;
+    this.host_id = undefined;
   }
 }
 
@@ -27,21 +28,22 @@ export const TypeOrmSessionModel = new EntitySchema({
       type: "uuid",
       generated: "uuid",
     },
-    publicKey: {
+    public_key: {
       type: "varchar",
       unique: true,
     },
     status: {
-      type: "varchar",
+      type: "enum",
+      enum: SessionStatus,
     },
-    currentQuestionId: {
+    current_question_id: {
       type: "varchar",
       nullable: true,
     },
-    quizzId: {
+    quizz_id: {
       type: "varchar",
     },
-    hostId: {
+    host_id: {
       type: "varchar",
     },
   },
