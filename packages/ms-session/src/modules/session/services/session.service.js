@@ -3,7 +3,6 @@ import { SessionEntity } from "../core/entities/session.entity.js";
 import {
   CreateSessionResponseDto,
   GetSessionResponseDto,
-  JoinSessionResponseDto,
 } from "../contracts/session.dto.js";
 import { SessionStatus } from "../core/entities/session-status.js";
 import {
@@ -84,5 +83,102 @@ export class SessionService extends BaseService {
     });
   }
 
+  /**
+   * @param {import('../contracts/session.dto.js').StartSessionRequestDto} data
+   * @returns {Promise<void>}
+   */
+  async startSession(data) {
+    // Verifier si la session existe
+    const session = await this.sessionRepository.find(data.session_id);
+    if (!session) {
+      throw SESSION_NOT_FOUND();
+    }
+    // Verifier si la session est dans un état qui permet de la démarrer
+    if (session.status !== SessionStatus.LOBBY) {
+      throw SESSION_NOT_OPEN();
+    }
+    // Recuperer la première question du quiz et la définir comme question active de la session
+    const questionId = "TODO";
+    // Mettre à jour le statut de la session
+    await this.sessionRepository.update(session.id, {
+      status: SessionStatus.QUESTION_ACTIVE,
+      currentQuestionId: questionId,
+    });
+    // Publier un événement de démarrage de session
+    if (this.kafkaProducer) {
+      await this.kafkaProducer.publish(
+        "session-started",
+        JSON.stringify({
+          session_id: session.id,
+        }),
+      );
+      await this.kafkaProducer.publish(
+        "session-next-question",
+        JSON.stringify({
+          session_id: session.id,
+          question_id: questionId,
+        }),
+      );
+    }
+  }
 
+  /**
+   * @param {import('../contracts/session.dto.js').NextQuestionRequestDto} data
+   * @returns {Promise<void>}
+   */
+  async nextQuestion(data) {
+    // Verifier si la session existe
+    const session = await this.sessionRepository.find(data.session_id);
+    if (!session) {
+      throw SESSION_NOT_FOUND();
+    }
+    // Verifier si la session est dans un état qui permet de passer à la question suivante
+    if (
+      session.status !== SessionStatus.QUESTION_ACTIVE &&
+      session.status !== SessionStatus.QUESTION_CLOSED
+    ) {
+      throw SESSION_NOT_OPEN();
+    }
+
+    // Recuperer la question suivante du quiz et la définir comme question active de la session
+    const questionId = "TODO";
+    // Mettre à jour le statut de la session
+    await this.sessionRepository.update(session.id, {
+      status: SessionStatus.QUESTION_ACTIVE,
+      currentQuestionId: questionId,
+    });
+    // Publier un événement de changement de question
+    if (this.kafkaProducer) {
+      await this.kafkaProducer.publish(
+        "session-next-question",
+        JSON.stringify({
+          session_id: session.id,
+          question_id: questionId,
+        }),
+      );
+    }
+  }
+
+  /**
+   * @param {import('../contracts/session.dto.js').EndSessionRequestDto} data
+   * @returns {Promise<void>}
+   */
+  async endSession(data) {
+    // Verifier si la session existe
+    const session = await this.sessionRepository.find(data.session_id);
+    if (!session) {
+      throw SESSION_NOT_FOUND();
+    }
+    // Supprimer la session
+    await this.sessionRepository.delete(session.id);
+    // Publier un événement de fin de session
+    if (this.kafkaProducer) {
+      await this.kafkaProducer.publish(
+        "session-ended",
+        JSON.stringify({
+          session_id: session.id,
+        }),
+      );
+    }
+  }
 }

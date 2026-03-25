@@ -23,10 +23,6 @@ export interface LeaveSessionRequest {
   participant_id: string;
 }
 
-export interface LeaveSessionResponse {
-  session_id: string;
-}
-
 export interface GetSessionRequest {
   session_public_key: string;
 }
@@ -34,10 +30,10 @@ export interface GetSessionRequest {
 export interface GetSessionResponse {
   session_id: string;
   public_key: string;
-  status: string|null;
-  current_question_id: string|null;
-  quizz_id: string|null;
-  host_id: string|null;
+  status: string | null;
+  current_question_id: string | null;
+  quizz_id: string | null;
+  host_id: string | null;
   participants: Participant[];
 }
 
@@ -45,6 +41,10 @@ export interface StartSessionRequest {
   session_id: string;
 }
 
-export interface StartSessionResponse {
+export interface NextQuestionRequest {
+  session_id: string;
+}
+
+export interface EndSessionRequest {
   session_id: string;
 }

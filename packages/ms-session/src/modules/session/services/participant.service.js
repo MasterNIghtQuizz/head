@@ -43,4 +43,20 @@ export class ParticipantService extends BaseService {
       await this.participantRepository.create(participantEntity);
     return new JoinSessionResponseDto({ participant_id: participant.id });
   }
+
+  /**
+   * @param {import('../contracts/session.dto.js').LeaveSessionRequestDto} data
+   * @returns {Promise<void>}
+   */
+  async leaveSession(data) {
+    // Verifier si le participant existe
+    const participant = await this.participantRepository.find(
+      data.participant_id,
+    );
+    if (!participant) {
+      return;
+    }
+    // Supprimer le participant de la session
+    await this.participantRepository.delete(participant.id);
+  }
 }
