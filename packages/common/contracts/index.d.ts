@@ -51,3 +51,8 @@ export const ParticipantRoles: {
   HOST: "HOST";
   PLAYER: "PLAYER";
 };
+
+export const ResponseEventTypes: {
+  ANSWER_SUBMITTED: string;
+  SESSION_ENDED: string;
+};
