@@ -1,9 +1,12 @@
-import { BaseService } from "@common/core/index.js";
+import { BaseService } from "common-core";
 import { JoinSessionResponseDto } from "../contracts/session.dto.js";
 import { SessionStatus } from "../core/entities/session-status.js";
-import { SESSION_NOT_OPEN } from "../errors/session.errors.js";
 import { ParticipantEntity } from "../core/entities/participant.entity.js";
 import { ParticipantRoles } from "../core/entities/participant-roles.js";
+import {
+  SESSION_INVALID_STATUS,
+  SESSION_NOT_FOUND,
+} from "../errors/session.errors.js";
 
 export class ParticipantService extends BaseService {
   /**
@@ -28,8 +31,11 @@ export class ParticipantService extends BaseService {
       data.session_public_key,
     );
     // Verifier si la session est ouverte
-    if (!session || session.status !== SessionStatus.LOBBY) {
-      throw SESSION_NOT_OPEN();
+    if (!session) {
+      throw SESSION_NOT_FOUND();
+    }
+    if (session.status !== SessionStatus.LOBBY) {
+      throw SESSION_INVALID_STATUS(session.id);
     }
     // Creer un participant et l'ajouter à la session
     const participantEntity = new ParticipantEntity({

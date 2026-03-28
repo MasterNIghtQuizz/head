@@ -6,8 +6,8 @@ import {
 } from "../contracts/session.dto.js";
 import { SessionStatus } from "../core/entities/session-status.js";
 import {
+  SESSION_INVALID_STATUS,
   SESSION_NOT_FOUND,
-  SESSION_NOT_OPEN,
 } from "../errors/session.errors.js";
 import { ParticipantEntity } from "../core/entities/participant.entity.js";
 import { ParticipantRoles } from "../core/entities/participant-roles.js";
@@ -30,7 +30,6 @@ export class SessionService extends BaseService {
    * @returns {Promise<import('../contracts/session.dto.js').CreateSessionResponseDto>}
    */
   async createSession(data) {
-    // Verifier si l'utilisateur existe
     // Verifier si le quiz existe
 
     // Creer une session
@@ -84,18 +83,18 @@ export class SessionService extends BaseService {
   }
 
   /**
-   * @param {import('../contracts/session.dto.js').StartSessionRequestDto} data
+   * @param {string} sessionId
    * @returns {Promise<void>}
    */
-  async startSession(data) {
+  async startSession(sessionId) {
     // Verifier si la session existe
-    const session = await this.sessionRepository.find(data.session_id);
+    const session = await this.sessionRepository.find(sessionId);
     if (!session) {
       throw SESSION_NOT_FOUND();
     }
     // Verifier si la session est dans un état qui permet de la démarrer
     if (session.status !== SessionStatus.LOBBY) {
-      throw SESSION_NOT_OPEN();
+      throw SESSION_INVALID_STATUS(sessionId);
     }
     // Recuperer la première question du quiz et la définir comme question active de la session
     const questionId = "TODO";
@@ -123,21 +122,21 @@ export class SessionService extends BaseService {
   }
 
   /**
-   * @param {import('../contracts/session.dto.js').NextQuestionRequestDto} data
+   * @param {string} sessionId
    * @returns {Promise<void>}
    */
-  async nextQuestion(data) {
+  async nextQuestion(sessionId) {
     // Verifier si la session existe
-    const session = await this.sessionRepository.find(data.session_id);
+    const session = await this.sessionRepository.find(sessionId);
     if (!session) {
-      throw SESSION_NOT_FOUND();
+      throw SESSION_NOT_FOUND(sessionId);
     }
     // Verifier si la session est dans un état qui permet de passer à la question suivante
     if (
       session.status !== SessionStatus.QUESTION_ACTIVE &&
       session.status !== SessionStatus.QUESTION_CLOSED
     ) {
-      throw SESSION_NOT_OPEN();
+      throw SESSION_INVALID_STATUS(sessionId);
     }
 
     // Recuperer la question suivante du quiz et la définir comme question active de la session
@@ -160,12 +159,12 @@ export class SessionService extends BaseService {
   }
 
   /**
-   * @param {import('../contracts/session.dto.js').EndSessionRequestDto} data
+   * @param {string} sessionId
    * @returns {Promise<void>}
    */
-  async endSession(data) {
+  async endSession(sessionId) {
     // Verifier si la session existe
-    const session = await this.sessionRepository.find(data.session_id);
+    const session = await this.sessionRepository.find(sessionId);
     if (!session) {
       throw SESSION_NOT_FOUND();
     }

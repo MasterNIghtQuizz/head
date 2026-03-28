@@ -4,7 +4,9 @@ import {
   InternalServerError,
 } from "common-errors";
 
-export const SESSION_NOT_OPEN = () => new NotFoundError("Session not open");
+/** @param {string} [id] */
+export const SESSION_INVALID_STATUS = (id) =>
+  new ConflictError(`Session with id ${id} is not in a valid status`);
 
 /** @param {string} [id] */
 export const SESSION_NOT_FOUND = (id) =>

@@ -6,11 +6,7 @@ import Joi from "joi";
  * @typedef {import("common-contracts").JoinSessionRequest} JoinSessionRequest
  * @typedef {import("common-contracts").JoinSessionResponse} JoinSessionResponse
  * @typedef {import("common-contracts").LeaveSessionRequest} LeaveSessionRequest
- * @typedef {import("common-contracts").GetSessionRequest} GetSessionRequest
  * @typedef {import("common-contracts").GetSessionResponse} GetSessionResponse
- * @typedef {import("common-contracts").StartSessionRequest} StartSessionRequest
- * @typedef {import("common-contracts").NextQuestionRequest} NextQuestionRequest
- * @typedef {import("common-contracts").EndSessionRequest} EndSessionRequest
  */
 
 /**
@@ -116,29 +112,6 @@ export class LeaveSessionRequestDto {
 }
 
 /**
- * @implements {GetSessionRequest}
- */
-export class GetSessionRequestDto {
-  /**
-   * @param {GetSessionRequest} data
-   */
-  constructor(data) {
-    this.session_public_key = data.session_public_key;
-  }
-
-  /**
-   * @param {GetSessionRequest} data
-   * @returns {Joi.ValidationResult}
-   */
-  static validate(data) {
-    const schema = Joi.object({
-      session_public_key: Joi.string().required(),
-    });
-    return schema.validate(data);
-  }
-}
-
-/**
  * @implements {GetSessionResponse}
  */
 export class GetSessionResponseDto {
@@ -153,74 +126,5 @@ export class GetSessionResponseDto {
     this.quizz_id = data.quizz_id;
     this.host_id = data.host_id;
     this.participants = data.participants;
-  }
-}
-
-/**
- * @implements {StartSessionRequest}
- */
-export class StartSessionRequestDto {
-  /**
-   * @param {StartSessionRequest} data
-   */
-  constructor(data) {
-    this.session_id = data.session_id;
-  }
-
-  /**
-   * @param {StartSessionRequest} data
-   * @returns {Joi.ValidationResult}
-   */
-  static validate(data) {
-    const schema = Joi.object({
-      session_id: Joi.string().required(),
-    });
-    return schema.validate(data);
-  }
-}
-
-/**
- * @implements {NextQuestionRequest}
- */
-export class NextQuestionRequestDto {
-  /**
-   * @param {NextQuestionRequest} data
-   */
-  constructor(data) {
-    this.session_id = data.session_id;
-  }
-
-  /**
-   * @param {NextQuestionRequest} data
-   * @returns {Joi.ValidationResult}
-   */
-  static validate(data) {
-    const schema = Joi.object({
-      session_id: Joi.string().required(),
-    });
-    return schema.validate(data);
-  }
-}
-
-/**
- * @implements {EndSessionRequest}
- */
-export class EndSessionRequestDto {
-  /**
-   * @param {EndSessionRequest} data
-   */
-  constructor(data) {
-    this.session_id = data.session_id;
-  }
-
-  /**
-   * @param {EndSessionRequest} data
-   * @returns {Joi.ValidationResult}
-   */
-  static validate(data) {
-    const schema = Joi.object({
-      session_id: Joi.string().required(),
-    });
-    return schema.validate(data);
   }
 }
