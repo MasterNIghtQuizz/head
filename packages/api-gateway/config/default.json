@@ -9,7 +9,8 @@
   },
   "services": {
     "user": "http://localhost:4001",
-    "quizz": "http://localhost:4002"
+    "quizz": "http://localhost:4002",
+    "websocket": "http://localhost:3333"
   },
   "auth": {
     "access": {

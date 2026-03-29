@@ -5,6 +5,7 @@ export declare const config: {
   services: {
     user: string;
     quizz: string;
+    websocket: string;
   };
   kafka: {
     brokers: string[];

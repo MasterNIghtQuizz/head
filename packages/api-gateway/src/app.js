@@ -1,4 +1,5 @@
 import Fastify from "fastify";
+import cors from "@fastify/cors";
 import logger from "./logger.js";
 import { config } from "./config.js";
 import { registerSwagger } from "common-swagger";
@@ -19,11 +20,26 @@ import { QuestionController } from "./modules/quiz/controllers/question.controll
 import { QuestionService } from "./modules/quiz/services/question.service.js";
 import { ChoiceController } from "./modules/quiz/controllers/choice.controller.js";
 import { ChoiceService } from "./modules/quiz/services/choice.service.js";
+import { WebSocketService } from "./modules/websocket/services/websocket.service.js";
+import { WebSocketController } from "./modules/websocket/controllers/websocket.controller.js";
 
 export async function createServer() {
   const fastify = Fastify({
     loggerInstance: logger,
     disableRequestLogging: true,
+  });
+
+  await fastify.register(cors, {
+    origin: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: [
+      "Content-Type",
+      "Accept",
+      "Authorization",
+      "access-token",
+      "refresh-token",
+      "internal-token",
+    ],
   });
 
   fastify.addHook(
@@ -78,6 +94,9 @@ export async function createServer() {
 
   const choiceService = new ChoiceService();
   ControllerFactory.register(fastify, ChoiceController, [choiceService]);
+
+  const webSocketService = new WebSocketService();
+  ControllerFactory.register(fastify, WebSocketController, [webSocketService]);
 
   fastify.get("/health", { config: { isPublic: true } }, async () => {
     return { status: "ok", service: "api-gateway" };

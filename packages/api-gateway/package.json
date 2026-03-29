@@ -9,6 +9,7 @@
     "lint:fix": "yarn run -T eslint src --fix"
   },
   "dependencies": {
+    "@fastify/cors": "^11.1.0",
     "@opentelemetry/api": "^1.9.0",
     "common-auth": "workspace:*",
     "common-axios": "workspace:^",
