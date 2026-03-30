@@ -1,6 +1,6 @@
+import { GetSessionResponseDto, ParticipantDto } from "../../contracts/session.dto.js";
 import { SessionEntity } from "../../core/entities/session.entity.js";
 import { SessionModel } from "../models/session.model.js";
-import { SessionStatus } from "../../core/entities/session-status.js";
 
 export class SessionMapper {
   /**
@@ -32,5 +32,23 @@ export class SessionMapper {
       hostId: model.host_id ?? null,
     });
     return entity;
+  }
+
+  /**
+   * @param {SessionEntity} entity
+   * @param {ParticipantDto[]} participants
+   * @return {GetSessionResponseDto} dto
+   */
+  static toDto(entity, participants = []) {
+    const dto = new GetSessionResponseDto({
+      session_id: entity.id,
+      public_key: entity.publicKey,
+      status: entity.status,
+      current_question_id: entity.currentQuestionId,
+      quizz_id: entity.quizzId,
+      host_id: entity.hostId,
+      participants: participants,
+    });
+    return dto;
   }
 }

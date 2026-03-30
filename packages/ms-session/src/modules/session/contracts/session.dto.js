@@ -7,6 +7,7 @@ import Joi from "joi";
  * @typedef {import("common-contracts").JoinSessionResponse} JoinSessionResponse
  * @typedef {import("common-contracts").LeaveSessionRequest} LeaveSessionRequest
  * @typedef {import("common-contracts").GetSessionResponse} GetSessionResponse
+ * @typedef {import("common-contracts").Participant} Participant
  */
 
 /**
@@ -126,5 +127,19 @@ export class GetSessionResponseDto {
     this.quizz_id = data.quizz_id;
     this.host_id = data.host_id;
     this.participants = data.participants;
+  }
+}
+
+/**
+ * @implements {Participant}
+ */
+export class ParticipantDto {
+  /**
+   * @param {Participant} data
+   */
+  constructor(data) {
+    this.participant_id = data.participant_id;
+    this.nickname = data.nickname;
+    this.role = data.role;
   }
 }

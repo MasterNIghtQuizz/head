@@ -4,13 +4,22 @@ import {
   CreateSessionResponseDto,
   GetSessionResponseDto,
 } from "../contracts/session.dto.js";
-import { SessionStatus } from "../core/entities/session-status.js";
 import {
+  EMPTY_QUIZZ,
+  QUIZZ_NOT_FOUND,
   SESSION_INVALID_STATUS,
   SESSION_NOT_FOUND,
 } from "../errors/session.errors.js";
 import { ParticipantEntity } from "../core/entities/participant.entity.js";
 import { ParticipantRoles } from "../core/entities/participant-roles.js";
+import { SessionStatus } from "../core/entities/session-status.js";
+import logger from "@common/logger/index.js";
+import { SessionMapper } from "../infra/mappers/session.mapper.js";
+import { ParticipantMapper } from "../infra/mappers/participant.mapper.js";
+import { log } from "node:console";
+import { call } from "@common/axios/index.js";
+import { config } from "@monorepo/api-gateway/config.js";
+import { QuizResponseDto } from "packages/ms-quizz-management/src/modules/quiz/contracts/quiz.dto.js";
 
 export class SessionService extends BaseService {
   /**
@@ -30,19 +39,29 @@ export class SessionService extends BaseService {
    * @returns {Promise<import('../contracts/session.dto.js').CreateSessionResponseDto>}
    */
   async createSession(data) {
-    // Verifier si le quiz existe
+    const quiz = await call({
+      url: `${config.services.quizz}/quizzes/${data.quiz_id}`,
+      method: "GET",
+    }).catch((err) => {
+      logger.warn(`Quiz with id ${data.quiz_id} not found: `, err);
+      throw QUIZZ_NOT_FOUND(data.quiz_id);
+    });
 
-    // Creer une session
+    if (!quiz || !(quiz instanceof QuizResponseDto)) {
+      logger.warn(`Quiz with id ${data.quiz_id} not found`);
+      throw QUIZZ_NOT_FOUND(data.quiz_id);
+    }
+
     const sessionEntity = new SessionEntity({
       id: null,
       publicKey: null,
       status: SessionStatus.CREATED,
-      currentQuestionId: "",
+      currentQuestionId: null,
       hostId: data.host_id,
       quizzId: data.quiz_id,
     });
     const session = await this.sessionRepository.create(sessionEntity);
-    // Ajouter l'utilisateur en tant qu'host de la session
+
     const hostEntity = new ParticipantEntity({
       id: data.host_id,
       role: ParticipantRoles.ADMIN,
@@ -63,23 +82,18 @@ export class SessionService extends BaseService {
    * @returns {Promise<GetSessionResponseDto>}
    */
   async getSession(sessionId) {
-    // Verifier si la session existe
     const session = await this.sessionRepository.find(sessionId);
     if (!session) {
+      logger.warn(`Session with id ${sessionId} not found`);
       throw SESSION_NOT_FOUND();
     }
-    // Recuperer les participants de la session
+
     const participants =
       await this.participantRepository.findBySessionId(sessionId);
-    return new GetSessionResponseDto({
-      session_id: session.id,
-      public_key: session.publicKey,
-      status: session.status,
-      current_question_id: session.currentQuestionId,
-      quizz_id: session.quizzId,
-      host_id: session.hostId,
-      participants: participants,
-    });
+    return SessionMapper.toDto(
+      session,
+      participants.map((p) => ParticipantMapper.toDto(p)),
+    );
   }
 
   /**
@@ -87,23 +101,47 @@ export class SessionService extends BaseService {
    * @returns {Promise<void>}
    */
   async startSession(sessionId) {
-    // Verifier si la session existe
     const session = await this.sessionRepository.find(sessionId);
     if (!session) {
+      logger.warn(`Session with id ${sessionId} not found`);
       throw SESSION_NOT_FOUND();
     }
-    // Verifier si la session est dans un état qui permet de la démarrer
+
     if (session.status !== SessionStatus.LOBBY) {
+      logger.warn(
+        `Session with id ${sessionId} is in invalid status ${session.status} for starting`,
+      );
       throw SESSION_INVALID_STATUS(sessionId);
     }
-    // Recuperer la première question du quiz et la définir comme question active de la session
-    const questionId = "TODO";
-    // Mettre à jour le statut de la session
+
+    const questions = await call({
+      url: `${config.services.quizz}/questions/quiz/${session.quizzId}`,
+      method: "GET",
+    }).catch((err) => {
+      logger.warn(
+        `Failed to fetch questions for quiz with id ${session.quizzId}: `,
+        err,
+      );
+      throw QUIZZ_NOT_FOUND(session.quizzId);
+    });
+    if (!questions || !Array.isArray(questions) || questions.length === 0) {
+      logger.warn(`Quiz with id ${session.quizzId} has no questions`);
+      throw EMPTY_QUIZZ(session.quizzId);
+    }
+
+    if (!(questions[0] instanceof QuizResponseDto)) {
+      logger.warn(
+        `Quiz with id ${session.quizzId} has invalid questions format`,
+      );
+      throw EMPTY_QUIZZ(session.quizzId);
+    }
+
+    const questionId = questions[0].id;
     await this.sessionRepository.update(session.id, {
       status: SessionStatus.QUESTION_ACTIVE,
       currentQuestionId: questionId,
     });
-    // Publier un événement de démarrage de session
+
     if (this.kafkaProducer) {
       await this.kafkaProducer.publish(
         "session-started",
@@ -126,12 +164,10 @@ export class SessionService extends BaseService {
    * @returns {Promise<void>}
    */
   async nextQuestion(sessionId) {
-    // Verifier si la session existe
     const session = await this.sessionRepository.find(sessionId);
     if (!session) {
       throw SESSION_NOT_FOUND(sessionId);
     }
-    // Verifier si la session est dans un état qui permet de passer à la question suivante
     if (
       session.status !== SessionStatus.QUESTION_ACTIVE &&
       session.status !== SessionStatus.QUESTION_CLOSED
@@ -139,14 +175,51 @@ export class SessionService extends BaseService {
       throw SESSION_INVALID_STATUS(sessionId);
     }
 
-    // Recuperer la question suivante du quiz et la définir comme question active de la session
-    const questionId = "TODO";
-    // Mettre à jour le statut de la session
+    const questions = await call({
+      url: `${config.services.quizz}/questions/quiz/${session.quizzId}`,
+      method: "GET",
+    }).catch((err) => {
+      logger.warn(
+        `Failed to fetch questions for quiz with id ${session.quizzId}: `,
+        err,
+      );
+      throw QUIZZ_NOT_FOUND(session.quizzId);
+    });
+    if (!questions || !Array.isArray(questions) || questions.length === 0) {
+      logger.warn(`Quiz with id ${session.quizzId} has no questions`);
+      throw EMPTY_QUIZZ(session.quizzId);
+    }
+
+    const currentIndex = questions.findIndex(
+      (q) => q.id === session.currentQuestionId,
+    );
+    if (currentIndex === -1) {
+      logger.warn(
+        `Current question with id ${session.currentQuestionId} not found in quiz ${session.quizzId}`,
+      );
+      throw QUIZZ_NOT_FOUND(session.quizzId);
+    }
+    if (currentIndex === questions.length - 1) {
+      logger.warn(
+        `No more questions available for quiz with id ${session.quizzId}`,
+      );
+      this.endSession(sessionId);
+      return;
+    }
+
+    if (!(questions[currentIndex + 1] instanceof QuizResponseDto)) {
+      logger.warn(
+        `Quiz with id ${session.quizzId} has invalid questions format`,
+      );
+      throw EMPTY_QUIZZ(session.quizzId);
+    }
+
+    const questionId = questions[currentIndex + 1].id;
+
     await this.sessionRepository.update(session.id, {
       status: SessionStatus.QUESTION_ACTIVE,
       currentQuestionId: questionId,
     });
-    // Publier un événement de changement de question
     if (this.kafkaProducer) {
       await this.kafkaProducer.publish(
         "session-next-question",
@@ -163,19 +236,41 @@ export class SessionService extends BaseService {
    * @returns {Promise<void>}
    */
   async endSession(sessionId) {
-    // Verifier si la session existe
     const session = await this.sessionRepository.find(sessionId);
     if (!session) {
       throw SESSION_NOT_FOUND();
     }
-    // Supprimer la session
-    await this.sessionRepository.delete(session.id);
-    // Publier un événement de fin de session
+    await this.sessionRepository.update(session.id, {
+      status: SessionStatus.FINISHED,
+    });
+
     if (this.kafkaProducer) {
       await this.kafkaProducer.publish(
         "session-ended",
         JSON.stringify({
           session_id: session.id,
+        }),
+      );
+    }
+  }
+
+  /**
+   * @param {string} sessionId
+   * @returns {Promise<void>}
+   */
+  async deleteSession(sessionId) {
+    const session = await this.sessionRepository.find(sessionId);
+    if (!session) {
+      throw SESSION_NOT_FOUND();
+    }
+
+    await this.sessionRepository.delete(sessionId);
+
+    if (this.kafkaProducer) {
+      await this.kafkaProducer.publish(
+        "session-deleted",
+        JSON.stringify({
+          session_id: sessionId,
         }),
       );
     }

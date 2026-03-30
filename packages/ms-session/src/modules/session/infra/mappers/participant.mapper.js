@@ -1,3 +1,4 @@
+import { ParticipantDto } from "../../contracts/session.dto.js";
 import { ParticipantRoles } from "../../core/entities/participant-roles.js";
 import { ParticipantEntity } from "../../core/entities/participant.entity.js";
 import { ParticipantModel } from "../models/participant.model.js";
@@ -30,5 +31,18 @@ export class ParticipantMapper {
       socketId: model.socket_id ?? "",
     });
     return entity;
+  }
+
+  /**
+   * @param {ParticipantEntity} entity
+   * @return {ParticipantDto} dto
+   */
+  static toDto(entity) {
+    const dto = new ParticipantDto({
+      participant_id: entity.id,
+      nickname: entity.nickname,
+      role: entity.role,
+    });
+    return dto;
   }
 }

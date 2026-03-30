@@ -1,12 +1,12 @@
 import { BaseService } from "common-core";
 import { JoinSessionResponseDto } from "../contracts/session.dto.js";
-import { SessionStatus } from "../core/entities/session-status.js";
 import { ParticipantEntity } from "../core/entities/participant.entity.js";
-import { ParticipantRoles } from "../core/entities/participant-roles.js";
 import {
   SESSION_INVALID_STATUS,
   SESSION_NOT_FOUND,
 } from "../errors/session.errors.js";
+import { ParticipantRoles } from "../core/entities/participant-roles.js";
+import { SessionStatus } from "../core/entities/session-status.js";
 
 export class ParticipantService extends BaseService {
   /**
@@ -23,21 +23,20 @@ export class ParticipantService extends BaseService {
 
   /**
    * @param {import('../contracts/session.dto.js').JoinSessionRequestDto} data
-   * @returns {Promise<JoinSessionResponseDto>}
+   * @returns {Promise<import('../contracts/session.dto.js').JoinSessionResponseDto>}
    */
   async joinSession(data) {
-    // Verifier si la session existe
     const session = await this.sessionRepository.findByPublicKey(
       data.session_public_key,
     );
-    // Verifier si la session est ouverte
+
     if (!session) {
       throw SESSION_NOT_FOUND();
     }
     if (session.status !== SessionStatus.LOBBY) {
       throw SESSION_INVALID_STATUS(session.id);
     }
-    // Creer un participant et l'ajouter à la session
+
     const participantEntity = new ParticipantEntity({
       id: data.participant_id,
       role: ParticipantRoles.PLAYER,
@@ -55,14 +54,12 @@ export class ParticipantService extends BaseService {
    * @returns {Promise<void>}
    */
   async leaveSession(data) {
-    // Verifier si le participant existe
     const participant = await this.participantRepository.find(
       data.participant_id,
     );
     if (!participant) {
       return;
     }
-    // Supprimer le participant de la session
     await this.participantRepository.delete(participant.id);
   }
 }

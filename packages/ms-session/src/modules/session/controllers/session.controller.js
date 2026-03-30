@@ -6,10 +6,6 @@ import {
   ApplyMethodDecorators,
   Schema,
 } from "common-core";
-import {
-  SESSION_INVALID_STATUS,
-  SESSION_NOT_FOUND,
-} from "../errors/session.errors.js";
 import { CreateSessionRequestDto } from "../contracts/session.dto.js";
 
 export class SessionController extends BaseController {
@@ -51,13 +47,7 @@ export class SessionController extends BaseController {
    * @returns {Promise<void>}
    */
   async startSession(request, reply) {
-    try {
-      await this.sessionService.startSession(request.params.id);
-    } catch (error) {
-      if (error instanceof SESSION_NOT_FOUND) {
-        return reply.code(404).send({ message: error });
-      }
-    }
+    await this.sessionService.startSession(request.params.id);
     return reply.code(200).send();
   }
 
@@ -67,13 +57,17 @@ export class SessionController extends BaseController {
    * @returns {Promise<void>}
    */
   async endSession(request, reply) {
-    try {
-      await this.sessionService.endSession(request.params.id);
-    } catch (error) {
-      if (error instanceof SESSION_NOT_FOUND) {
-        return reply.code(404).send({ message: error });
-      }
-    }
+    await this.sessionService.endSession(request.params.id);
+    return reply.code(200).send();
+  }
+
+  /**
+   * @param {string} sessionId
+   * @param {import('fastify').FastifyReply} reply
+   * @returns {Promise<void>}
+   */
+  async deleteSession(sessionId, reply) {
+    await this.sessionService.deleteSession(sessionId);
     return reply.code(200).send();
   }
 
@@ -83,15 +77,7 @@ export class SessionController extends BaseController {
    * @returns {Promise<void>}
    */
   async nextQuestion(request, reply) {
-    try {
-      await this.sessionService.nextQuestion(request.params.id);
-    } catch (error) {
-      if (error instanceof SESSION_NOT_FOUND) {
-        return reply.code(404).send({ message: error });
-      } else if (error instanceof SESSION_INVALID_STATUS) {
-        return reply.code(400).send({ message: error });
-      }
-    }
+    await this.sessionService.nextQuestion(request.params.id);
     return reply.code(200).send();
   }
 }
@@ -269,6 +255,25 @@ ApplyMethodDecorators(SessionController, "nextQuestion", [
     },
   }),
   Post("/:id/next-question"),
+]);
+
+ApplyMethodDecorators(SessionController, "deleteSession", [
+  Schema({
+    description: "Delete a session",
+    tags: ["Session"],
+    params: {
+      id: { type: "string", description: "Session id" },
+    },
+    response: {
+      200: {
+        description: "Session deleted successfully",
+      },
+      404: {
+        description: "Session not found",
+      },
+    },
+  }),
+  Post("/:id/delete"),
 ]);
 
 Controller("/sessions")(SessionController);
