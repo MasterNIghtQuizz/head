@@ -1,4 +1,7 @@
-import { GetSessionResponseDto, ParticipantDto } from "../../contracts/session.dto.js";
+import {
+  GetSessionResponseDto,
+  ParticipantDto,
+} from "../../contracts/session.dto.js";
 import { SessionEntity } from "../../core/entities/session.entity.js";
 import { SessionModel } from "../models/session.model.js";
 
