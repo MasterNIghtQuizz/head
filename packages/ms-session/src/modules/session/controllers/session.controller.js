@@ -120,7 +120,11 @@ ApplyMethodDecorators(SessionController, "getSession", [
     description: "Get a session by id",
     tags: ["Session"],
     params: {
-      id: { type: "string", description: "Session id" },
+      type: "object",
+      properties: {
+        id: { type: "string", description: "Session id" },
+      },
+      required: ["id"],
     },
     response: {
       200: {
@@ -161,7 +165,11 @@ ApplyMethodDecorators(SessionController, "startSession", [
     description: "Start a session",
     tags: ["Session"],
     params: {
-      id: { type: "string", description: "Session id" },
+      type: "object",
+      properties: {
+        id: { type: "string", description: "Session id" },
+      },
+      required: ["id"],
     },
     response: {
       200: {
@@ -190,7 +198,11 @@ ApplyMethodDecorators(SessionController, "endSession", [
     description: "End a session",
     tags: ["Session"],
     params: {
-      id: { type: "string", description: "Session id" },
+      type: "object",
+      properties: {
+        id: { type: "string", description: "Session id" },
+      },
+      required: ["id"],
     },
     response: {
       200: {
@@ -219,7 +231,11 @@ ApplyMethodDecorators(SessionController, "nextQuestion", [
     description: "Go to the next question of a session",
     tags: ["Session"],
     params: {
-      id: { type: "string", description: "Session id" },
+      type: "object",
+      properties: {
+        id: { type: "string", description: "Session id" },
+      },
+      required: ["id"],
     },
     response: {
       200: {
@@ -262,7 +278,11 @@ ApplyMethodDecorators(SessionController, "deleteSession", [
     description: "Delete a session",
     tags: ["Session"],
     params: {
-      id: { type: "string", description: "Session id" },
+      type: "object",
+      properties: {
+        id: { type: "string", description: "Session id" },
+      },
+      required: ["id"],
     },
     response: {
       200: {

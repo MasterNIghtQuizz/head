@@ -13,13 +13,13 @@ import {
 import { ParticipantEntity } from "../core/entities/participant.entity.js";
 import { ParticipantRoles } from "../core/entities/participant-roles.js";
 import { SessionStatus } from "../core/entities/session-status.js";
-import logger from "@common/logger/index.js";
+import logger from "../../../logger.js";
 import { SessionMapper } from "../infra/mappers/session.mapper.js";
 import { ParticipantMapper } from "../infra/mappers/participant.mapper.js";
 import { log } from "node:console";
-import { call } from "@common/axios/index.js";
-import { config } from "@monorepo/api-gateway/config.js";
-import { QuizResponseDto } from "packages/ms-quizz-management/src/modules/quiz/contracts/quiz.dto.js";
+import { call } from "common-axios";
+import { config } from "../../../config.js";
+import { QuizResponseDto } from "../contracts/quiz.dto.js";
 
 export class SessionService extends BaseService {
   /**
@@ -40,7 +40,7 @@ export class SessionService extends BaseService {
    */
   async createSession(data) {
     const quiz = await call({
-      url: `${config.services.quizz}/quizzes/${data.quiz_id}`,
+      url: `${config.services.quizzManagement}/quizzes/${data.quiz_id}`,
       method: "GET",
     }).catch((err) => {
       logger.warn(`Quiz with id ${data.quiz_id} not found: `, err);
@@ -64,7 +64,7 @@ export class SessionService extends BaseService {
 
     const hostEntity = new ParticipantEntity({
       id: data.host_id,
-      role: ParticipantRoles.ADMIN,
+      role: ParticipantRoles.HOST,
       sessionId: session.id,
       nickname: "Host",
       socketId: "",
@@ -115,7 +115,7 @@ export class SessionService extends BaseService {
     }
 
     const questions = await call({
-      url: `${config.services.quizz}/questions/quiz/${session.quizzId}`,
+      url: `${config.services.quizzManagement}/questions/quiz/${session.quizzId}`,
       method: "GET",
     }).catch((err) => {
       logger.warn(
@@ -176,7 +176,7 @@ export class SessionService extends BaseService {
     }
 
     const questions = await call({
-      url: `${config.services.quizz}/questions/quiz/${session.quizzId}`,
+      url: `${config.services.quizzManagement}/questions/quiz/${session.quizzId}`,
       method: "GET",
     }).catch((err) => {
       logger.warn(

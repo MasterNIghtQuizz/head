@@ -1,0 +1,7 @@
+export const SessionStatus = Object.freeze({
+  CREATED: "CREATED",
+  LOBBY: "LOBBY",
+  QUESTION_ACTIVE: "QUESTION_ACTIVE",
+  QUESTION_CLOSED: "QUESTION_CLOSED",
+  FINISHED: "FINISHED",
+});

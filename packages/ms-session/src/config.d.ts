@@ -11,4 +11,13 @@ export declare const config: {
     refresh: { privateKeyPath: string; publicKeyPath: string };
     internal: { privateKeyPath: string; publicKeyPath: string };
   };
+  otel: {
+    enabled: boolean;
+    exporterUrl: string;
+  };
+  services: {
+    quizzManagement: {
+      baseUrl: string;
+    };
+  };
 };

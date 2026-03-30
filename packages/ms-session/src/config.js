@@ -39,6 +39,15 @@ const schema = Joi.object({
   kafka: Joi.object({
     brokers: Joi.array().items(Joi.string()).required(),
   }).required(),
+  otel: Joi.object({
+    enabled: Joi.boolean().default(false),
+    exporterUrl: Joi.string().uri().required(),
+  }).optional(),
+  services: Joi.object({
+    quizzManagement: Joi.object({
+      baseUrl: Joi.string().uri().required(),
+    }).required(),
+  }).required(),
 });
 
 Config.init({ directory: configDirectory, schema });
@@ -74,4 +83,8 @@ export const config = {
       publicKeyPath: resolveKeyPath(rawAuth.internal.publicKeyPath),
     },
   },
+  otel: /** @type {{ enabled: boolean; exporterUrl: string }} */ (
+    Config.get("otel")
+  ),
+  services: /** @type {any} */ (Config.get("services")),
 };

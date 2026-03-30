@@ -1,0 +1,32 @@
+FROM node:24-alpine AS base
+WORKDIR /app
+
+RUN corepack enable && corepack prepare yarn@4.11.0 --activate
+
+ARG PRODUCTION=true
+
+COPY package.json yarn.lock .yarnrc.yml ./
+COPY packages/common ./packages/common
+COPY packages/ms-session ./packages/ms-session
+COPY keys ./keys
+COPY vitest.config.js vitest.config.e2e.js jsconfig.json ./
+
+RUN if [ "$PRODUCTION" = "true" ]; then \
+      yarn workspaces focus @monorepo/ms-session --production; \
+    else \
+      yarn install; \
+    fi
+
+FROM node:24-alpine AS runtime
+WORKDIR /app
+
+RUN corepack enable && corepack prepare yarn@4.11.0 --activate
+
+COPY --from=base /app /app
+
+EXPOSE 4003
+
+HEALTHCHECK --interval=10s --timeout=3s --retries=5 \
+  CMD wget -qO- http://127.0.0.1:${PORT:-4003}/health | grep ok || exit 1
+
+CMD ["yarn", "workspace", "@monorepo/ms-session", "run", "start"]

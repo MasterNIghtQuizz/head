@@ -1,4 +1,4 @@
-import { EntitySchema } from "@common/database/src/index.js";
+import { EntitySchema } from "typeorm";
 import { SessionStatus } from "../../core/entities/session-status.js";
 
 export class SessionModel {
@@ -7,7 +7,7 @@ export class SessionModel {
     this.id = undefined;
     /** @type {string | undefined} */
     this.public_key = undefined;
-    /** @type {SessionStatus | undefined} */
+    /** @type {import("../mappers/session.mapper.js").SessionStatusType | undefined} */
     this.status = undefined;
     /** @type {string | undefined} */
     this.current_question_id = undefined;

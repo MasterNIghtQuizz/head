@@ -1,10 +1,14 @@
 import { ParticipantRoles } from "./participant-roles.js";
 
+/**
+ * @typedef {import('./participant-roles.js').ParticipantRolesType} ParticipantRolesType
+ */
+
 export class ParticipantEntity {
   /**
    * @param {Object} params
    * @param {string|null} params.id
-   * @param {ParticipantRoles} params.role
+   * @param {ParticipantRolesType} params.role
    * @param {string} params.sessionId
    * @param {string} params.nickname
    * @param {string} params.socketId

@@ -1,11 +1,11 @@
-import { EntitySchema } from "@common/database/src/index.js";
+import { EntitySchema } from "typeorm";
 import { ParticipantRoles } from "../../core/entities/participant-roles.js";
 
 export class ParticipantModel {
   constructor() {
     /** @type {string | undefined} */
     this.id = undefined;
-    /** @type {ParticipantRoles | undefined} */
+    /** @type {import("../mappers/session.mapper.js").ParticipantRolesType | undefined} */
     this.role = undefined;
     /** @type {string | undefined} */
     this.session_id = undefined;

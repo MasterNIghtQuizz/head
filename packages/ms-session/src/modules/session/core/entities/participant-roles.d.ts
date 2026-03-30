@@ -1,4 +1,6 @@
-export enum ParticipantRoles {
-  ADMIN,
-  PLAYER,
-}
+export type ParticipantRolesType = "HOST" | "PLAYER";
+
+export declare const ParticipantRoles: {
+  HOST: "HOST";
+  PLAYER: "PLAYER";
+};

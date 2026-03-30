@@ -1,6 +1,11 @@
-import { DatabaseContext, TypeORMStrategy, ProcessedEventEntity } from "common-database";
+import {
+  DatabaseContext,
+  TypeORMStrategy,
+  ProcessedEventEntity,
+} from "common-database";
 import { config } from "./config.js";
-import { UserEntity } from "./modules/user/entities/user.entity.js";
+import { SessionEntity } from "./modules/session/core/entities/session.entity.js";
+import { ParticipantEntity } from "./modules/session/core/entities/participant.entity.js";
 import { CreateProcessedEventsTable1710000000000 } from "./migrations/1710000000000-CreateProcessedEventsTable.js";
 
 const strategy = new TypeORMStrategy();
@@ -14,7 +19,7 @@ export const initDatabase = async () => {
     password: config.postgres.password,
     database: config.postgres.database,
     env: config.env,
-    entities: [UserEntity, ProcessedEventEntity],
+    entities: [SessionEntity, ParticipantEntity, ProcessedEventEntity],
     migrations: [CreateProcessedEventsTable1710000000000],
   });
 };

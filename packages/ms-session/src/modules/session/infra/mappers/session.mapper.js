@@ -2,6 +2,14 @@ import { GetSessionResponseDto, ParticipantDto } from "../../contracts/session.d
 import { SessionEntity } from "../../core/entities/session.entity.js";
 import { SessionModel } from "../models/session.model.js";
 
+/**
+ * @typedef {import('../../core/entities/participant-roles.d.ts').ParticipantRolesType} ParticipantRolesType
+ */
+
+/**
+ * @typedef {import('../../core/entities/session-status.d.ts').SessionStatusType} SessionStatusType
+ */
+
 export class SessionMapper {
   /**
    * @param {SessionEntity} entity
