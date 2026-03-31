@@ -260,7 +260,7 @@ export class QuizService extends BaseService {
     } catch (error) {
       if (/** @type {BaseError} */ (error).statusCode) {
         throw error;
-      } // Relance les erreurs métier (404)
+      }
 
       logger.error(
         { error: /** @type {Error} */ (error), id },
@@ -312,7 +312,7 @@ export class QuizService extends BaseService {
 
       return result;
     } catch (error) {
-      if (/** @type {any} */ (error).statusCode) {
+      if (/** @type {BaseError} */ (error).statusCode) {
         throw error;
       }
       throw DATABASE_ERROR(/** @type {Error} */ (error));
@@ -330,7 +330,7 @@ export class QuizService extends BaseService {
       }
     } catch (error) {
       logger.warn(
-        { error: /** @type {any} */ (error), quizId },
+        { error: /** @type {BaseError} */ (error), quizId },
         "Valkey cache get failed",
       );
     }
@@ -346,13 +346,13 @@ export class QuizService extends BaseService {
         await this.valkeyRepository.set(cacheKey, dto, this.cacheTtl);
       } catch (cacheError) {
         logger.warn(
-          { error: /** @type {any} */ (cacheError), quizId },
+          { error: /** @type {BaseError} */ (cacheError), quizId },
           "Valkey cache set failed",
         );
       }
       return dto;
     } catch (error) {
-      if (/** @type {any} */ (error).statusCode) {
+      if (/** @type {BaseError} */ (error).statusCode) {
         throw error;
       }
       throw DATABASE_ERROR(/** @type {Error} */ (error));
@@ -370,7 +370,7 @@ export class QuizService extends BaseService {
       }
     } catch (error) {
       logger.warn(
-        { error: /** @type {any} */ (error), quizId },
+        { error: /** @type {BaseError} */ (error), quizId },
         "Valkey cache get failed",
       );
     }
@@ -386,13 +386,13 @@ export class QuizService extends BaseService {
         await this.valkeyRepository.set(cacheKey, dto, this.cacheTtl);
       } catch (cacheError) {
         logger.warn(
-          { error: /** @type {any} */ (cacheError), quizId },
+          { error: /** @type {BaseError} */ (cacheError), quizId },
           "Valkey cache set failed",
         );
       }
       return dto;
     } catch (error) {
-      if (/** @type {any} */ (error).statusCode) {
+      if (/** @type {BaseError} */ (error).statusCode) {
         throw error;
       }
       throw DATABASE_ERROR(/** @type {Error} */ (error));
