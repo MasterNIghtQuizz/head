@@ -1,7 +1,7 @@
 import Fastify from "fastify";
 import logger from "common-logger";
 import { config } from "./config.js";
-import { initDatabase } from "./database.js";
+import { db, initDatabase } from "./database.js";
 import { registerSwagger } from "common-swagger";
 import { hookInternalToken } from "common-auth";
 import { ControllerFactory } from "common-core";
@@ -49,8 +49,8 @@ const kafkaClient = createKafkaClient({
 const kafkaProducer = new KafkaProducer(kafkaClient);
 await kafkaProducer.connect();
 
-const sessionRepository = new TypeOrmSessionRepository();
-const participantRepository = new TypeOrmParticipantRepository();
+const sessionRepository = new TypeOrmSessionRepository(db.instance);
+const participantRepository = new TypeOrmParticipantRepository(db.instance);
 
 const sessionService = new SessionService(
   kafkaProducer,

@@ -12,7 +12,8 @@
   },
   "services": {
     "user": "USER_SERVICE_URL",
-    "quizz": "QUIZZ_SERVICE_URL"
+    "quizz": "QUIZZ_SERVICE_URL",
+    "session": "SESSION_SERVICE_URL"
   },
   "auth": {
     "access": {

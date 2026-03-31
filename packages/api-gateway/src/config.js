@@ -18,6 +18,7 @@ const schema = Joi.object({
   services: Joi.object({
     user: Joi.string().uri().required(),
     quizz: Joi.string().uri().required(),
+    session: Joi.string().uri().required(),
   }).required(),
   auth: Joi.object({
     access: Joi.object({
@@ -72,7 +73,7 @@ export const config = {
   env: /** @type {string} */ (Config.get("app.env")),
   port: /** @type {number} */ (Config.get("app.port")),
   logger: /** @type {Record<string, unknown>} */ (Config.get("logger")),
-  services: /** @type {{ user: string; quizz: string }} */ (
+  services: /** @type {{ user: string; quizz: string; session:string }} */ (
     Config.get("services")
   ),
   kafka: /** @type {{ brokers: string[] }} */ (Config.get("kafka")),

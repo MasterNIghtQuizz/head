@@ -11,6 +11,7 @@
     "test": "yarn run -T vitest run"
   },
   "dependencies": {
+    "@monorepo/api-gateway": "workspace:*",
     "common-auth": "workspace:*",
     "common-axios": "workspace:*",
     "common-config": "workspace:*",
@@ -23,7 +24,6 @@
     "common-monitoring": "workspace:*",
     "common-swagger": "workspace:*",
     "common-valkey": "workspace:*",
-    "@monorepo/api-gateway": "workspace:*",
     "fastify": "^5.6.2",
     "joi": "^18.0.2",
     "pg": "^8.13.3",

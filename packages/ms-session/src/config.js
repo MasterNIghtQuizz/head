@@ -44,7 +44,7 @@ const schema = Joi.object({
     exporterUrl: Joi.string().uri().required(),
   }).optional(),
   services: Joi.object({
-    quizzManagement: Joi.object({
+    session: Joi.object({
       baseUrl: Joi.string().uri().required(),
     }).required(),
   }).required(),

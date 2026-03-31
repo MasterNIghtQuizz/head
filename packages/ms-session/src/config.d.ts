@@ -16,7 +16,7 @@ export declare const config: {
     exporterUrl: string;
   };
   services: {
-    quizzManagement: {
+    session: {
       baseUrl: string;
     };
   };

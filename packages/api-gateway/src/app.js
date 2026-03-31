@@ -19,6 +19,8 @@ import { QuestionController } from "./modules/quiz/controllers/question.controll
 import { QuestionService } from "./modules/quiz/services/question.service.js";
 import { ChoiceController } from "./modules/quiz/controllers/choice.controller.js";
 import { ChoiceService } from "./modules/quiz/services/choice.service.js";
+import { SessionService } from "./modules/session/services/session.service.js";
+import { SessionController } from "./modules/session/controllers/session.controller.js";
 
 export async function createServer() {
   const fastify = Fastify({
@@ -78,6 +80,9 @@ export async function createServer() {
 
   const choiceService = new ChoiceService();
   ControllerFactory.register(fastify, ChoiceController, [choiceService]);
+
+  const sessionService = new SessionService();
+  ControllerFactory.register(fastify, SessionController, [sessionService]);
 
   fastify.get("/health", { config: { isPublic: true } }, async () => {
     return { status: "ok", service: "api-gateway" };

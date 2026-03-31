@@ -1,6 +1,6 @@
 {
   "app": {
-    "port": 4001,
+    "port": 4003,
     "env": "development"
   },
   "logger": {
@@ -29,17 +29,15 @@
     }
   },
   "kafka": {
-    "brokers": [
-      "localhost:9092"
-    ]
+    "brokers": ["localhost:9092"]
   },
   "otel": {
     "enabled": false,
     "exporterUrl": "http://localhost:4317"
   },
   "services": {
-    "quizzManagement": {
-      "baseUrl": "http://ms-quizz-management:4002"
+    "session": {
+      "baseUrl": "http://ms-session:4003"
     }
   }
 }

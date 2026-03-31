@@ -45,8 +45,8 @@
     "exporterUrl": "OTEL_EXPORTER_OTLP_ENDPOINT"
   },
   "services": {
-    "quizzManagement": {
-      "baseUrl": "QUIZZ_SERVICE_URL"
+    "session": {
+      "baseUrl": "SESSION_SERVICE_URL"
     }
   }
 }
