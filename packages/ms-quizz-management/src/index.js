@@ -31,7 +31,12 @@ import { ChoiceController } from "./modules/quiz/controllers/choice.controller.j
 import { QuestionController } from "./modules/quiz/controllers/question.controller.js";
 import { ChoiceResponseSchema } from "./modules/quiz/contracts/choice.dto.js";
 import { QuestionResponseSchema } from "./modules/quiz/contracts/question.dto.js";
-import { QuizResponseSchema } from "./modules/quiz/contracts/quiz.dto.js";
+import {
+  QuizResponseSchema,
+  QuizAnswersResponseSchema,
+  FullQuizResponseSchema,
+  QuizIdsResponseSchema,
+} from "./modules/quiz/contracts/quiz.dto.js";
 
 export async function createServer() {
   const fastify = Fastify({
@@ -41,6 +46,9 @@ export async function createServer() {
   fastify.addSchema(ChoiceResponseSchema);
   fastify.addSchema(QuestionResponseSchema);
   fastify.addSchema(QuizResponseSchema);
+  fastify.addSchema(QuizAnswersResponseSchema);
+  fastify.addSchema(FullQuizResponseSchema);
+  fastify.addSchema(QuizIdsResponseSchema);
   fastify.addHook(
     "onRequest",
     hookInternalToken({

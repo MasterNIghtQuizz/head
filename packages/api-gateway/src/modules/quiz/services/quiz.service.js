@@ -66,12 +66,53 @@ export class QuizService extends BaseService {
   /**
    * @param {string} id
    * @param {import('http').IncomingHttpHeaders} [headers]
-   * @returns {Promise<void>}
+   * @returns {Promise<null>}
    */
   async deleteQuiz(id, headers) {
     return call({
       url: `${config.services.quizz}/quizzes/${id}`,
       method: "DELETE",
+      headers: /** @type {Record<string, string>} */ (headers),
+    });
+  }
+
+  /**
+   * @param {string} id
+   * @param {import('http').IncomingHttpHeaders} [headers]
+   * @returns {Promise<import("common-contracts").QuizAnswersResponse>}
+   */
+  async getQuizAnswers(id, headers) {
+    return call({
+      url: `${config.services.quizz}/quizzes/${id}/answers`,
+      method: "GET",
+      headers: /** @type {Record<string, string>} */ (headers),
+    });
+  }
+
+  /**
+   * @param {string} quizId
+   * @param {import('http').IncomingHttpHeaders} [headers]
+   * @returns {Promise<import("common-contracts").FullQuizResponse>}
+   */
+  async getFullQuiz(quizId, headers) {
+    return call({
+      url: `${config.services.quizz}/quizzes/get-full`,
+      method: "POST",
+      data: { quizId },
+      headers: /** @type {Record<string, string>} */ (headers),
+    });
+  }
+
+  /**
+   * @param {string} quizId
+   * @param {import('http').IncomingHttpHeaders} [headers]
+   * @returns {Promise<import("common-contracts").QuizIdsResponse>}
+   */
+  async getQuizIdsOnly(quizId, headers) {
+    return call({
+      url: `${config.services.quizz}/quizzes/get-ids`,
+      method: "POST",
+      data: { quizId },
       headers: /** @type {Record<string, string>} */ (headers),
     });
   }

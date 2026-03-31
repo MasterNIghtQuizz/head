@@ -12,6 +12,7 @@ import { BadRequestError } from "common-errors";
 import {
   CreateQuizRequestDto,
   UpdateQuizRequestDto,
+  GetQuizRequestDto,
 } from "../contracts/quiz.dto.js";
 
 export class QuizController extends BaseController {
@@ -77,7 +78,92 @@ export class QuizController extends BaseController {
     await this.quizService.deleteQuiz(request.params.id);
     return reply.code(204).send();
   }
+
+  /**
+   * @param {import('fastify').FastifyRequest<{Params: {id: string}}>} request
+   * @param {import('fastify').FastifyReply} _reply
+   */
+  async getQuizAnswers(request, _reply) {
+    return this.quizService.getQuizAnswers(request.params.id);
+  }
+
+  /**
+   * @param {import('fastify').FastifyRequest<{Body: import('../contracts/quiz.dto.js').GetQuizRequest}>} request
+   * @param {import('fastify').FastifyReply} _reply
+   */
+  async getFullQuiz(request, _reply) {
+    const { error } = GetQuizRequestDto.validate(request.body);
+    if (error) {
+      throw new BadRequestError(`Invalid quiz request: ${error.message}`);
+    }
+    return this.quizService.getFullQuiz(request.body.quizId);
+  }
+
+  /**
+   * @param {import('fastify').FastifyRequest<{Body: import('../contracts/quiz.dto.js').GetQuizRequest}>} request
+   * @param {import('fastify').FastifyReply} _reply
+   */
+  async getQuizIdsOnly(request, _reply) {
+    const { error } = GetQuizRequestDto.validate(request.body);
+    if (error) {
+      throw new BadRequestError(`Invalid quiz request: ${error.message}`);
+    }
+    return this.quizService.getQuizIdsOnly(request.body.quizId);
+  }
 }
+
+ApplyMethodDecorators(QuizController, "getFullQuiz", [
+  Schema({
+    description: "Get a full quiz by ID. Roles: USER, ACCESS, INTERNAL",
+    tags: ["Quiz"],
+    body: {
+      type: "object",
+      required: ["quizId"],
+      properties: { quizId: { type: "string", format: "uuid" } },
+    },
+    response: {
+      200: { $ref: "FullQuizResponseDto#" },
+      404: { type: "object", properties: { message: { type: "string" } } },
+    },
+  }),
+  Post("/get-full"),
+]);
+
+ApplyMethodDecorators(QuizController, "getQuizIdsOnly", [
+  Schema({
+    description: "Get only IDs of a quiz. Roles: USER, ACCESS, INTERNAL",
+    tags: ["Quiz"],
+    body: {
+      type: "object",
+      required: ["quizId"],
+      properties: { quizId: { type: "string", format: "uuid" } },
+    },
+    response: {
+      200: { $ref: "QuizIdsResponseDto#" },
+      404: { type: "object", properties: { message: { type: "string" } } },
+    },
+  }),
+  Post("/get-ids"),
+]);
+
+ApplyMethodDecorators(QuizController, "getQuizAnswers", [
+  Schema({
+    description:
+      "Get all correct answers for a quiz. Roles: USER, ACCESS, INTERNAL",
+    tags: ["Quiz"],
+    params: {
+      type: "object",
+      properties: {
+        id: { type: "string", format: "uuid" },
+      },
+    },
+    response: {
+      200: { $ref: "QuizAnswersResponseDto#" },
+      404: { type: "object", properties: { message: { type: "string" } } },
+    },
+  }),
+  Get("/:id/answers"),
+]);
 
 ApplyMethodDecorators(QuizController, "getAllQuizzes", [
   Schema({
