@@ -27,6 +27,70 @@ const QuizResponse = {
   },
 };
 
+/** @type {Record<string, unknown>} */
+const FullQuizResponse = {
+  $id: "FullQuizResponseDto",
+  type: "object",
+  properties: {
+    id: { type: "string", format: "uuid" },
+    title: { type: "string" },
+    description: { type: "string", nullable: true },
+    createdAt: { type: "string", format: "date-time" },
+    updatedAt: { type: "string", format: "date-time" },
+    questions: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          label: { type: "string" },
+          type: { type: "string" },
+          order_index: { type: "integer" },
+          timer_seconds: { type: "integer" },
+          choices: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                id: { type: "string", format: "uuid" },
+                text: { type: "string" },
+                is_correct: { type: "boolean" },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+};
+
+/** @type {Record<string, unknown>} */
+const QuizIdsResponse = {
+  $id: "QuizIdsResponseDto",
+  type: "object",
+  properties: {
+    quizId: { type: "string", format: "uuid" },
+    questions: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          choices: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                id: { type: "string", format: "uuid" },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+};
+
 export class QuizController extends BaseController {
   /**
    * @param {import('../services/quiz.service.js').QuizService} quizService
@@ -77,7 +141,102 @@ export class QuizController extends BaseController {
     await this.quizService.deleteQuiz(request.params.id, request.headers);
     return reply.code(204).send();
   }
+
+  /** @param {import('fastify').FastifyRequest<{Params: {id: string}}>} request */
+  async getQuizAnswers(request) {
+    return this.quizService.getQuizAnswers(request.params.id, request.headers);
+  }
+
+  /** @param {import('fastify').FastifyRequest<{Body: {quizId: string}}>} request */
+  async getFullQuiz(request) {
+    return this.quizService.getFullQuiz(request.body.quizId, request.headers);
+  }
+
+  /** @param {import('fastify').FastifyRequest<{Body: {quizId: string}}>} request */
+  async getQuizIdsOnly(request) {
+    return this.quizService.getQuizIdsOnly(
+      request.body.quizId,
+      request.headers,
+    );
+  }
 }
+
+ApplyMethodDecorators(QuizController, "getFullQuiz", [
+  Schema({
+    summary: "Get full quiz data",
+    description: "Returns the quiz with all its questions and choices.",
+    tags: ["Quiz"],
+    security: [{ accessToken: [] }],
+    body: {
+      type: "object",
+      required: ["quizId"],
+      properties: { quizId: { type: "string", format: "uuid" } },
+    },
+    response: {
+      200: { description: "Full quiz found", ...FullQuizResponse },
+      401: { description: "Unauthorized", ...ErrorResponse },
+      404: { description: "Not Found", ...ErrorResponse },
+    },
+  }),
+  Post("/get-full"),
+]);
+
+ApplyMethodDecorators(QuizController, "getQuizIdsOnly", [
+  Schema({
+    summary: "Get quiz IDs structure",
+    description: "Returns the quiz IDs structure (questions, choices).",
+    tags: ["Quiz"],
+    security: [{ accessToken: [] }],
+    body: {
+      type: "object",
+      required: ["quizId"],
+      properties: { quizId: { type: "string", format: "uuid" } },
+    },
+    response: {
+      200: { description: "Quiz structure found", ...QuizIdsResponse },
+      401: { description: "Unauthorized", ...ErrorResponse },
+      404: { description: "Not Found", ...ErrorResponse },
+    },
+  }),
+  Post("/get-ids"),
+]);
+
+ApplyMethodDecorators(QuizController, "getQuizAnswers", [
+  Schema({
+    summary: "Get quiz correct answers",
+    description: "Returns the list of matching questionId and choiceId.",
+    tags: ["Quiz"],
+    security: [{ accessToken: [] }],
+    params: {
+      type: "object",
+      required: ["id"],
+      properties: {
+        id: { type: "string", format: "uuid", description: "Quiz UUID" },
+      },
+    },
+    response: {
+      200: {
+        description: "Answers found",
+        type: "object",
+        properties: {
+          answers: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                questionId: { type: "string", format: "uuid" },
+                choiceId: { type: "string", format: "uuid" },
+              },
+            },
+          },
+        },
+      },
+      401: { description: "Unauthorized", ...ErrorResponse },
+      404: { description: "Not Found", ...ErrorResponse },
+    },
+  }),
+  Get("/:id/answers"),
+]);
 
 ApplyMethodDecorators(QuizController, "getAllQuizzes", [
   Schema({

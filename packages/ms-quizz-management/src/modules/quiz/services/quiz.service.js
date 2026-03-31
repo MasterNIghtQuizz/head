@@ -269,4 +269,133 @@ export class QuizService extends BaseService {
       throw DATABASE_ERROR(/** @type {Error} */ (error));
     }
   }
+  /**
+   * @param {string} id
+   */
+  async getQuizAnswers(id) {
+    const cacheKey = `quiz:answers:${id}`;
+    try {
+      const cached = await this.valkeyRepository.get(cacheKey);
+      if (cached) {
+        return cached;
+      }
+    } catch (error) {
+      logger.warn({ error, id }, "Valkey cache get failed");
+    }
+
+    try {
+      const entity = await this.quizRepository.findByIdWithChildren(id);
+      if (!entity) {
+        throw QUIZ_NOT_FOUND(id);
+      }
+
+      const answers = [];
+      if (entity.questions) {
+        for (const question of entity.questions) {
+          const correctChoice = question.choices?.find((c) => c.is_correct);
+          if (correctChoice) {
+            answers.push({
+              questionId: question.id,
+              choiceId: correctChoice.id,
+            });
+          }
+        }
+      }
+
+      const result = { answers };
+
+      try {
+        await this.valkeyRepository.set(cacheKey, result, this.cacheTtl);
+      } catch (cacheError) {
+        logger.warn({ error: cacheError, id }, "Valkey cache set failed");
+      }
+
+      return result;
+    } catch (error) {
+      if (/** @type {any} */ (error).statusCode) {
+        throw error;
+      }
+      throw DATABASE_ERROR(/** @type {Error} */ (error));
+    }
+  }
+  /**
+   * @param {string} quizId
+   */
+  async getFullQuiz(quizId) {
+    const cacheKey = `quiz:full:${quizId}`;
+    try {
+      const cached = await this.valkeyRepository.get(cacheKey);
+      if (cached) {
+        return cached;
+      }
+    } catch (error) {
+      logger.warn(
+        { error: /** @type {any} */ (error), quizId },
+        "Valkey cache get failed",
+      );
+    }
+
+    try {
+      const entity = await this.quizRepository.findByIdWithChildren(quizId);
+      if (!entity) {
+        throw QUIZ_NOT_FOUND(quizId);
+      }
+
+      const dto = QuizMapper.toFullDto(entity);
+      try {
+        await this.valkeyRepository.set(cacheKey, dto, this.cacheTtl);
+      } catch (cacheError) {
+        logger.warn(
+          { error: /** @type {any} */ (cacheError), quizId },
+          "Valkey cache set failed",
+        );
+      }
+      return dto;
+    } catch (error) {
+      if (/** @type {any} */ (error).statusCode) {
+        throw error;
+      }
+      throw DATABASE_ERROR(/** @type {Error} */ (error));
+    }
+  }
+  /**
+   * @param {string} quizId
+   */
+  async getQuizIdsOnly(quizId) {
+    const cacheKey = `quiz:ids:${quizId}`;
+    try {
+      const cached = await this.valkeyRepository.get(cacheKey);
+      if (cached) {
+        return cached;
+      }
+    } catch (error) {
+      logger.warn(
+        { error: /** @type {any} */ (error), quizId },
+        "Valkey cache get failed",
+      );
+    }
+
+    try {
+      const entity = await this.quizRepository.findByIdWithChildren(quizId);
+      if (!entity) {
+        throw QUIZ_NOT_FOUND(quizId);
+      }
+
+      const dto = QuizMapper.toIdsDto(entity);
+      try {
+        await this.valkeyRepository.set(cacheKey, dto, this.cacheTtl);
+      } catch (cacheError) {
+        logger.warn(
+          { error: /** @type {any} */ (cacheError), quizId },
+          "Valkey cache set failed",
+        );
+      }
+      return dto;
+    } catch (error) {
+      if (/** @type {any} */ (error).statusCode) {
+        throw error;
+      }
+      throw DATABASE_ERROR(/** @type {Error} */ (error));
+    }
+  }
 }
