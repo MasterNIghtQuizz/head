@@ -29,7 +29,15 @@
     }
   },
   "kafka": {
-    "brokers": ["localhost:9092"]
+    "brokers": ["localhost:9092"],
+    "enabled": true
+  },
+  "valkey": {
+    "host": "localhost",
+    "port": 6379,
+    "password": "",
+    "db": 0,
+    "ttl": 3600
   },
   "otel": {
     "enabled": false,
@@ -38,6 +46,9 @@
   "services": {
     "session": {
       "baseUrl": "http://ms-session:4003"
+    },
+    "quizzManagement": {
+      "baseUrl": "http://ms-quizz-management:4002"
     }
   }
 }

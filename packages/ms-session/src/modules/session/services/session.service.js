@@ -19,19 +19,26 @@ import { ParticipantMapper } from "../infra/mappers/participant.mapper.js";
 import { log } from "node:console";
 import { call } from "common-axios";
 import { config } from "../../../config.js";
-import { QuizResponseDto } from "../contracts/quiz.dto.js";
+import { FullQuizResponseDto } from "../contracts/quiz.dto.js";
 
 export class SessionService extends BaseService {
   /**
    * @param {import('common-kafka').KafkaProducer | null} kafkaProducer
    * @param {import('../core/ports/session.repository.js').ISessionRepository} sessionRepository
    * @param {import('../core/ports/participant.repository.js').IParticipantRepository} participantRepository
+   * @param {import("common-valkey").ValkeyRepository} valkeyRepository
    */
-  constructor(kafkaProducer, sessionRepository, participantRepository) {
+  constructor(
+    kafkaProducer,
+    sessionRepository,
+    participantRepository,
+    valkeyRepository,
+  ) {
     super();
     this.sessionRepository = sessionRepository;
     this.kafkaProducer = kafkaProducer;
     this.participantRepository = participantRepository;
+    this.valkeyRepository = valkeyRepository;
   }
 
   /**
@@ -40,16 +47,23 @@ export class SessionService extends BaseService {
    */
   async createSession(data) {
     const quiz = await call({
-      url: `${config.services.quizzManagement}/quizzes/${data.quiz_id}`,
+      url: `${config.services.quizzManagement}/quizzes/get-full`,
       method: "GET",
+      data: { quiz_id: data.quiz_id },
     }).catch((err) => {
       logger.warn(`Quiz with id ${data.quiz_id} not found: `, err);
       throw QUIZZ_NOT_FOUND(data.quiz_id);
     });
 
-    if (!quiz || !(quiz instanceof QuizResponseDto)) {
+    if (!quiz || !(quiz instanceof FullQuizResponseDto)) {
       logger.warn(`Quiz with id ${data.quiz_id} not found`);
       throw QUIZZ_NOT_FOUND(data.quiz_id);
+    }
+
+    const questions = quiz.questions;
+    if (!questions || !Array.isArray(questions) || questions.length === 0) {
+      logger.warn(`Quiz with id ${data.quiz_id} has no questions`);
+      throw EMPTY_QUIZZ(data.quiz_id);
     }
 
     const sessionEntity = new SessionEntity({
@@ -61,6 +75,11 @@ export class SessionService extends BaseService {
       quizzId: data.quiz_id,
     });
     const session = await this.sessionRepository.create(sessionEntity);
+
+    await this.valkeyRepository.set(
+      `session:${session.id}:questions`,
+      JSON.stringify(questions),
+    );
 
     const hostEntity = new ParticipantEntity({
       id: data.host_id,
@@ -114,7 +133,7 @@ export class SessionService extends BaseService {
       throw SESSION_INVALID_STATUS(sessionId);
     }
 
-    const questions = await call({
+    const quiz = await call({
       url: `${config.services.quizzManagement}/questions/quiz/${session.quizzId}`,
       method: "GET",
     }).catch((err) => {
@@ -124,15 +143,9 @@ export class SessionService extends BaseService {
       );
       throw QUIZZ_NOT_FOUND(session.quizzId);
     });
+    const questions = /** @type {FullQuizResponseDto} */ (quiz).questions;
     if (!questions || !Array.isArray(questions) || questions.length === 0) {
       logger.warn(`Quiz with id ${session.quizzId} has no questions`);
-      throw EMPTY_QUIZZ(session.quizzId);
-    }
-
-    if (!(questions[0] instanceof QuizResponseDto)) {
-      logger.warn(
-        `Quiz with id ${session.quizzId} has invalid questions format`,
-      );
       throw EMPTY_QUIZZ(session.quizzId);
     }
 
@@ -175,16 +188,26 @@ export class SessionService extends BaseService {
       throw SESSION_INVALID_STATUS(sessionId);
     }
 
-    const questions = await call({
-      url: `${config.services.quizzManagement}/questions/quiz/${session.quizzId}`,
-      method: "GET",
-    }).catch((err) => {
-      logger.warn(
-        `Failed to fetch questions for quiz with id ${session.quizzId}: `,
-        err,
-      );
-      throw QUIZZ_NOT_FOUND(session.quizzId);
-    });
+    const cachedQuestions = await this.valkeyRepository.get(
+      `session:${session.id}:questions`,
+    );
+    let questions;
+
+    if (cachedQuestions) {
+      questions = JSON.parse(cachedQuestions);
+    } else {
+      questions = await call({
+        url: `${config.services.quizzManagement}/quizzes/get-full`,
+        method: "GET",
+        data: { quiz_id: session.quizzId },
+      }).catch((err) => {
+        logger.warn(
+          `Failed to fetch questions for quiz with id ${session.quizzId}: `,
+          err,
+        );
+        throw QUIZZ_NOT_FOUND(session.quizzId);
+      });
+    }
     if (!questions || !Array.isArray(questions) || questions.length === 0) {
       logger.warn(`Quiz with id ${session.quizzId} has no questions`);
       throw EMPTY_QUIZZ(session.quizzId);
@@ -207,7 +230,7 @@ export class SessionService extends BaseService {
       return;
     }
 
-    if (!(questions[currentIndex + 1] instanceof QuizResponseDto)) {
+    if (!(questions[currentIndex + 1] instanceof FullQuizResponseDto)) {
       logger.warn(
         `Quiz with id ${session.quizzId} has invalid questions format`,
       );
@@ -265,6 +288,8 @@ export class SessionService extends BaseService {
     }
 
     await this.sessionRepository.delete(sessionId);
+
+    await this.valkeyRepository.del(`session:${session.id}:questions`);
 
     if (this.kafkaProducer) {
       await this.kafkaProducer.publish(

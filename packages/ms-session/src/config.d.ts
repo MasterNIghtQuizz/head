@@ -5,6 +5,15 @@ export declare const config: {
   postgres: Record<string, any>;
   kafka: {
     brokers: string[];
+    enabled: boolean;
+  };
+  valkey: {
+    enabled: boolean;
+    host: string;
+    port: number;
+    password?: string;
+    db?: number;
+    ttl?: number;
   };
   auth: {
     access: { privateKeyPath: string; publicKeyPath: string };
@@ -17,6 +26,9 @@ export declare const config: {
   };
   services: {
     session: {
+      baseUrl: string;
+    };
+    quizzManagement: {
       baseUrl: string;
     };
   };

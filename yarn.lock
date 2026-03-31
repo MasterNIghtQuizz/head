@@ -651,7 +651,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@monorepo/api-gateway@workspace:*, @monorepo/api-gateway@workspace:packages/api-gateway":
+"@monorepo/api-gateway@workspace:packages/api-gateway":
   version: 0.0.0-use.local
   resolution: "@monorepo/api-gateway@workspace:packages/api-gateway"
   dependencies:
@@ -698,7 +698,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@monorepo/ms-session@workspace:packages/ms-session"
   dependencies:
-    "@monorepo/api-gateway": "workspace:*"
     common-auth: "workspace:*"
     common-axios: "workspace:*"
     common-config: "workspace:*"

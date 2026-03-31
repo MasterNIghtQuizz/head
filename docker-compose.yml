@@ -201,6 +201,7 @@ services:
       KAFKA_BROKERS: '["kafka:29092"]'
       USER_SERVICE_URL: "http://ms-user:4001"
       QUIZZ_SERVICE_URL: "http://ms-quizz-management:4002"
+      SESSION_SERVICE_URL: "http://ms-session:4003"
       VALKEY_HOST: valkey
       VALKEY_PORT: 6379
       OTEL_ENABLED: ${MONITORING_ENABLED:-false}
@@ -347,6 +348,7 @@ services:
       KAFKA_ENABLED: "false"
       USER_SERVICE_URL: "http://ms-user-test:4011"
       QUIZZ_SERVICE_URL: "http://ms-quizz-management-test:4012"
+      SESSION_SERVICE_URL: "http://ms-session-test:4013"
       VALKEY_HOST: valkey-test
       VALKEY_PORT: 6379
     volumes:
@@ -436,6 +438,45 @@ services:
         [
           "CMD-SHELL",
           "wget -qO- http://127.0.0.1:4012/health | grep ok || exit 1",
+        ]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  ms-session-test:
+    profiles: [test]
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.ms-session
+      args:
+        PRODUCTION: "false"
+    ports:
+      - "4013:4013"
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      valkey-test:
+        condition: service_healthy
+    environment:
+      NODE_ENV: test
+      PORT: 4013
+      POSTGRES_HOST: postgres-test
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ms_quizz_test_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password
+      VALKEY_HOST: valkey-test
+      VALKEY_PORT: 6379
+      KAFKA_BROKERS: "[]"
+      KAFKA_ENABLED: "false"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -qO- http://127.0.0.1:4013/health | grep ok || exit 1",
         ]
       interval: 3s
       timeout: 3s

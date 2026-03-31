@@ -35,7 +35,15 @@
     "brokers": {
       "__name": "KAFKA_BROKERS",
       "__format": "json"
-    }
+    },
+    "enabled": "KAFKA_ENABLED"
+  },
+  "valkey": {
+    "enabled": "VALKEY_ENABLED",
+    "host": "VALKEY_HOST",
+    "port": "VALKEY_PORT",
+    "password": "VALKEY_PASSWORD",
+    "db": "VALKEY_DB"
   },
   "otel": {
     "enabled": {
@@ -46,7 +54,8 @@
   },
   "services": {
     "session": {
-      "baseUrl": "SESSION_SERVICE_URL"
+      "baseUrl": "SESSION_SERVICE_URL",
+      "quizzManagement": "QUIZZ_SERVICE_URL"
     }
   }
 }

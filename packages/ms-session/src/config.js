@@ -38,13 +38,25 @@ const schema = Joi.object({
   }).required(),
   kafka: Joi.object({
     brokers: Joi.array().items(Joi.string()).required(),
+    enabled: Joi.boolean().default(true),
   }).required(),
+  valkey: Joi.object({
+    enabled: Joi.boolean().default(true),
+    host: Joi.string().required(),
+    port: Joi.number().required(),
+    password: Joi.string().allow("").optional(),
+    db: Joi.number().optional().default(0),
+    ttl: Joi.number().optional().default(3600),
+  }).optional(),
   otel: Joi.object({
     enabled: Joi.boolean().default(false),
     exporterUrl: Joi.string().uri().required(),
   }).optional(),
   services: Joi.object({
     session: Joi.object({
+      baseUrl: Joi.string().uri().required(),
+    }).required(),
+    quizzManagement: Joi.object({
       baseUrl: Joi.string().uri().required(),
     }).required(),
   }).required(),
@@ -68,7 +80,10 @@ export const config = {
   port: /** @type {number} */ (Config.get("app.port")),
   logger: /** @type {Record<string, unknown>} */ (Config.get("logger")),
   postgres: /** @type {Record<string, any>} */ (Config.get("postgres")),
-  kafka: /** @type {{ brokers: string[] }} */ (Config.get("kafka")),
+  kafka: /** @type {{ brokers: string[]; enabled:boolean }} */ (Config.get("kafka")),
+  valkey: /** @type {import('common-valkey').ValkeyConfig} */ (
+    Config.get("valkey")
+  ),
   auth: {
     access: {
       privateKeyPath: resolveKeyPath(rawAuth.access.privateKeyPath),

@@ -11,7 +11,6 @@
     "test": "yarn run -T vitest run"
   },
   "dependencies": {
-    "@monorepo/api-gateway": "workspace:*",
     "common-auth": "workspace:*",
     "common-axios": "workspace:*",
     "common-config": "workspace:*",

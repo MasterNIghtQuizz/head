@@ -1,3 +1,4 @@
+// @ts-ignore
 import Fastify from "fastify";
 import logger from "common-logger";
 import { config } from "./config.js";
@@ -42,20 +43,31 @@ await registerSwagger(fastify, {
 
 await initDatabase();
 
-const kafkaClient = createKafkaClient({
-  clientId: "ms-session",
-  brokers: config.kafka.brokers,
-});
-const kafkaProducer = new KafkaProducer(kafkaClient);
-await kafkaProducer.connect();
+let kafkaProducer = null;
+if (config.kafka.enabled) {
+  const kafkaClient = createKafkaClient({
+    clientId: "ms-session",
+    brokers: config.kafka.brokers,
+  });
+  kafkaProducer = new KafkaProducer(kafkaClient);
+  await kafkaProducer.connect();
+}
 
 const sessionRepository = new TypeOrmSessionRepository(db.instance);
 const participantRepository = new TypeOrmParticipantRepository(db.instance);
+
+const valkeyService = new (await import("common-valkey")).ValkeyService(
+  config.valkey,
+);
+const valkeyRepository = new (await import("common-valkey")).ValkeyRepository(
+  valkeyService,
+);
 
 const sessionService = new SessionService(
   kafkaProducer,
   sessionRepository,
   participantRepository,
+  valkeyRepository,
 );
 ControllerFactory.register(fastify, SessionController, [sessionService]);
 
@@ -74,7 +86,7 @@ await fastify.listen({ host: "0.0.0.0", port: config.port });
 
 const shutdown = async () => {
   logger.info("Gracefully shutting down ms-session...");
-  await kafkaProducer.disconnect();
+  await kafkaProducer?.disconnect();
   await fastify.close();
   process.exit(0);
 };

@@ -136,7 +136,7 @@ ApplyMethodDecorators(SessionController, "createSession", [
       500: ErrorResponse,
     },
   }),
-  Post("/sessions"),
+  Post("/"),
 ]);
 
 ApplyMethodDecorators(SessionController, "getSession", [
@@ -177,7 +177,7 @@ ApplyMethodDecorators(SessionController, "getSession", [
       500: ErrorResponse,
     },
   }),
-  Get("/sessions/:id"),
+  Get("/:id"),
 ]);
 
 ApplyMethodDecorators(SessionController, "startSession", [
@@ -202,7 +202,7 @@ ApplyMethodDecorators(SessionController, "startSession", [
       500: ErrorResponse,
     },
   }),
-  Post("/sessions/:id/start"),
+  Post("/:id/start"),
 ]);
 
 ApplyMethodDecorators(SessionController, "endSession", [
@@ -227,7 +227,7 @@ ApplyMethodDecorators(SessionController, "endSession", [
       500: ErrorResponse,
     },
   }),
-  Post("/sessions/:id/end"),
+  Post("/:id/end"),
 ]);
 
 ApplyMethodDecorators(SessionController, "deleteSession", [
@@ -251,7 +251,7 @@ ApplyMethodDecorators(SessionController, "deleteSession", [
       500: ErrorResponse,
     },
   }),
-  Delete("/sessions/:id"),
+  Delete("/:id"),
 ]);
 
 ApplyMethodDecorators(SessionController, "nextQuestion", [
@@ -276,7 +276,7 @@ ApplyMethodDecorators(SessionController, "nextQuestion", [
       500: ErrorResponse,
     },
   }),
-  Post("/sessions/:id/next"),
+  Post("/:id/next"),
 ]);
 
 ApplyMethodDecorators(SessionController, "joinSession", [
@@ -318,7 +318,7 @@ ApplyMethodDecorators(SessionController, "joinSession", [
       500: ErrorResponse,
     },
   }),
-  Post("/sessions/join"),
+  Post("/join"),
 ]);
 
 ApplyMethodDecorators(SessionController, "leaveSession", [
@@ -345,7 +345,7 @@ ApplyMethodDecorators(SessionController, "leaveSession", [
       500: ErrorResponse,
     },
   }),
-  Post("/sessions/leave"),
+  Post("/leave"),
 ]);
 
 Controller("/sessions")(SessionController);

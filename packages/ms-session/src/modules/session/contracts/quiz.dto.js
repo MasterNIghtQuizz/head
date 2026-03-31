@@ -1,15 +1,15 @@
 import Joi from "joi";
 
 /**
- * @typedef {import('common-contracts').QuizResponse} QuizResponse
+ * @typedef {import('common-contracts').FullQuizResponse} FullQuizResponse
  */
 
 /**
- * @implements {QuizResponse}
+ * @implements {FullQuizResponse}
  */
-export class QuizResponseDto {
+export class FullQuizResponseDto {
   /**
-   * @param {QuizResponse} data
+   * @param {FullQuizResponse} data
    */
   constructor(data) {
     this.id = data.id;
@@ -17,11 +17,12 @@ export class QuizResponseDto {
     this.description = data.description;
     this.createdAt = data.createdAt;
     this.updatedAt = data.updatedAt;
+    this.questions = data.questions;
   }
 }
 
-export const QuizResponseSchema = {
-  $id: "QuizResponseDto",
+export const FullQuizResponseSchema = {
+  $id: "FullQuizResponseDto",
   type: "object",
   properties: {
     id: { type: "string", format: "uuid" },
@@ -31,7 +32,7 @@ export const QuizResponseSchema = {
     updatedAt: { type: "string", format: "date-time" },
     questions: {
       type: "array",
-      items: { $ref: "QuestionResponseDto#" },
+      items: { $ref: "FullQuestionResponseDto#" },
     },
   },
   required: ["id", "title", "createdAt", "updatedAt"],

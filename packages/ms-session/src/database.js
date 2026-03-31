@@ -6,7 +6,7 @@ import {
 import { config } from "./config.js";
 import { SessionEntity } from "./modules/session/core/entities/session.entity.js";
 import { ParticipantEntity } from "./modules/session/core/entities/participant.entity.js";
-import { CreateProcessedEventsTable1710000000000 } from "./migrations/1710000000000-CreateProcessedEventsTable.js";
+import { CreateSessionsAndParticipantsTables1774942938 } from "./migrations/1774942938-CreateSessionsAndParticipantsTables.js";
 
 const strategy = new TypeORMStrategy();
 export const db = new DatabaseContext(strategy);
@@ -20,6 +20,6 @@ export const initDatabase = async () => {
     database: config.postgres.database,
     env: config.env,
     entities: [SessionEntity, ParticipantEntity, ProcessedEventEntity],
-    migrations: [CreateProcessedEventsTable1710000000000],
+    migrations: [CreateSessionsAndParticipantsTables1774942938],
   });
 };

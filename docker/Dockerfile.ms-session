@@ -9,6 +9,7 @@ COPY package.json yarn.lock .yarnrc.yml ./
 COPY packages/common ./packages/common
 COPY packages/ms-session ./packages/ms-session
 COPY keys ./keys
+COPY scripts ./scripts
 COPY vitest.config.js vitest.config.e2e.js jsconfig.json ./
 
 RUN if [ "$PRODUCTION" = "true" ]; then \
