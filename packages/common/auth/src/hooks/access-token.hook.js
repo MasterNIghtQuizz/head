@@ -8,6 +8,7 @@ import { UnauthorizedError } from "common-errors";
  */
 export function hookAccessToken(options) {
   return function accessTokenHook(request, reply, done) {
+    const isWebSocketRequest = request.raw.url?.startsWith("/ws");
     if (request.routeOptions?.config?.isPublic) {
       done();
       return;
@@ -16,10 +17,17 @@ export function hookAccessToken(options) {
       done();
       return;
     }
-
-    const token = /** @type {string | undefined} */ (
-      request.headers["access-token"]
-    );
+    let token;
+    if (isWebSocketRequest) {
+      // For webscoket connections, access token inside query parameters
+      token = /** @type {string | undefined} */ (
+        request.query["access-token"]
+      );
+    } else {
+      token = /** @type {string | undefined} */ (
+        request.headers["access-token"]
+      );
+    }
 
     if (!token) {
       logger.warn({ url: request.url }, "Missing access-token header");

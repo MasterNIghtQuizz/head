@@ -16,20 +16,33 @@ import logger from "../logger.js";
  * @returns {{ userId: string, userName: string, roomId: string | null } | null}
  */
 function userConnect(ws, req) {
+  logger.debug({}, `raw headers: ${JSON.stringify(req.headers)}`);
+
   if (!req.url) {
     logger.error("URL manquante dans la requete\n");
     ws.close(1002, "URL manquante");
     return null;
   }
-  const url = new URL(req.url, `http://${req.headers.host}`);
-  const userName = url.searchParams.get("userName") || "anonymous";
-  const userId = url.searchParams.get("userId");
-  logger.info(`trying to connect user: ${userName} (ID: ${userId})`);
-  if (!userId) {
-    logger.error("ID utilisateur manquant dans la requete\n");
-    ws.close(1002, "ID utilisateur manquant");
+  const forwardedUserId = req.headers["x-user-id"];
+  const fowardedUserRole = req.headers["x-user-role"];
+
+  if (Array.isArray(forwardedUserId)) {
+    logger.error("Header x-user-id invalide (array non supporte)");
+    ws.close(1002, "Header x-user-id invalide");
     return null;
   }
+
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  const userName = url.searchParams.get("userName") || "anonymous";
+
+  if (!forwardedUserId) {
+    logger.error("Header x-user-id manquant dans la requete");
+    ws.close(1002, "Header x-user-id manquant");
+    return null;
+  }
+
+  const userId = forwardedUserId;
+  logger.info(`trying to connect user: ${userName} (ID: ${userId})`);
 
   add(userId, ws);
   setSocketContext(ws, {

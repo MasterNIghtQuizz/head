@@ -339,7 +339,7 @@
       const sendChatBtn = document.getElementById("send-chat-btn");
       const prefillPingBtn = document.getElementById("prefill-ping-btn");
       const apiGatewayBaseUrl = "http://localhost:3000";
-      const gatewayWsBootstrapPath = "/websocket/connect";
+      const apiGatewayWsUrl = "ws://localhost:3000/ws";
 
       let socket = null;
       let accessToken = "";
@@ -452,39 +452,19 @@
       }
 
       async function bootstrapWebSocketWithGateway(token) {
-        const response = await fetch(
-          `${apiGatewayBaseUrl}${gatewayWsBootstrapPath}`,
-          {
-            method: "POST",
-            headers: {
-              accept: "application/json",
-              "access-token": token,
-            },
-          },
-        );
+        // Pass access token in query parameter for gateway preHandler validation
+        const wsUrl = new URL(apiGatewayWsUrl);
+        wsUrl.searchParams.set("userId", userId);
+        wsUrl.searchParams.set("userName", userName);
+        wsUrl.searchParams.set("access-token", token);
 
-        if (!response.ok) {
-          const text = await response.text();
-          throw new Error(
-            `Gateway bootstrap failed (${response.status}): ${text || "no body"}`,
-          );
-        }
-
-        const payload = await response.json();
-        if (!payload?.wsUrl || !payload?.userId) {
-          throw new Error("Gateway did not return wsUrl/userId.");
-        }
-
-        return payload;
+        return {
+          wsUrl: wsUrl.toString(),
+          userId: userId,
+        };
       }
 
       connectBtn.addEventListener("click", async () => {
-        const url = urlInput.value.trim();
-        if (!url) {
-          addLog("error", "Please provide a WebSocket URL.");
-          return;
-        }
-
         if (socket && socket.readyState === WebSocket.OPEN) {
           addLog("info", "Already connected.");
           return;
@@ -499,33 +479,28 @@
           accessToken = await fetchAccessToken();
           addLog("system", "Access token received.");
 
-          addLog("system", "Calling API gateway to bootstrap WebSocket...");
+          addLog("system", "Preparing WebSocket connection to API gateway...");
           bootstrapData = await bootstrapWebSocketWithGateway(accessToken);
           addLog(
             "system",
-            `Gateway bootstrap call succeeded (userId=${bootstrapData.userId}).`,
+            `WebSocket endpoint prepared (userId=${bootstrapData.userId}).`,
           );
         } catch (error) {
           connectBtn.disabled = false;
           addLog(
             "error",
             error?.message ||
-              "Failed to authenticate/bootstrap with API gateway.",
+              "Failed to authenticate with API gateway.",
           );
           return;
         }
 
         try {
-          const wsBase = bootstrapData?.wsUrl || url;
-          const wsUrl = new URL(wsBase);
-          const effectiveUserId = bootstrapData?.userId || userId;
+          const wsUrl = bootstrapData.wsUrl;
 
-          wsUrl.searchParams.set("userId", effectiveUserId);
-          wsUrl.searchParams.set("userName", userName);
-
-          userIdInput.value = effectiveUserId;
-          socket = new WebSocket(wsUrl.toString());
-          addLog("system", `Connecting to ${wsUrl.toString()} ...`);
+          // Connect directly to gateway with access token in query params
+          socket = new WebSocket(wsUrl);
+          addLog("system", `Connecting to ${wsUrl} ...`);
         } catch (error) {
           addLog("error", error.message || "Failed to create WebSocket.");
           connectBtn.disabled = false;

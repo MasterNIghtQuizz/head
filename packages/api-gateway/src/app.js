@@ -1,5 +1,7 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import proxy from "@fastify/http-proxy";
+
 import logger from "./logger.js";
 import { config } from "./config.js";
 import { registerSwagger } from "common-swagger";
@@ -8,7 +10,10 @@ import {
   hookAccessToken,
   hookInternalTokenInterceptor,
   hookRefreshToken,
+  UserRole
 } from "common-auth";
+import { UnauthorizedError } from "common-errors";
+
 import { hookRoles } from "./infrastructure/hooks/roles.hook.js";
 import { HelpersController } from "./modules/helpers/controllers/helpers.controller.js";
 import { HelpersService } from "./modules/helpers/services/helpers.service.js";
@@ -20,14 +25,15 @@ import { QuestionController } from "./modules/quiz/controllers/question.controll
 import { QuestionService } from "./modules/quiz/services/question.service.js";
 import { ChoiceController } from "./modules/quiz/controllers/choice.controller.js";
 import { ChoiceService } from "./modules/quiz/services/choice.service.js";
-import { WebSocketService } from "./modules/websocket/services/websocket.service.js";
-import { WebSocketController } from "./modules/websocket/controllers/websocket.controller.js";
+
 
 export async function createServer() {
   const fastify = Fastify({
     loggerInstance: logger,
     disableRequestLogging: true,
   });
+
+
 
   await fastify.register(cors, {
     origin: true,
@@ -42,9 +48,8 @@ export async function createServer() {
     ],
   });
 
-  fastify.addHook(
-    "onRequest",
-    hookAccessToken({ publicKeyPath: config.auth.access.publicKeyPath }),
+  fastify.addHook("onRequest",
+     hookAccessToken({ publicKeyPath: config.auth.access.publicKeyPath })
   );
   fastify.addHook(
     "onRequest",
@@ -56,7 +61,8 @@ export async function createServer() {
       privateKeyPath: config.auth.internal.privateKeyPath,
       source: "api-gateway",
       expiresIn: "30s",
-    }),
+    })
+
   );
 
   fastify.addHook("preHandler", hookRoles());
@@ -72,6 +78,23 @@ export async function createServer() {
       "request completed",
     );
   });
+
+  await fastify.register(proxy, {
+    upstream: config.services.websocket,
+    prefix: "/ws",
+    websocket: true,
+    wsClientOptions: {
+      rewriteRequestHeaders: (headers, request) => {
+        return {
+          ...headers,
+          'x-user-id': request.user?.userId,
+          'x-user-role': request.user?.role,
+        }
+      }
+    }
+  });
+
+
 
   // @ts-ignore
   await registerSwagger(fastify, {
@@ -94,9 +117,6 @@ export async function createServer() {
 
   const choiceService = new ChoiceService();
   ControllerFactory.register(fastify, ChoiceController, [choiceService]);
-
-  const webSocketService = new WebSocketService();
-  ControllerFactory.register(fastify, WebSocketController, [webSocketService]);
 
   fastify.get("/health", { config: { isPublic: true } }, async () => {
     return { status: "ok", service: "api-gateway" };

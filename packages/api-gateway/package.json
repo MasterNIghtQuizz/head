@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@fastify/cors": "^11.1.0",
+    "@fastify/http-proxy": "11.4.3",
     "@opentelemetry/api": "^1.9.0",
     "common-auth": "workspace:*",
     "common-axios": "workspace:^",
@@ -20,7 +21,7 @@
     "common-logger": "workspace:*",
     "common-monitoring": "workspace:*",
     "common-swagger": "workspace:*",
-    "fastify": "^5.6.2",
+    "fastify": "^5.8.4",
     "joi": "^18.0.2"
   }
 }

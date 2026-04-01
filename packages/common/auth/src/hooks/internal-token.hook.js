@@ -8,7 +8,8 @@ import logger from "common-logger";
  */
 export function hookInternalToken(options) {
   return function internalTokenHook(request, _reply, done) {
-    if (request.routeOptions?.config?.isPublic) {
+    const isWebSocketRequest = request.raw.url?.startsWith("/ws");
+    if (request.routeOptions?.config?.isPublic || isWebSocketRequest) {
       done();
       return;
     }
