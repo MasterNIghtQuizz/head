@@ -10,9 +10,7 @@ import {
   hookAccessToken,
   hookInternalTokenInterceptor,
   hookRefreshToken,
-  UserRole
 } from "common-auth";
-import { UnauthorizedError } from "common-errors";
 
 import { hookRoles } from "./infrastructure/hooks/roles.hook.js";
 import { HelpersController } from "./modules/helpers/controllers/helpers.controller.js";
@@ -26,14 +24,11 @@ import { QuestionService } from "./modules/quiz/services/question.service.js";
 import { ChoiceController } from "./modules/quiz/controllers/choice.controller.js";
 import { ChoiceService } from "./modules/quiz/services/choice.service.js";
 
-
 export async function createServer() {
   const fastify = Fastify({
     loggerInstance: logger,
     disableRequestLogging: true,
   });
-
-
 
   await fastify.register(cors, {
     origin: true,
@@ -48,8 +43,9 @@ export async function createServer() {
     ],
   });
 
-  fastify.addHook("onRequest",
-     hookAccessToken({ publicKeyPath: config.auth.access.publicKeyPath })
+  fastify.addHook(
+    "onRequest",
+    hookAccessToken({ publicKeyPath: config.auth.access.publicKeyPath }),
   );
   fastify.addHook(
     "onRequest",
@@ -61,8 +57,7 @@ export async function createServer() {
       privateKeyPath: config.auth.internal.privateKeyPath,
       source: "api-gateway",
       expiresIn: "30s",
-    })
-
+    }),
   );
 
   fastify.addHook("preHandler", hookRoles());
@@ -83,18 +78,21 @@ export async function createServer() {
     upstream: config.services.websocket,
     prefix: "/ws",
     websocket: true,
+    preHandler: async (request, _reply) => {
+      const url = new URL(request.url, `http://${request.hostname}`);
+      url.searchParams.delete("access-token");
+      request.raw.url = url.pathname + url.search;
+    },
     wsClientOptions: {
       rewriteRequestHeaders: (headers, request) => {
         return {
           ...headers,
-          'x-user-id': request.user?.userId,
-          'x-user-role': request.user?.role,
-        }
-      }
-    }
+          "x-user-id": request.user?.userId,
+          "x-user-role": request.user?.role,
+        };
+      },
+    },
   });
-
-
 
   // @ts-ignore
   await registerSwagger(fastify, {

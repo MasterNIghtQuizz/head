@@ -19,7 +19,7 @@ function broadcast(message, excludeUserId) {
 }
 
 /**
- * @param {string?} senderId
+ * @param {string} senderId
  * @param {import("common-websocket").ChatMessagePayload} message
  * @param {string} receiverId
  * @returns {boolean}
@@ -35,7 +35,7 @@ function sendMessageToUser(senderId, message, receiverId) {
       type: messageType.CHAT_MESSAGE,
       payload: {
         ...message,
-        senderId: senderId ?? "anonymous",
+        senderId: senderId,
       },
     }),
   );

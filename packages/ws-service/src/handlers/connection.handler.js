@@ -24,7 +24,7 @@ function userConnect(ws, req) {
     return null;
   }
   const forwardedUserId = req.headers["x-user-id"];
-  const fowardedUserRole = req.headers["x-user-role"];
+  // const fowardedUserRole = req.headers["x-user-role"];
 
   if (Array.isArray(forwardedUserId)) {
     logger.error("Header x-user-id invalide (array non supporte)");
@@ -34,6 +34,10 @@ function userConnect(ws, req) {
 
   const url = new URL(req.url, `http://${req.headers.host}`);
   const userName = url.searchParams.get("userName") || "anonymous";
+  logger.info(
+    {},
+    `access token from query params: ${url.searchParams.get("access-token")}`,
+  );
 
   if (!forwardedUserId) {
     logger.error("Header x-user-id manquant dans la requete");

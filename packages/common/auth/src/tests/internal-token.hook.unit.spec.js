@@ -33,7 +33,8 @@ describe("hookInternalToken (Guard/Hook Unit Test)", () => {
   it("should call done() immediately and not process if it's a websocket request", async () => {
     const { request, reply, done, fastify } = createExecutionContext();
     // @ts-ignore
-    request["url"]= "/ws/some-endpoint";
+    request["url"] = "/ws/some-endpoint";
+    request["headers"] = { upgrade: "websocket" };
 
     await hook.call(fastify, request, reply, done);
 
