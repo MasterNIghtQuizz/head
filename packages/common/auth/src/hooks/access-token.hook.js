@@ -8,7 +8,7 @@ import { UnauthorizedError } from "common-errors";
  */
 export function hookAccessToken(options) {
   return function accessTokenHook(request, reply, done) {
-    const isWebSocketRequest = request.raw?.url?.startsWith("/ws");
+    const isWebSocketRequest = request.url?.startsWith("/ws");
     if (request.routeOptions?.config?.isPublic) {
       done();
       return;

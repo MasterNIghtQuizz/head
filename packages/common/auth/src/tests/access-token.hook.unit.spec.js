@@ -75,6 +75,29 @@ describe("hookAccessToken (Guard/Hook Unit Test)", () => {
     expect(error.message).toBe("Invalid or expired access token");
   });
 
+  it("should append user to request and call done() if token is valid, from query parameters", async () => {
+    const { request, reply, done, fastify } = createExecutionContext({
+      "access-token": "valid.token",
+    });
+    request["url"]= "/ws/some-endpoint?access-token=valid.token";
+    request["query"] = { "access-token": "valid.token" };
+
+    const mockPayload = { userId: "123", role: UserRole.ADMIN, type: "access" };
+    const cryptoSpy = vi
+      .spyOn(CryptoService, "verify")
+      .mockReturnValue(mockPayload);
+
+    await hook.call(fastify, request, reply, done);
+
+    expect(cryptoSpy).toHaveBeenCalledWith(
+      "valid.token",
+      options.publicKeyPath,
+    );
+    expect(request.user).toEqual(mockPayload);
+    expect(done).toHaveBeenCalledWith();
+    expect(reply.code).not.toHaveBeenCalled();
+  });
+
   it("should append user to request and call done() if token is valid", async () => {
     const { request, reply, done, fastify } = createExecutionContext({
       "access-token": "valid.token",
