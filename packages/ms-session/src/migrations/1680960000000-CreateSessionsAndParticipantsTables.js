@@ -1,5 +1,5 @@
 /** @type {import("typeorm").MigrationInterface} */
-export class CreateSessionsAndParticipantsTables1774942938 {
+export class CreateSessionsAndParticipantsTables1680960000000 {
   /**
    * @param {import('typeorm').QueryRunner} queryRunner
    */

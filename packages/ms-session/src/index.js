@@ -59,6 +59,7 @@ const participantRepository = new TypeOrmParticipantRepository(db.instance);
 const valkeyService = new (await import("common-valkey")).ValkeyService(
   config.valkey,
 );
+valkeyService.connect();
 const valkeyRepository = new (await import("common-valkey")).ValkeyRepository(
   valkeyService,
 );

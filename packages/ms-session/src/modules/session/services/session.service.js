@@ -20,6 +20,25 @@ import { log } from "node:console";
 import { call } from "common-axios";
 import { config } from "../../../config.js";
 import { FullQuizResponseDto } from "../contracts/quiz.dto.js";
+import jwt from "jsonwebtoken";
+import fs from "node:fs";
+
+/**
+ * @param {string} token
+ * @returns {string} userId
+ */
+export function extractUserIdFromToken(token) {
+  const publicKey = fs.readFileSync(config.auth.internal.publicKeyPath, "utf8");
+  const decoded = jwt.verify(token.replace("Bearer ", "").trim(), publicKey, {
+    algorithms: ["RS256"],
+  });
+
+  if (!decoded || !decoded.userId) {
+    throw new Error("Invalid token: userId not found");
+  }
+
+  return decoded.userId;
+}
 
 export class SessionService extends BaseService {
   /**
@@ -43,19 +62,30 @@ export class SessionService extends BaseService {
 
   /**
    * @param {import('../contracts/session.dto.js').CreateSessionRequestDto} data
+   * @param {import("http").IncomingHttpHeaders} headers
    * @returns {Promise<import('../contracts/session.dto.js').CreateSessionResponseDto>}
    */
-  async createSession(data) {
+  async createSession(data, headers) {
+    logger.info(
+      `calling url ${config.services.quizzManagement.baseUrl}/quizzes/get-full with quiz_id ${data.quiz_id}`,
+    );
     const quiz = await call({
-      url: `${config.services.quizzManagement}/quizzes/get-full`,
-      method: "GET",
-      data: { quiz_id: data.quiz_id },
+      url: `${config.services.quizzManagement.baseUrl}/quizzes/get-full`,
+      method: "POST",
+      data: { quizId: data.quiz_id },
+      headers: {
+        "internal-token": headers["internal-token"] || "",
+      },
     }).catch((err) => {
       logger.warn(`Quiz with id ${data.quiz_id} not found: `, err);
       throw QUIZZ_NOT_FOUND(data.quiz_id);
     });
 
-    if (!quiz || !(quiz instanceof FullQuizResponseDto)) {
+    logger.info(
+      `Received quiz data for quiz_id ${data.quiz_id}: ${JSON.stringify(quiz)}`,
+    );
+
+    if (!quiz) {
       logger.warn(`Quiz with id ${data.quiz_id} not found`);
       throw QUIZZ_NOT_FOUND(data.quiz_id);
     }
@@ -66,12 +96,14 @@ export class SessionService extends BaseService {
       throw EMPTY_QUIZZ(data.quiz_id);
     }
 
+    const hostId = extractUserIdFromToken(headers["internal-token"] || "");
+
     const sessionEntity = new SessionEntity({
       id: null,
       publicKey: null,
       status: SessionStatus.CREATED,
       currentQuestionId: null,
-      hostId: data.host_id,
+      hostId: hostId,
       quizzId: data.quiz_id,
     });
     const session = await this.sessionRepository.create(sessionEntity);
@@ -82,7 +114,7 @@ export class SessionService extends BaseService {
     );
 
     const hostEntity = new ParticipantEntity({
-      id: data.host_id,
+      id: null,
       role: ParticipantRoles.HOST,
       sessionId: session.id,
       nickname: "Host",

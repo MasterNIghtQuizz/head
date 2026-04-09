@@ -4,9 +4,9 @@ import {
   ProcessedEventEntity,
 } from "common-database";
 import { config } from "./config.js";
-import { SessionEntity } from "./modules/session/core/entities/session.entity.js";
-import { ParticipantEntity } from "./modules/session/core/entities/participant.entity.js";
-import { CreateSessionsAndParticipantsTables1774942938 } from "./migrations/1774942938-CreateSessionsAndParticipantsTables.js";
+import { CreateSessionsAndParticipantsTables1680960000000 } from "./migrations/1680960000000-CreateSessionsAndParticipantsTables.js";
+import { TypeOrmSessionModel } from "./modules/session/infra/models/session.model.js";
+import { TypeOrmParticipantModel } from "./modules/session/infra/models/participant.model.js";
 
 const strategy = new TypeORMStrategy();
 export const db = new DatabaseContext(strategy);
@@ -19,7 +19,11 @@ export const initDatabase = async () => {
     password: config.postgres.password,
     database: config.postgres.database,
     env: config.env,
-    entities: [SessionEntity, ParticipantEntity, ProcessedEventEntity],
-    migrations: [CreateSessionsAndParticipantsTables1774942938],
+    entities: [
+      TypeOrmSessionModel,
+      TypeOrmParticipantModel,
+      ProcessedEventEntity,
+    ],
+    migrations: [CreateSessionsAndParticipantsTables1680960000000],
   });
 };

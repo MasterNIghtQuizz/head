@@ -27,7 +27,7 @@ export class SessionController extends BaseController {
     if (error) {
       return reply.code(400).send({ message: error.details[0].message });
     }
-    const session = await this.sessionService.createSession(request.body);
+    const session = await this.sessionService.createSession(request.body, request.headers);
     return reply.code(201).send(session);
   }
 
@@ -91,9 +91,8 @@ ApplyMethodDecorators(SessionController, "createSession", [
       type: "object",
       properties: {
         quiz_id: { type: "string" },
-        host_id: { type: "string" },
       },
-      required: ["quiz_id", "host_id"],
+      required: ["quiz_id"],
     },
     response: {
       201: {

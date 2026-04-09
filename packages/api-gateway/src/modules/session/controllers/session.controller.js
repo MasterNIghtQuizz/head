@@ -126,9 +126,8 @@ ApplyMethodDecorators(SessionController, "createSession", [
       type: "object",
       properties: {
         quiz_id: { type: "string" },
-        host_id: { type: "string" },
       },
-      required: ["quiz_id", "host_id"],
+      required: ["quiz_id"],
     },
     response: {
       201: CreateSessionResponse,

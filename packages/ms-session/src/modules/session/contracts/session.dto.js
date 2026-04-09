@@ -19,7 +19,6 @@ export class CreateSessionRequestDto {
    */
   constructor(data) {
     this.quiz_id = data.quiz_id;
-    this.host_id = data.host_id;
   }
 
   /**
@@ -29,7 +28,6 @@ export class CreateSessionRequestDto {
   static validate(data) {
     const schema = Joi.object({
       quiz_id: Joi.string().required(),
-      host_id: Joi.string().required(),
     });
     return schema.validate(data);
   }

@@ -2,7 +2,6 @@ import { ParticipantRoles } from "packages/ms-session/src/modules/session/core/e
 import { SessionStatus } from "packages/ms-session/src/modules/session/core/entities/session-status.js";
 
 export interface CreateSessionRequest {
-  host_id: string;
   quiz_id: string;
 }
 
