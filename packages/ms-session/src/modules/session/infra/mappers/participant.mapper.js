@@ -1,5 +1,5 @@
 import { ParticipantDto } from "../../contracts/session.dto.js";
-import { ParticipantRoles } from "../../core/entities/participant-roles.js";
+import { ParticipantRoles } from "common-contracts";
 import { ParticipantEntity } from "../../core/entities/participant.entity.js";
 import { ParticipantModel } from "../models/participant.model.js";
 

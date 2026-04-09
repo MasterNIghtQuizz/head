@@ -180,6 +180,9 @@ export class QuestionService extends BaseService {
           data.quiz_id
             ? this.valkeyRepository.del(`quiz:${data.quiz_id}`)
             : Promise.resolve(),
+          data.quiz_id
+            ? this.valkeyRepository.del(`quiz:full:${data.quiz_id}`)
+            : Promise.resolve(),
           this.valkeyRepository.del("quizzes:all"),
         ]);
       } catch (cacheError) {
@@ -232,6 +235,9 @@ export class QuestionService extends BaseService {
           invalidations.push(
             this.valkeyRepository.del(`quiz:${updatedEntity.quizId}`),
           );
+          invalidations.push(
+            this.valkeyRepository.del(`quiz:full:${updatedEntity.quizId}`),
+          );
         }
         await Promise.all(invalidations);
       } catch (cacheError) {
@@ -275,7 +281,11 @@ export class QuestionService extends BaseService {
       ];
 
       if (entity.quizId) {
-        keys.push(`quiz:questions:${entity.quizId}`, `quiz:${entity.quizId}`);
+        keys.push(
+          `quiz:questions:${entity.quizId}`,
+          `quiz:${entity.quizId}`,
+          `quiz:full:${entity.quizId}`,
+        );
       }
 
       if (entity.choices?.length > 0) {

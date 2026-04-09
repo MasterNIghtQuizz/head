@@ -1,33 +1,22 @@
 import {
-  BaseController,
   Controller,
+  BaseController,
   Get,
   Post,
-  Put,
-  Delete,
-  Schema,
   ApplyMethodDecorators,
+  Schema,
+  Roles,
+  Public,
+  UseGameToken,
 } from "common-core";
-import { access } from "node:fs";
-
-/** @type {Record<string, unknown>} */
-const ErrorResponse = {
-  type: "object",
-  properties: { message: { type: "string" } },
-};
-
-/** @type {Record<string, unknown>} */
-const CreateSessionResponse = {
-  type: "object",
-  properties: {
-    session_id: { type: "string" },
-    public_key: { type: "string" },
-  },
-};
+import { UserRole } from "common-auth";
 
 export class SessionController extends BaseController {
+  /** @type {import('../services/session.service.js').SessionService} */
+  sessionService;
+
   /**
-   * @param {import("../services/session.service.js").SessionService} sessionService
+   * @param {import('../services/session.service.js').SessionService} sessionService
    */
   constructor(sessionService) {
     super();
@@ -35,131 +24,184 @@ export class SessionController extends BaseController {
   }
 
   /**
-   * @param {import("fastify").FastifyRequest<{ Body: import("../services/session.service.js").CreateSessionRequest }>} request
-   * @param {import("fastify").FastifyReply} reply
+   * @param {import('fastify').FastifyRequest<{ Body: { quiz_id: string } }>} request
+   * @param {import('fastify').FastifyReply} reply
    */
   async createSession(request, reply) {
-    const result = await this.sessionService.createSession(
+    const session = await this.sessionService.createSession(
       request.body,
       request.headers,
     );
-    return reply.status(201).send(result);
+    return reply.code(201).send(session);
   }
 
   /**
-   * @param {import("fastify").FastifyRequest<{ Params: { id: string } }>} request
-   * @param {import("fastify").FastifyReply} reply
+   * @param {import('fastify').FastifyRequest} request
+   * @param {import('fastify').FastifyReply} reply
    */
   async getSession(request, reply) {
-    const result = await this.sessionService.getSession(
-      request.params.id,
-      request.headers,
-    );
-    return reply.status(200).send(result);
+    const session = await this.sessionService.getSession(request.headers);
+    return reply.code(200).send(session);
   }
 
   /**
-   * @param {import("fastify").FastifyRequest<{ Params: { id: string } }>} request
-   * @param {import("fastify").FastifyReply} reply
+   * @param {import('fastify').FastifyRequest} request
+   * @param {import('fastify').FastifyReply} reply
    */
   async startSession(request, reply) {
-    await this.sessionService.startSession(request.params.id, request.headers);
-    return reply.status(200).send();
+    await this.sessionService.startSession(request.headers);
+    return reply.code(200).send();
   }
 
   /**
-   * @param {import("fastify").FastifyRequest<{ Params: { id: string } }>} request
-   * @param {import("fastify").FastifyReply} reply
+   * @param {import('fastify').FastifyRequest} request
+   * @param {import('fastify').FastifyReply} reply
    */
   async endSession(request, reply) {
-    await this.sessionService.endSession(request.params.id, request.headers);
-    return reply.status(200).send();
+    await this.sessionService.endSession(request.headers);
+    return reply.code(200).send();
   }
 
   /**
-   * @param {import("fastify").FastifyRequest<{ Params: { id: string } }>} request
-   * @param {import("fastify").FastifyReply} reply
+   * @param {import('fastify').FastifyRequest} request
+   * @param {import('fastify').FastifyReply} reply
    */
   async deleteSession(request, reply) {
-    await this.sessionService.deleteSession(request.params.id, request.headers);
-    return reply.status(200).send();
+    await this.sessionService.deleteSession(request.headers);
+    return reply.code(200).send();
   }
 
   /**
-   * @param {import("fastify").FastifyRequest<{ Params: { id: string } }>} request
-   * @param {import("fastify").FastifyReply} reply
+   * @param {import('fastify').FastifyRequest} request
+   * @param {import('fastify').FastifyReply} reply
    */
   async nextQuestion(request, reply) {
-    await this.sessionService.nextQuestion(request.params.id, request.headers);
-    return reply.status(200).send();
+    await this.sessionService.nextQuestion(request.headers);
+    return reply.code(200).send();
   }
 
   /**
-   * @param {import("fastify").FastifyRequest<{ Body: import("../services/session.service.js").JoinSessionRequest }>} request
-   * @param {import("fastify").FastifyReply} reply
+   * @param {import('fastify').FastifyRequest<{ Body: { session_public_key: string; participant_nickname: string } }>} request
+   * @param {import('fastify').FastifyReply} reply
    */
   async joinSession(request, reply) {
-    const result = await this.sessionService.joinSession(
+    const response = await this.sessionService.joinSession(
       request.body,
       request.headers,
     );
-    return reply.status(200).send(result);
+    return reply.code(200).send(response);
   }
 
   /**
-   * @param {import("fastify").FastifyRequest<{ Body: import("../services/session.service.js").LeaveSessionRequest }>} request
-   * @param {import("fastify").FastifyReply} reply
+   * @param {import('fastify').FastifyRequest} request
+   * @param {import('fastify').FastifyReply} reply
    */
   async leaveSession(request, reply) {
-    await this.sessionService.leaveSession(request.body, request.headers);
-    return reply.status(200).send();
+    await this.sessionService.leaveSession(request.headers);
+    return reply.code(200).send();
+  }
+
+  /**
+   * @param {import('fastify').FastifyRequest} request
+   * @param {import('fastify').FastifyReply} reply
+   */
+  async getCurrentQuestion(request, reply) {
+    const question = await this.sessionService.getCurrentQuestion(
+      request.headers,
+    );
+    return reply.code(200).send(question);
   }
 }
 
+const ErrorResponse = {
+  type: "object",
+  properties: {
+    message: { type: "string" },
+  },
+};
+
 ApplyMethodDecorators(SessionController, "createSession", [
   Schema({
+    description:
+      "Create a new quiz session and returns a moderator game token.",
     tags: ["Session"],
-    summary: "Create a new session",
-    description: "Creates a new session for a given quiz and host.",
     security: [{ accessToken: [] }],
     body: {
       type: "object",
-      properties: {
-        quiz_id: { type: "string" },
-      },
       required: ["quiz_id"],
+      properties: {
+        quiz_id: {
+          type: "string",
+          description:
+            "The unique identifier of the quiz to use for this session.",
+        },
+      },
     },
     response: {
-      201: CreateSessionResponse,
+      201: {
+        description: "Session successfully created.",
+        type: "object",
+        properties: {
+          session_id: {
+            type: "string",
+            description: "The internal ID of the created session.",
+          },
+          public_key: {
+            type: "string",
+            description:
+              "The 6-character public key used by participants to join.",
+          },
+          game_token: {
+            type: "string",
+            description:
+              "A JWT token granting moderator rights for this session.",
+          },
+        },
+      },
       400: ErrorResponse,
+      401: ErrorResponse,
+      404: ErrorResponse,
       500: ErrorResponse,
     },
   }),
+  Roles([UserRole.ADMIN, UserRole.MODERATOR, UserRole.USER]),
   Post("/"),
 ]);
 
 ApplyMethodDecorators(SessionController, "getSession", [
   Schema({
+    description:
+      "Retrieve complete details for the session associated with the provided game token.",
     tags: ["Session"],
-    summary: "Get session details",
-    description: "Retrieves details of a session by its ID.",
-    security: [{ accessToken: [] }],
-    params: {
-      type: "object",
-      properties: {
-        id: { type: "string" },
-      },
-      required: ["id"],
-    },
+    security: [{ gameToken: [] }],
     response: {
       200: {
+        description: "Session details retrieved successfully.",
         type: "object",
         properties: {
-          session_id: { type: "string" },
-          quiz_id: { type: "string" },
+          session_id: { type: "string", description: "Session identifier." },
+          status: {
+            type: "string",
+            enum: [
+              "CREATED",
+              "LOBBY",
+              "QUESTION_ACTIVE",
+              "QUESTION_CLOSED",
+              "FINISHED",
+            ],
+            description: "Current lifecycle state of the session.",
+          },
+          current_question_id: {
+            type: "string",
+            nullable: true,
+            description: "ID of the currently active question, if any.",
+          },
+          quizz_id: {
+            type: "string",
+            description: "ID of the quiz being played.",
+          },
+          public_key: { type: "string" },
           host_id: { type: "string" },
-          status: { type: "string" },
-          current_question_index: { type: "number" },
           participants: {
             type: "array",
             items: {
@@ -167,184 +209,218 @@ ApplyMethodDecorators(SessionController, "getSession", [
               properties: {
                 participant_id: { type: "string" },
                 nickname: { type: "string" },
+                role: { type: "string" },
               },
             },
           },
         },
       },
+      401: ErrorResponse,
       404: ErrorResponse,
       500: ErrorResponse,
     },
   }),
-  Get("/:id"),
+  UseGameToken(),
+  Get("/"),
 ]);
 
 ApplyMethodDecorators(SessionController, "startSession", [
   Schema({
-    tags: ["Session"],
-    summary: "Start a session",
     description:
-      "Starts a session, allowing participants to join and answer questions.",
-    security: [{ accessToken: [] }],
-    params: {
-      type: "object",
-      properties: {
-        id: { type: "string" },
-      },
-      required: ["id"],
-    },
+      "Transition a session from LOBBY to active state. Requires moderator role.",
+    tags: ["Session"],
+    security: [{ gameToken: [] }],
+
     response: {
       200: {
-        description: "Session started successfully",
+        description: "Session successfully started.",
+        type: "object",
+        properties: { message: { type: "string", example: "Session started" } },
       },
+      401: ErrorResponse,
+      403: ErrorResponse,
       404: ErrorResponse,
+      409: ErrorResponse,
       500: ErrorResponse,
     },
   }),
-  Post("/:id/start"),
+  UseGameToken(),
+  Roles([UserRole.ADMIN, UserRole.MODERATOR]),
+  Post("/start/"),
 ]);
 
 ApplyMethodDecorators(SessionController, "endSession", [
   Schema({
+    description: "Immediately terminate the session. Requires moderator role.",
     tags: ["Session"],
-    summary: "End a session",
-    description:
-      "Ends a session, preventing participants from joining or answering questions.",
-    security: [{ accessToken: [] }],
-    params: {
-      type: "object",
-      properties: {
-        id: { type: "string" },
-      },
-      required: ["id"],
-    },
+    security: [{ gameToken: [] }],
+
     response: {
       200: {
-        description: "Session ended successfully",
+        description: "Session successfully ended.",
+        type: "object",
+        properties: { message: { type: "string", example: "Session ended" } },
       },
-      404: ErrorResponse,
+      401: ErrorResponse,
+      403: ErrorResponse,
       500: ErrorResponse,
     },
   }),
-  Post("/:id/end"),
+  UseGameToken(),
+  Roles([UserRole.ADMIN, UserRole.MODERATOR]),
+  Post("/end/"),
 ]);
 
 ApplyMethodDecorators(SessionController, "deleteSession", [
   Schema({
+    description:
+      "Permanently delete a session and all its associated data. Admin only.",
     tags: ["Session"],
-    summary: "Delete a session",
-    description: "Deletes a session permanently.",
-    security: [{ accessToken: [] }],
-    params: {
-      type: "object",
-      properties: {
-        id: { type: "string" },
-      },
-      required: ["id"],
-    },
+    security: [{ gameToken: [] }],
+
     response: {
       200: {
-        description: "Session deleted successfully",
+        description: "Session successfully deleted.",
+        type: "object",
+        properties: { message: { type: "string", example: "Session deleted" } },
       },
-      404: ErrorResponse,
+      401: ErrorResponse,
+      403: ErrorResponse,
       500: ErrorResponse,
     },
   }),
-  Delete("/:id"),
+  Roles([UserRole.ADMIN]),
+  Post("/delete/"),
 ]);
 
 ApplyMethodDecorators(SessionController, "nextQuestion", [
   Schema({
-    tags: ["Session"],
-    summary: "Move to the next question",
     description:
-      "Advances the session to the next question in the quiz, allowing participants to answer it.",
-    security: [{ accessToken: [] }],
-    params: {
-      type: "object",
-      properties: {
-        id: { type: "string" },
-      },
-      required: ["id"],
-    },
+      "Advance the session to the next question in the quiz sequence. Requires moderator role.",
+    tags: ["Session"],
+    security: [{ gameToken: [] }],
+
     response: {
       200: {
-        description: "Moved to the next question successfully",
+        description: "Successfully moved to the next question.",
+        type: "object",
+        properties: {
+          message: { type: "string", example: "Next question active" },
+        },
       },
+      401: ErrorResponse,
+      403: ErrorResponse,
       404: ErrorResponse,
       500: ErrorResponse,
     },
   }),
-  Post("/:id/next"),
+  UseGameToken(),
+  Roles([UserRole.ADMIN, UserRole.MODERATOR]),
+  Post("/next/"),
 ]);
 
 ApplyMethodDecorators(SessionController, "joinSession", [
   Schema({
-    tags: ["Session", "Participant"],
-    summary: "Join a session",
     description:
-      "Allows a participant to join a session using the session's public key and their nickname.",
-    security: [{ accessToken: [] }],
+      "Join an active session as a participant using a public key and nickname.",
+    tags: ["Session"],
+    security: [],
     body: {
       type: "object",
+      required: ["session_public_key", "participant_nickname"],
       properties: {
-        session_public_key: { type: "string" },
-        participant_nickname: { type: "string" },
-        participant_id: { type: "string" },
+        session_public_key: {
+          type: "string",
+          description: "The 6-character code of the session.",
+        },
+        participant_nickname: {
+          type: "string",
+          description: "The display name chosen by the player.",
+        },
       },
-      required: [
-        "session_public_key",
-        "participant_nickname",
-        "participant_id",
-      ],
     },
     response: {
       200: {
-        description: "Participant joined the session successfully",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                participant_id: { type: "string" },
-              },
-            },
+        description:
+          "Successfully joined. Returns the participant's new game token.",
+        type: "object",
+        properties: {
+          participant_id: {
+            type: "string",
+            description: "Unique identifier for this player in the session.",
+          },
+          game_token: {
+            type: "string",
+            description: "JWT token for future participant operations.",
           },
         },
       },
       400: ErrorResponse,
       404: ErrorResponse,
+      409: ErrorResponse,
       500: ErrorResponse,
     },
   }),
-  Post("/join"),
+  Public(),
+  Post("/join/"),
 ]);
 
 ApplyMethodDecorators(SessionController, "leaveSession", [
   Schema({
-    tags: ["Session", "Participant"],
-    summary: "Leave a session",
     description:
-      "Allows a participant to leave a session they have joined using the session's public key and their participant ID.",
-    security: [{ accessToken: [] }],
-    body: {
-      type: "object",
-      properties: {
-        session_public_key: { type: "string" },
-        participant_id: { type: "string" },
-      },
-      required: ["session_public_key", "participant_id"],
-    },
+      "Leave the current session. Requires a valid participant game token.",
+    tags: ["Session"],
+    security: [{ gameToken: [] }],
+    body: { type: "object" },
     response: {
       200: {
-        description: "Participant left the session successfully",
+        description: "Successfully left the session.",
+        type: "object",
+        properties: { message: { type: "string", example: "Left session" } },
       },
-      400: ErrorResponse,
+      401: ErrorResponse,
+      500: ErrorResponse,
+    },
+  }),
+  UseGameToken(),
+  Post("/leave/"),
+]);
+
+ApplyMethodDecorators(SessionController, "getCurrentQuestion", [
+  Schema({
+    description: "Get the current active question for the session.",
+    tags: ["Session"],
+    security: [{ gameToken: [] }],
+    response: {
+      200: {
+        description:
+          "Successfully retrieved current question. Returns null if no question is active.",
+        type: "object",
+        nullable: true,
+        properties: {
+          id: { type: "string" },
+          label: { type: "string" },
+          type: { type: "string" },
+          timer_seconds: { type: "integer" },
+          choices: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                id: { type: "string" },
+                text: { type: "string" },
+              },
+            },
+          },
+        },
+      },
+      401: ErrorResponse,
       404: ErrorResponse,
       500: ErrorResponse,
     },
   }),
-  Post("/leave"),
+  UseGameToken(),
+  Get("/current-question/"),
 ]);
 
 Controller("/sessions")(SessionController);

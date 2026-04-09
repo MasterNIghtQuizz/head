@@ -322,15 +322,16 @@ services:
     profiles: [test]
     environment:
       <<: *common-env
-      POSTGRES_DB: ms_quizz_test_db
+      POSTGRES_DB: postgres
     ports:
       - "5434:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d ms_quizz_test_db"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
     volumes:
+      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
       - pgdata-test:/var/lib/postgresql/data
   api-gateway-test:
     profiles: [test]
@@ -381,7 +382,7 @@ services:
       PORT: 4011
       POSTGRES_HOST: postgres-test
       POSTGRES_PORT: 5432
-      POSTGRES_DB: ms_quizz_test_db
+      POSTGRES_DB: ms_user_test_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres_password
       VALKEY_HOST: valkey-test
@@ -400,6 +401,7 @@ services:
       interval: 3s
       timeout: 3s
       retries: 20
+      start_period: 20s
     depends_on:
       postgres-test:
         condition: service_healthy
@@ -442,6 +444,7 @@ services:
       interval: 3s
       timeout: 3s
       retries: 20
+      start_period: 20s
 
   ms-session-test:
     profiles: [test]
@@ -462,13 +465,15 @@ services:
       PORT: 4013
       POSTGRES_HOST: postgres-test
       POSTGRES_PORT: 5432
-      POSTGRES_DB: ms_quizz_test_db
+      POSTGRES_DB: ms_session_test_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres_password
       VALKEY_HOST: valkey-test
       VALKEY_PORT: 6379
       KAFKA_BROKERS: "[]"
       KAFKA_ENABLED: "false"
+      QUIZZ_SERVICE_URL: "http://ms-quizz-management-test:4012"
+      USER_SERVICE_URL: "http://ms-user-test:4011"
     volumes:
       - .:/app
       - /app/node_modules
@@ -481,6 +486,7 @@ services:
       interval: 3s
       timeout: 3s
       retries: 20
+      start_period: 20s
 
   valkey-test:
     image: valkey/valkey:8

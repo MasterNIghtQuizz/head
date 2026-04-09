@@ -1,8 +1,7 @@
 import { randomBytes } from "node:crypto";
-import { SessionStatus } from "./session-status.js";
 
 /**
- * @typedef {import('./session-status.js').SessionStatusType} SessionStatusType
+ * @typedef {import('common-contracts').SessionStatusType} SessionStatusType
  */
 
 export const generateSessionKey = () => randomBytes(6).toString("base64url");

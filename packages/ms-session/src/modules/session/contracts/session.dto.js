@@ -43,6 +43,7 @@ export class CreateSessionResponseDto {
   constructor(data) {
     this.session_id = data.session_id;
     this.public_key = data.public_key;
+    this.game_token = data.game_token;
   }
 }
 
@@ -56,7 +57,6 @@ export class JoinSessionRequestDto {
   constructor(data) {
     this.session_public_key = data.session_public_key;
     this.participant_nickname = data.participant_nickname;
-    this.participant_id = data.participant_id;
   }
 
   /**
@@ -67,7 +67,6 @@ export class JoinSessionRequestDto {
     const schema = Joi.object({
       session_public_key: Joi.string().required(),
       participant_nickname: Joi.string().required(),
-      participant_id: Joi.string().required(),
     });
     return schema.validate(data);
   }
@@ -82,6 +81,7 @@ export class JoinSessionResponseDto {
    */
   constructor(data) {
     this.participant_id = data.participant_id;
+    this.game_token = data.game_token;
   }
 }
 
@@ -92,21 +92,8 @@ export class LeaveSessionRequestDto {
   /**
    * @param {LeaveSessionRequest} data
    */
-  constructor(data) {
-    this.session_public_key = data.session_public_key;
-    this.participant_id = data.participant_id;
-  }
-
-  /**
-   * @param {LeaveSessionRequest} data
-   * @returns {Joi.ValidationResult}
-   */
   static validate(data) {
-    const schema = Joi.object({
-      session_public_key: Joi.string().required(),
-      participant_id: Joi.string().required(),
-    });
-    return schema.validate(data);
+    return Joi.object({}).validate(data);
   }
 }
 

@@ -1,5 +1,5 @@
 import { EntitySchema } from "typeorm";
-import { ParticipantRoles } from "../../core/entities/participant-roles.js";
+import { ParticipantRoles } from "common-contracts";
 
 export class ParticipantModel {
   constructor() {

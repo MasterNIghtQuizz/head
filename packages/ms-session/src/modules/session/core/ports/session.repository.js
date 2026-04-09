@@ -7,7 +7,9 @@ export class ISessionRepository {
    * @param {import('../entities/session.entity.js').SessionEntity} entity
    * @returns {Promise<import('../entities/session.entity.js').SessionEntity>}
    */
-  async create(entity) {}
+  async create(entity) {
+    throw new Error("Method not implemented");
+  }
 
   /**
    * @param {string} id

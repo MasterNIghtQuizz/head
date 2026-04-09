@@ -35,6 +35,10 @@ const schema = Joi.object({
       privateKeyPath: Joi.string().required(),
       publicKeyPath: Joi.string().required(),
     }).required(),
+    game: Joi.object({
+      privateKeyPath: Joi.string().required(),
+      publicKeyPath: Joi.string().required(),
+    }).required(),
   }).required(),
   kafka: Joi.object({
     brokers: Joi.array().items(Joi.string()).required(),
@@ -60,6 +64,11 @@ const schema = Joi.object({
       baseUrl: Joi.string().uri().required(),
     }).required(),
   }).required(),
+  opensearch: Joi.object({
+    enabled: Joi.boolean().default(false),
+    node: Joi.string().uri().required(),
+    index: Joi.string().required(),
+  }).optional(),
 });
 
 Config.init({ directory: configDirectory, schema });
@@ -70,7 +79,7 @@ const resolveKeyPath = (/** @type {string} */ keyPath) =>
   path.isAbsolute(keyPath) ? keyPath : path.resolve(projectRoot, keyPath);
 
 const rawAuth =
-  /** @type {{ access: { privateKeyPath: string; publicKeyPath: string; }; refresh: { privateKeyPath: string; publicKeyPath: string; }; internal: { privateKeyPath: string; publicKeyPath: string; } }} */ (
+  /** @type {{ access: { privateKeyPath: string; publicKeyPath: string; }; refresh: { privateKeyPath: string; publicKeyPath: string; }; internal: { privateKeyPath: string; publicKeyPath: string; }; game: { privateKeyPath: string; publicKeyPath: string; } }} */ (
     Config.get("auth")
   );
 
@@ -80,7 +89,9 @@ export const config = {
   port: /** @type {number} */ (Config.get("app.port")),
   logger: /** @type {Record<string, unknown>} */ (Config.get("logger")),
   postgres: /** @type {Record<string, any>} */ (Config.get("postgres")),
-  kafka: /** @type {{ brokers: string[]; enabled:boolean }} */ (Config.get("kafka")),
+  kafka: /** @type {{ brokers: string[]; enabled:boolean }} */ (
+    Config.get("kafka")
+  ),
   valkey: /** @type {import('common-valkey').ValkeyConfig} */ (
     Config.get("valkey")
   ),
@@ -97,9 +108,20 @@ export const config = {
       privateKeyPath: resolveKeyPath(rawAuth.internal.privateKeyPath),
       publicKeyPath: resolveKeyPath(rawAuth.internal.publicKeyPath),
     },
+    game: {
+      privateKeyPath: resolveKeyPath(rawAuth.game.privateKeyPath),
+      publicKeyPath: resolveKeyPath(rawAuth.game.publicKeyPath),
+    },
   },
   otel: /** @type {{ enabled: boolean; exporterUrl: string }} */ (
-    Config.get("otel")
+    Config.get("otel") || { enabled: false, exporterUrl: "" }
   ),
-  services: /** @type {any} */ (Config.get("services")),
+  services:
+    /** @type {{ session: { baseUrl: string; }; quizzManagement: { baseUrl: string; }; }} */ (
+      Config.get("services")
+    ),
+  opensearch:
+    /** @type {{ enabled: boolean; node: string; index: string } | undefined} */ (
+      Config.get("opensearch")
+    ),
 };

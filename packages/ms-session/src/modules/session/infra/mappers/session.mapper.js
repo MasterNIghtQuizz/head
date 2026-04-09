@@ -6,11 +6,11 @@ import { SessionEntity } from "../../core/entities/session.entity.js";
 import { SessionModel } from "../models/session.model.js";
 
 /**
- * @typedef {import('../../core/entities/participant-roles.d.ts').ParticipantRolesType} ParticipantRolesType
+ * @typedef {import('common-contracts').ParticipantRolesType} ParticipantRolesType
  */
 
 /**
- * @typedef {import('../../core/entities/session-status.d.ts').SessionStatusType} SessionStatusType
+ * @typedef {import('common-contracts').SessionStatusType} SessionStatusType
  */
 
 export class SessionMapper {

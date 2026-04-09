@@ -18,73 +18,72 @@ export class SessionService extends BaseService {
   async createSession(data, headers) {
     return call({
       method: "POST",
-      url: `${config.services.session}/sessions`,
+      url: `${config.services.session}/sessions/`,
       data,
       headers: /** @type {Record<string, string>} */ (headers),
     });
   }
 
   /**
-   * @param {string} sessionId
    * @param {import("http").IncomingHttpHeaders} headers
    * @returns {Promise<GetSessionResponse>}
    */
-  async getSession(sessionId, headers) {
+  async getSession(headers) {
     return call({
       method: "GET",
-      url: `${config.services.session}/sessions/${sessionId}`,
+      url: `${config.services.session}/sessions/`,
       headers: /** @type {Record<string, string>} */ (headers),
     });
   }
 
   /**
-   * @param {string} sessionId
    * @param {import("http").IncomingHttpHeaders} headers
    * @returns {Promise<void>}
    */
-  async startSession(sessionId, headers) {
+  async startSession(headers) {
     await call({
       method: "POST",
-      url: `${config.services.session}/sessions/${sessionId}/start`,
+      url: `${config.services.session}/sessions/start/`,
+      data: {},
       headers: /** @type {Record<string, string>} */ (headers),
     });
   }
 
   /**
-   * @param {string} sessionId
    * @param {import("http").IncomingHttpHeaders} headers
    * @returns {Promise<void>}
    */
-  async endSession(sessionId, headers) {
+  async endSession(headers) {
     await call({
       method: "POST",
-      url: `${config.services.session}/sessions/${sessionId}/end`,
+      url: `${config.services.session}/sessions/end/`,
+      data: {},
       headers: /** @type {Record<string, string>} */ (headers),
     });
   }
 
   /**
-   * @param {string} sessionId
    * @param {import("http").IncomingHttpHeaders} headers
    * @returns {Promise<void>}
    */
-  async deleteSession(sessionId, headers) {
-    await call({
-      method: "DELETE",
-      url: `${config.services.session}/sessions/${sessionId}`,
-      headers: /** @type {Record<string, string>} */ (headers),
-    });
-  }
-
-  /**
-   * @param {string} sessionId
-   * @param {import("http").IncomingHttpHeaders} headers
-   * @returns {Promise<void>}
-   */
-  async nextQuestion(sessionId, headers) {
+  async deleteSession(headers) {
     await call({
       method: "POST",
-      url: `${config.services.session}/sessions/${sessionId}/next`,
+      url: `${config.services.session}/sessions/delete/`,
+      data: {},
+      headers: /** @type {Record<string, string>} */ (headers),
+    });
+  }
+
+  /**
+   * @param {import("http").IncomingHttpHeaders} headers
+   * @returns {Promise<void>}
+   */
+  async nextQuestion(headers) {
+    await call({
+      method: "POST",
+      url: `${config.services.session}/sessions/next/`,
+      data: {},
       headers: /** @type {Record<string, string>} */ (headers),
     });
   }
@@ -97,22 +96,33 @@ export class SessionService extends BaseService {
   async joinSession(data, headers) {
     return call({
       method: "POST",
-      url: `${config.services.session}/sessions/join`,
+      url: `${config.services.session}/sessions/join/`,
       data,
       headers: /** @type {Record<string, string>} */ (headers),
     });
   }
 
   /**
-   * @param {LeaveSessionRequest} data
    * @param {import("http").IncomingHttpHeaders} headers
    * @returns {Promise<void>}
    */
-  async leaveSession(data, headers) {
+  async leaveSession(headers) {
     await call({
       method: "POST",
-      url: `${config.services.session}/sessions/leave`,
-      data,
+      url: `${config.services.session}/sessions/leave/`,
+      data: {},
+      headers: /** @type {Record<string, string>} */ (headers),
+    });
+  }
+
+  /**
+   * @param {import("http").IncomingHttpHeaders} headers
+   * @returns {Promise<any>}
+   */
+  async getCurrentQuestion(headers) {
+    return call({
+      method: "GET",
+      url: `${config.services.session}/sessions/current-question/`,
       headers: /** @type {Record<string, string>} */ (headers),
     });
   }

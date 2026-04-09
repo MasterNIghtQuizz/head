@@ -15,6 +15,7 @@ export declare const TokenType: {
   readonly ACCESS: "access";
   readonly REFRESH: "refresh";
   readonly INTERNAL: "internal";
+  readonly GAME: "game";
 };
 
 export type UserRoleValue = (typeof UserRole)[keyof typeof UserRole];
@@ -35,10 +36,20 @@ export interface RefreshTokenPayload {
 }
 
 export interface InternalTokenPayload {
-  userId: string;
-  role: UserRoleValue;
+  userId?: string;
+  role?: UserRoleValue;
+  sessionId?: string;
+  participantId?: string;
   type: typeof TokenType.INTERNAL;
   source: string;
+  [key: string]: unknown;
+}
+
+export interface GameTokenPayload {
+  sessionId: string;
+  participantId: string;
+  role: UserRoleValue;
+  type: typeof TokenType.GAME;
   [key: string]: unknown;
 }
 
@@ -49,7 +60,7 @@ export interface AuthHookOptions {
 export interface InternalTokenInterceptorOptions {
   privateKeyPath: string;
   source?: string;
-  expiresIn?: string;
+  expiresIn?: string | number;
 }
 
 export declare const IS_PUBLIC: unique symbol;
@@ -72,17 +83,41 @@ export declare function hookInternalToken(
   options: AuthHookOptions,
 ): onRequestHookHandler;
 
+export declare function hookGameToken(
+  options: AuthHookOptions,
+): onRequestHookHandler;
+
 export declare function hookInternalTokenInterceptor(
   options: InternalTokenInterceptorOptions,
 ): onRequestHookHandler;
+
+export declare class TokenService {
+  static signGameToken(
+    payload: Omit<GameTokenPayload, "type">,
+    privateKeyPath: string,
+    options?: any,
+  ): string;
+  static signAccessToken(
+    payload: Omit<AccessTokenPayload, "type">,
+    privateKeyPath: string,
+    options?: any,
+  ): string;
+  static signInternalToken(
+    payload: Omit<InternalTokenPayload, "type">,
+    privateKeyPath: string,
+    options?: any,
+  ): string;
+}
 
 declare module "fastify" {
   interface FastifyRequest {
     user?:
       | AccessTokenPayload
-      | Pick<InternalTokenPayload, "userId" | "role" | "type">;
+      | Omit<InternalTokenPayload, "source">
+      | GameTokenPayload;
     refreshTokenPayload?: RefreshTokenPayload;
     internalTokenPayload?: InternalTokenPayload;
+    gameTokenPayload?: GameTokenPayload;
     internalToken?: string;
   }
 

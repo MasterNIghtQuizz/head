@@ -18,7 +18,7 @@ RUN if [ "$PRODUCTION" = "true" ]; then \
     fi
 
 FROM node:24-alpine AS runtime
-WORKDIR /app
+WORKDIR /app/packages/ms-user
 
 RUN corepack enable && corepack prepare yarn@4.11.0 --activate
 
@@ -27,6 +27,6 @@ COPY --from=base /app /app
 EXPOSE 4001
 
 HEALTHCHECK --interval=10s --timeout=3s --retries=5 \
-  CMD wget -qO- http://127.0.0.1:${PORT:-4001}/health | grep ok || exit 1
+  CMD wget -qO- http://127.0.0.1:${PORT:-4011}/health | grep ok || exit 1
 
-CMD ["yarn", "workspace", "@monorepo/ms-user", "run", "start"]
+CMD ["node", "src/index.js"]

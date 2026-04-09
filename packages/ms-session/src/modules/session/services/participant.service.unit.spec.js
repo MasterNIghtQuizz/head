@@ -1,36 +1,35 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { ParticipantRoles } from "../core/entities/participant-roles.js";
-import { SessionEntity } from "../core/entities/session.entity.js";
-import { SessionStatus } from "../core/entities/session-status.js";
+import { ParticipantRoles, SessionStatus } from "common-contracts";
 import { ParticipantService } from "./participant.service.js";
-import { ParticipantEntity } from "../core/entities/participant.entity.js";
+import {
+  createSessionEntity,
+  createParticipantEntity,
+} from "./test-helpers.js";
+import { TokenService } from "common-auth";
 
-/**
- * @typedef {import('vitest').Mock} Mock
- */
+vi.mock("common-auth");
+
 describe("ParticipantService unit tests", () => {
-  /** @type ParticipantService */
+  /** @type {import('./participant.service.js').ParticipantService} */
   let participantService;
-
-  /** @type {{ create: Mock, findByPublicKey: Mock, update: Mock, delete: Mock, find: Mock }} */
+  /** @type {Record<keyof import('../core/ports/session.repository.js').ISessionRepository, import('vitest').Mock>} */
   let sessionRepositoryMock;
-
-  /** @type {{ create: Mock, find: Mock, delete: Mock, update: Mock, findBySessionId: Mock }} */
+  /** @type {Record<keyof import('../core/ports/participant.repository.js').IParticipantRepository, import('vitest').Mock>} */
   let participantRepositoryMock;
 
   beforeEach(() => {
     sessionRepositoryMock = {
       create: vi.fn(),
-      findByPublicKey: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
       find: vi.fn(),
+      findByPublicKey: vi.fn(),
     };
     participantRepositoryMock = {
       create: vi.fn(),
-      find: vi.fn(),
-      delete: vi.fn(),
       update: vi.fn(),
+      delete: vi.fn(),
+      find: vi.fn(),
       findBySessionId: vi.fn(),
     };
     participantService = new ParticipantService(
@@ -41,77 +40,84 @@ describe("ParticipantService unit tests", () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   describe("joinSession", () => {
-    it("should allow a participant to join an open session", async () => {
+    it("should allow a participant to join an open session and return a game token", async () => {
       const data = {
         session_public_key: "session-123",
         participant_id: "participant-123",
         participant_nickname: "Player1",
       };
 
-      sessionRepositoryMock.findByPublicKey.mockImplementation(
-        async (publicKey) =>
-          new SessionEntity({
-            id: "session-123",
-            publicKey,
-            status: SessionStatus.LOBBY,
-            currentQuestionId: "",
-            hostId: "host-123",
-            quizzId: "quiz-123",
-          }),
-      );
-      participantRepositoryMock.create.mockImplementation(
-        async (entity) => entity,
-      );
+      const sessionEntity = createSessionEntity({
+        status: SessionStatus.LOBBY,
+      });
+      const participantEntity = createParticipantEntity({
+        id: data.participant_id,
+        nickname: data.participant_nickname,
+        role: ParticipantRoles.PLAYER,
+        sessionId: sessionEntity.id,
+      });
+
+      const sessionSpy = vi
+        .mocked(sessionRepositoryMock.findByPublicKey)
+        .mockResolvedValue(sessionEntity);
+      const participantSpy = vi
+        .mocked(participantRepositoryMock.create)
+        .mockResolvedValue(participantEntity);
+      const signSpy = vi
+        .mocked(TokenService.signGameToken)
+        .mockReturnValue("game-token-123");
 
       const response = await participantService.joinSession(data);
 
-      expect(sessionRepositoryMock.findByPublicKey).toHaveBeenCalledWith(
-        data.session_public_key,
-      );
-      expect(participantRepositoryMock.create).toHaveBeenCalledWith(
+      expect(sessionSpy).toHaveBeenCalledWith(data.session_public_key);
+      expect(participantSpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          id: data.participant_id,
           role: ParticipantRoles.PLAYER,
-          sessionId: "session-123",
+          sessionId: sessionEntity.id,
           nickname: data.participant_nickname,
-          socketId: "",
         }),
       );
-      expect(response).toEqual({ participant_id: data.participant_id });
+      expect(signSpy).toHaveBeenCalled();
+      expect(response).toEqual({
+        participant_id: expect.any(String),
+        game_token: "game-token-123",
+      });
     });
   });
 
   describe("leaveSession", () => {
-    it("should remove the participant from the session", async () => {
-      const data = {
-        participant_id: "participant-123",
-        session_public_key: "session-123",
-      };
+    it("should remove the participant from the session using participantId string", async () => {
+      const participantId = "participant-123";
+      const participantEntity = createParticipantEntity({ id: participantId });
 
-      participantRepositoryMock.find.mockImplementation(
-        async (id) =>
-          new ParticipantEntity({
-            id,
-            role: ParticipantRoles.PLAYER,
-            sessionId: "session-123",
-            nickname: "Player1",
-            socketId: "",
-          }),
-      );
-      participantRepositoryMock.delete.mockImplementation(async (id) => {});
+      const findSpy = vi
+        .mocked(participantRepositoryMock.find)
+        .mockResolvedValue(participantEntity);
+      const deleteSpy = vi
+        .mocked(participantRepositoryMock.delete)
+        .mockResolvedValue(undefined);
 
-      await participantService.leaveSession(data);
+      await participantService.leaveSession(participantId);
 
-      expect(participantRepositoryMock.find).toHaveBeenCalledWith(
-        data.participant_id,
-      );
-      expect(participantRepositoryMock.delete).toHaveBeenCalledWith(
-        data.participant_id,
-      );
+      expect(findSpy).toHaveBeenCalledWith(participantId);
+      expect(deleteSpy).toHaveBeenCalledWith(participantId);
+    });
+
+    it("should do nothing if participant is not found", async () => {
+      const participantId = "non-existent";
+      const findSpy = vi
+        .mocked(participantRepositoryMock.find)
+        .mockResolvedValue(null);
+      const deleteSpy = vi.mocked(participantRepositoryMock.delete);
+
+      await participantService.leaveSession(participantId);
+
+      expect(findSpy).toHaveBeenCalledWith(participantId);
+      expect(deleteSpy).not.toHaveBeenCalled();
     });
   });
 });

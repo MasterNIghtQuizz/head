@@ -25,6 +25,7 @@ import { db, valkey } from "./database.js";
 const fastify = Fastify({
   loggerInstance: logger,
   disableRequestLogging: true,
+  ignoreTrailingSlash: true,
 });
 
 fastify.addHook(
@@ -55,6 +56,7 @@ await registerSwagger(fastify, {
 
 await initDatabase();
 
+/** @type {import('common-kafka').KafkaProducer | null} */
 let kafkaProducer = null;
 if (config.kafka.enabled) {
   const kafkaClient = createKafkaClient({

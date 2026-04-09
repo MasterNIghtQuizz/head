@@ -33,6 +33,10 @@ const schema = Joi.object({
       privateKeyPath: Joi.string().required(),
       publicKeyPath: Joi.string().required(),
     }).required(),
+    game: Joi.object({
+      privateKeyPath: Joi.string().required(),
+      publicKeyPath: Joi.string().required(),
+    }).required(),
   }).required(),
   kafka: Joi.object({
     brokers: Joi.array().items(Joi.string()).required(),
@@ -64,7 +68,7 @@ const resolveKeyPath = (/** @type {string} */ keyPath) =>
   path.isAbsolute(keyPath) ? keyPath : path.resolve(projectRoot, keyPath);
 
 const rawAuth =
-  /** @type {{ access: { privateKeyPath: string; publicKeyPath: string; }; refresh: { privateKeyPath: string; publicKeyPath: string; }; internal: { privateKeyPath: string; publicKeyPath: string; } }} */ (
+  /** @type {{ access: { privateKeyPath: string; publicKeyPath: string; }; refresh: { privateKeyPath: string; publicKeyPath: string; }; internal: { privateKeyPath: string; publicKeyPath: string; }; game: { privateKeyPath: string; publicKeyPath: string; } }} */ (
     Config.get("auth")
   );
 
@@ -89,6 +93,10 @@ export const config = {
     internal: {
       privateKeyPath: resolveKeyPath(rawAuth.internal.privateKeyPath),
       publicKeyPath: resolveKeyPath(rawAuth.internal.publicKeyPath),
+    },
+    game: {
+      privateKeyPath: resolveKeyPath(rawAuth.game.privateKeyPath),
+      publicKeyPath: resolveKeyPath(rawAuth.game.publicKeyPath),
     },
   },
   valkey: /** @type {typeof config.valkey} */ (Config.get("valkey")),

@@ -16,6 +16,10 @@ export function hookAccessToken(options) {
       done();
       return;
     }
+    if (request.routeOptions?.config?.useGameToken) {
+      done();
+      return;
+    }
 
     const token = /** @type {string | undefined} */ (
       request.headers["access-token"]

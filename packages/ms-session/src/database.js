@@ -1,3 +1,4 @@
+import "reflect-metadata";
 import {
   DatabaseContext,
   TypeORMStrategy,
@@ -7,9 +8,11 @@ import { config } from "./config.js";
 import { CreateSessionsAndParticipantsTables1680960000000 } from "./migrations/1680960000000-CreateSessionsAndParticipantsTables.js";
 import { TypeOrmSessionModel } from "./modules/session/infra/models/session.model.js";
 import { TypeOrmParticipantModel } from "./modules/session/infra/models/participant.model.js";
+import { ValkeyService } from "common-valkey";
 
 const strategy = new TypeORMStrategy();
 export const db = new DatabaseContext(strategy);
+export const valkey = new ValkeyService(config.valkey);
 
 export const initDatabase = async () => {
   await db.connect({
@@ -26,4 +29,8 @@ export const initDatabase = async () => {
     ],
     migrations: [CreateSessionsAndParticipantsTables1680960000000],
   });
+
+  if (config.valkey?.enabled) {
+    await valkey.connect();
+  }
 };

@@ -5,10 +5,19 @@ import {
   SESSION_INVALID_STATUS,
   SESSION_NOT_FOUND,
 } from "../errors/session.errors.js";
-import { ParticipantRoles } from "../core/entities/participant-roles.js";
-import { SessionStatus } from "../core/entities/session-status.js";
+import { ParticipantRoles, SessionStatus } from "common-contracts";
+import { TokenService, TokenType, UserRole } from "common-auth";
+import { config } from "../../../config.js";
+import { randomUUID } from "node:crypto";
 
 export class ParticipantService extends BaseService {
+  /** @type {import('../core/ports/session.repository.js').ISessionRepository} */
+  sessionRepository;
+  /** @type {import('common-kafka').KafkaProducer | null} */
+  kafkaProducer;
+  /** @type {import('../core/ports/participant.repository.js').IParticipantRepository} */
+  participantRepository;
+
   /**
    * @param {import('common-kafka').KafkaProducer | null} kafkaProducer
    * @param {import('../core/ports/session.repository.js').ISessionRepository} sessionRepository
@@ -36,27 +45,39 @@ export class ParticipantService extends BaseService {
     if (session.status !== SessionStatus.LOBBY) {
       throw SESSION_INVALID_STATUS(session.id);
     }
+    const participantId = randomUUID();
 
     const participantEntity = new ParticipantEntity({
-      id: data.participant_id,
+      id: participantId,
       role: ParticipantRoles.PLAYER,
       sessionId: session.id,
       nickname: data.participant_nickname,
       socketId: "",
     });
-    const participant =
-      await this.participantRepository.create(participantEntity);
-    return new JoinSessionResponseDto({ participant_id: participant.id });
+    await this.participantRepository.create(participantEntity);
+
+    const gameToken = TokenService.signGameToken(
+      {
+        sessionId: session.id,
+        participantId: participantId,
+        role: UserRole.USER,
+        type: TokenType.GAME,
+      },
+      config.auth.game.privateKeyPath,
+    );
+
+    return new JoinSessionResponseDto({
+      participant_id: participantId,
+      game_token: gameToken,
+    });
   }
 
   /**
-   * @param {import('../contracts/session.dto.js').LeaveSessionRequestDto} data
+   * @param {string} participantId
    * @returns {Promise<void>}
    */
-  async leaveSession(data) {
-    const participant = await this.participantRepository.find(
-      data.participant_id,
-    );
+  async leaveSession(participantId) {
+    const participant = await this.participantRepository.find(participantId);
     if (!participant) {
       return;
     }

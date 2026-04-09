@@ -1,5 +1,5 @@
 import { EntitySchema } from "typeorm";
-import { SessionStatus } from "../../core/entities/session-status.js";
+import { SessionStatus } from "common-contracts";
 
 export class SessionModel {
   constructor() {

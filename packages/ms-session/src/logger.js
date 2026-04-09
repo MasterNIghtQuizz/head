@@ -5,6 +5,12 @@ const logger = createLogger({
   name: "ms-session",
   level: /** @type {import('pino').LevelWithSilent} */ (config.logger.level),
   pretty: /** @type {boolean} */ (config.logger.pretty),
+  opensearch: config.opensearch?.enabled
+    ? {
+        node: config.opensearch.node,
+        index: config.opensearch.index,
+      }
+    : undefined,
 });
 
 setLogger(logger);

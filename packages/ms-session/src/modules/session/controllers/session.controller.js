@@ -7,8 +7,13 @@ import {
   Schema,
 } from "common-core";
 import { CreateSessionRequestDto } from "../contracts/session.dto.js";
+import { UnauthorizedError } from "common-errors";
+import logger from "common-logger";
 
 export class SessionController extends BaseController {
+  /** @type {import('../services/session.service.js').SessionService} */
+  sessionService;
+
   /**
    * @param {import('../services/session.service.js').SessionService} sessionService
    */
@@ -18,97 +23,142 @@ export class SessionController extends BaseController {
   }
 
   /**
-   * @param {import('fastify').FastifyRequest<{Body: import('../contracts/session.dto.js').CreateSessionRequest}>} request
+   * @param {import('fastify').FastifyRequest} request
+   * @returns {import('common-auth').InternalTokenPayload}
+   */
+  _getInternalPayload(request) {
+    const payload = request.internalTokenPayload;
+    if (!payload) {
+      throw new UnauthorizedError("Unauthorized: Missing auth context");
+    }
+    return payload;
+  }
+
+  /**
+   * @param {import('fastify').FastifyRequest<{ Body: import('../contracts/session.dto.js').CreateSessionRequestDto }>} request
    * @param {import('fastify').FastifyReply} reply
-   * @returns {Promise<import('../contracts/session.dto.js').CreateSessionResponse>}
    */
   async createSession(request, reply) {
     const { error } = CreateSessionRequestDto.validate(request.body);
     if (error) {
       return reply.code(400).send({ message: error.details[0].message });
     }
-    const session = await this.sessionService.createSession(request.body, request.headers);
+    const session = await this.sessionService.createSession(
+      request.body,
+      request.headers,
+    );
     return reply.code(201).send(session);
   }
 
   /**
-   * @param {import('fastify').FastifyRequest<{Params: {id: string}}>} request
+   * @param {import('fastify').FastifyRequest} request
    * @param {import('fastify').FastifyReply} reply
-   * @returns {Promise<import('../contracts/session.dto.js').GetSessionResponse>}
    */
   async getSession(request, reply) {
-    const session = await this.sessionService.getSession(request.params.id);
+    const payload = this._getInternalPayload(request);
+    logger.info({ payload }, "Generated internal token payload");
+    const sessionId = payload.sessionId;
+    if (!sessionId) {
+      throw new UnauthorizedError("Missing session id");
+    }
+    const session = await this.sessionService.getSession(sessionId);
     return reply.code(200).send(session);
   }
 
   /**
-   * @param {import('fastify').FastifyRequest<{Params: {id: string}}>} request
+   * @param {import('fastify').FastifyRequest} request
    * @param {import('fastify').FastifyReply} reply
-   * @returns {Promise<void>}
    */
   async startSession(request, reply) {
-    await this.sessionService.startSession(request.params.id);
+    const { sessionId } = this._getInternalPayload(request);
+    if (!sessionId) {
+      throw new UnauthorizedError("Missing session id");
+    }
+    await this.sessionService.startSession(sessionId, request.headers);
     return reply.code(200).send();
   }
 
   /**
-   * @param {import('fastify').FastifyRequest<{Params: {id: string}}>} request
+   * @param {import('fastify').FastifyRequest} request
    * @param {import('fastify').FastifyReply} reply
-   * @returns {Promise<void>}
    */
   async endSession(request, reply) {
-    await this.sessionService.endSession(request.params.id);
+    const { sessionId } = this._getInternalPayload(request);
+    if (!sessionId) {
+      throw new UnauthorizedError("Missing session id");
+    }
+    await this.sessionService.endSession(sessionId);
     return reply.code(200).send();
   }
 
   /**
-   * @param {string} sessionId
+   * @param {import('fastify').FastifyRequest} request
    * @param {import('fastify').FastifyReply} reply
-   * @returns {Promise<void>}
    */
-  async deleteSession(sessionId, reply) {
+  async deleteSession(request, reply) {
+    const { sessionId } = this._getInternalPayload(request);
+    if (!sessionId) {
+      throw new UnauthorizedError("Missing session id");
+    }
     await this.sessionService.deleteSession(sessionId);
     return reply.code(200).send();
   }
 
   /**
-   * @param {import('fastify').FastifyRequest<{Params: {id: string}}>} request
+   * @param {import('fastify').FastifyRequest} request
    * @param {import('fastify').FastifyReply} reply
-   * @returns {Promise<void>}
    */
   async nextQuestion(request, reply) {
-    await this.sessionService.nextQuestion(request.params.id);
+    const { sessionId } = this._getInternalPayload(request);
+    if (!sessionId) {
+      throw new UnauthorizedError("Missing session id");
+    }
+    await this.sessionService.nextQuestion(sessionId, request.headers);
     return reply.code(200).send();
+  }
+
+  /**
+   * @param {import('fastify').FastifyRequest} request
+   * @param {import('fastify').FastifyReply} reply
+   */
+  async getCurrentQuestion(request, reply) {
+    const { sessionId } = this._getInternalPayload(request);
+    if (!sessionId) {
+      throw new UnauthorizedError("Missing session id");
+    }
+    const question = await this.sessionService.getCurrentQuestion(
+      sessionId,
+      request.headers,
+    );
+    return reply.code(200).send(question);
   }
 }
 
 ApplyMethodDecorators(SessionController, "createSession", [
   Schema({
-    description: "Create a new session",
+    description: "Internal route to create a session.",
     tags: ["Session"],
-    params: {},
+    security: [{ internalToken: [] }],
     body: {
       type: "object",
+      required: ["quiz_id"],
       properties: {
         quiz_id: { type: "string" },
       },
-      required: ["quiz_id"],
     },
     response: {
       201: {
-        description: "Session created successfully",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                session_id: { type: "string" },
-                public_key: { type: "string" },
-              },
-            },
-          },
+        description: "Session successfully created.",
+        type: "object",
+        properties: {
+          session_id: { type: "string" },
+          public_key: { type: "string" },
+          game_token: { type: "string" },
         },
       },
+      400: { type: "object", properties: { message: { type: "string" } } },
+      401: { type: "object", properties: { message: { type: "string" } } },
+      500: { type: "object", properties: { message: { type: "string" } } },
     },
   }),
   Post("/"),
@@ -116,183 +166,137 @@ ApplyMethodDecorators(SessionController, "createSession", [
 
 ApplyMethodDecorators(SessionController, "getSession", [
   Schema({
-    description: "Get a session by id",
+    description:
+      "Internal route to get session details by ID from token payload.",
     tags: ["Session"],
-    params: {
-      type: "object",
-      properties: {
-        id: { type: "string", description: "Session id" },
-      },
-      required: ["id"],
-    },
+    security: [{ internalToken: [] }],
     response: {
       200: {
-        description: "Session retrieved successfully",
-        content: {
-          "application/json": {
-            schema: {
+        description: "Session details retrieved successfully.",
+        type: "object",
+        properties: {
+          session_id: { type: "string" },
+          status: { type: "string" },
+          current_question_id: { type: "string", nullable: true },
+          quizz_id: { type: "string" },
+          public_key: { type: "string" },
+          host_id: { type: "string" },
+          participants: {
+            type: "array",
+            items: {
               type: "object",
               properties: {
-                session_id: { type: "string" },
-                public_key: { type: "string" },
-                status: { type: "string" },
-                current_question_id: { type: "string" },
-                quizz_id: { type: "string" },
-                participants: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      participant_id: { type: "string" },
-                      nickname: { type: "string" },
-                      role: { type: "string" },
-                    },
-                  },
-                },
+                participant_id: { type: "string" },
+                nickname: { type: "string" },
+                role: { type: "string" },
               },
             },
           },
         },
       },
+      401: { type: "object", properties: { message: { type: "string" } } },
+      404: { type: "object", properties: { message: { type: "string" } } },
+      500: { type: "object", properties: { message: { type: "string" } } },
     },
   }),
-  Get("/:id"),
+  Get("/"),
 ]);
 
 ApplyMethodDecorators(SessionController, "startSession", [
   Schema({
-    description: "Start a session",
+    description: "Internal route to start a session.",
     tags: ["Session"],
-    params: {
-      type: "object",
-      properties: {
-        id: { type: "string", description: "Session id" },
-      },
-      required: ["id"],
-    },
+    security: [{ internalToken: [] }],
     response: {
-      200: {
-        description: "Session started successfully",
-      },
-      404: {
-        description: "Session not found",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                message: { type: "string" },
-              },
-            },
-          },
-        },
-      },
+      200: { description: "Session successfully started." },
+      401: { type: "object", properties: { message: { type: "string" } } },
+      404: { type: "object", properties: { message: { type: "string" } } },
+      409: { type: "object", properties: { message: { type: "string" } } },
+      500: { type: "object", properties: { message: { type: "string" } } },
     },
   }),
-  Post("/:id/start"),
-]);
-
-ApplyMethodDecorators(SessionController, "endSession", [
-  Schema({
-    description: "End a session",
-    tags: ["Session"],
-    params: {
-      type: "object",
-      properties: {
-        id: { type: "string", description: "Session id" },
-      },
-      required: ["id"],
-    },
-    response: {
-      200: {
-        description: "Session ended successfully",
-      },
-      404: {
-        description: "Session not found",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                message: { type: "string" },
-              },
-            },
-          },
-        },
-      },
-    },
-  }),
-  Post("/:id/end"),
+  Post("/start/"),
 ]);
 
 ApplyMethodDecorators(SessionController, "nextQuestion", [
   Schema({
-    description: "Go to the next question of a session",
+    description: "Internal route to advance to the next question.",
     tags: ["Session"],
-    params: {
-      type: "object",
-      properties: {
-        id: { type: "string", description: "Session id" },
-      },
-      required: ["id"],
-    },
+    security: [{ internalToken: [] }],
     response: {
-      200: {
-        description: "Next question activated successfully",
-      },
-      400: {
-        description:
-          "Session is not in a valid status to go to the next question",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                message: { type: "string" },
-              },
-            },
-          },
-        },
-      },
-      404: {
-        description: "Session not found",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                message: { type: "string" },
-              },
-            },
-          },
-        },
-      },
+      200: { description: "Successfully moved to the next question." },
+      401: { type: "object", properties: { message: { type: "string" } } },
+      404: { type: "object", properties: { message: { type: "string" } } },
+      500: { type: "object", properties: { message: { type: "string" } } },
     },
   }),
-  Post("/:id/next-question"),
+  Post("/next/"),
+]);
+
+ApplyMethodDecorators(SessionController, "endSession", [
+  Schema({
+    description: "Internal route to end a session.",
+    tags: ["Session"],
+    security: [{ internalToken: [] }],
+    response: {
+      200: { description: "Session successfully ended." },
+      401: { type: "object", properties: { message: { type: "string" } } },
+      404: { type: "object", properties: { message: { type: "string" } } },
+      500: { type: "object", properties: { message: { type: "string" } } },
+    },
+  }),
+  Post("/end/"),
 ]);
 
 ApplyMethodDecorators(SessionController, "deleteSession", [
   Schema({
-    description: "Delete a session",
+    description: "Internal route to delete a session.",
     tags: ["Session"],
-    params: {
-      type: "object",
-      properties: {
-        id: { type: "string", description: "Session id" },
-      },
-      required: ["id"],
-    },
+    security: [{ internalToken: [] }],
     response: {
-      200: {
-        description: "Session deleted successfully",
-      },
-      404: {
-        description: "Session not found",
-      },
+      200: { description: "Session successfully deleted." },
+      401: { type: "object", properties: { message: { type: "string" } } },
+      404: { type: "object", properties: { message: { type: "string" } } },
+      500: { type: "object", properties: { message: { type: "string" } } },
     },
   }),
-  Post("/:id/delete"),
+  Post("/delete/"),
+]);
+
+ApplyMethodDecorators(SessionController, "getCurrentQuestion", [
+  Schema({
+    description: "Internal route to get the current question details.",
+    tags: ["Session"],
+    security: [{ internalToken: [] }],
+    response: {
+      200: {
+        description: "Successfully retrieved current question details.",
+        type: "object",
+        nullable: true,
+        properties: {
+          id: { type: "string" },
+          label: { type: "string" },
+          type: { type: "string" },
+          timer_seconds: { type: "integer" },
+          choices: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                id: { type: "string" },
+                text: { type: "string" },
+                is_correct: { type: "boolean" },
+              },
+            },
+          },
+        },
+      },
+      401: { type: "object", properties: { message: { type: "string" } } },
+      404: { type: "object", properties: { message: { type: "string" } } },
+      500: { type: "object", properties: { message: { type: "string" } } },
+    },
+  }),
+  Get("/current-question/"),
 ]);
 
 Controller("/sessions")(SessionController);

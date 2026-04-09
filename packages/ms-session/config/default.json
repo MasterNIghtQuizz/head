@@ -26,6 +26,10 @@
     "internal": {
       "privateKeyPath": "../../keys/internal-private.pem",
       "publicKeyPath": "../../keys/internal-public.pem"
+    },
+    "game": {
+      "privateKeyPath": "../../keys/game-private.pem",
+      "publicKeyPath": "../../keys/game-public.pem"
     }
   },
   "kafka": {
@@ -39,10 +43,6 @@
     "db": 0,
     "ttl": 3600
   },
-  "otel": {
-    "enabled": false,
-    "exporterUrl": "http://localhost:4317"
-  },
   "services": {
     "session": {
       "baseUrl": "http://localhost:4003"
@@ -50,5 +50,14 @@
     "quizzManagement": {
       "baseUrl": "http://localhost:4002"
     }
+  },
+  "otel": {
+    "enabled": false,
+    "exporterUrl": "http://localhost:4317"
+  },
+  "opensearch": {
+    "enabled": false,
+    "node": "http://localhost:9200",
+    "index": "logs-ms-session"
   }
 }

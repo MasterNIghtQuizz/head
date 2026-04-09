@@ -4,20 +4,35 @@ import {
   Post,
   ApplyMethodDecorators,
   Schema,
+  Public,
 } from "common-core";
 import { JoinSessionRequestDto } from "../contracts/session.dto.js";
-import {
-  SESSION_INVALID_STATUS,
-  SESSION_NOT_FOUND,
-} from "../errors/session.errors.js";
+import { CryptoService } from "common-crypto";
+import { config } from "../../../config.js";
+import { UnauthorizedError, ConflictError, NotFoundError } from "common-errors";
 
 export class ParticipantController extends BaseController {
+  /** @type {import('../services/participant.service.js').ParticipantService} */
+  participantService;
+
   /**
    * @param {import('../services/participant.service.js').ParticipantService} participantService
    */
   constructor(participantService) {
     super();
     this.participantService = participantService;
+  }
+
+  /**
+   * @param {import('fastify').FastifyRequest} request
+   * @returns {import('common-auth').InternalTokenPayload}
+   */
+  _getInternalPayload(request) {
+    const payload = request.internalTokenPayload;
+    if (!payload) {
+      throw new UnauthorizedError("Unauthorized: Missing auth context");
+    }
+    return payload;
   }
 
   /**
@@ -34,10 +49,10 @@ export class ParticipantController extends BaseController {
       const response = await this.participantService.joinSession(request.body);
       return reply.code(200).send(response);
     } catch (error) {
-      if (error instanceof SESSION_INVALID_STATUS) {
-        return reply.code(400).send({ message: error });
-      } else if (error instanceof SESSION_NOT_FOUND) {
-        return reply.code(404).send({ message: error });
+      if (error instanceof ConflictError) {
+        return reply.code(400).send({ message: error.message });
+      } else if (error instanceof NotFoundError) {
+        return reply.code(404).send({ message: error.message });
       } else {
         throw error;
       }
@@ -45,113 +60,64 @@ export class ParticipantController extends BaseController {
   }
 
   /**
-   * @param {import('fastify').FastifyRequest<{Body: import('../contracts/session.dto.js').LeaveSessionRequest}>} request
+   * @param {import('fastify').FastifyRequest} request
    * @param {import('fastify').FastifyReply} reply
    * @returns {Promise<void>}
    */
   async leaveSession(request, reply) {
-    await this.participantService.leaveSession(request.body);
+    const { participantId } = this._getInternalPayload(request);
+    if (!participantId) {
+      throw new UnauthorizedError("Missing participant id");
+    }
+    await this.participantService.leaveSession(participantId);
     return reply.code(200).send();
   }
 }
 
 ApplyMethodDecorators(ParticipantController, "joinSession", [
   Schema({
-    description: "Request body for joining a session",
+    description: "Internal route to handle session joining logic.",
     tags: ["Participant", "Session"],
+    security: [{ internalToken: [] }],
     body: {
       type: "object",
+      required: ["session_public_key", "participant_nickname"],
       properties: {
         session_public_key: { type: "string" },
         participant_nickname: { type: "string" },
-        participant_id: { type: "string" },
       },
-      required: [
-        "session_public_key",
-        "participant_nickname",
-        "participant_id",
-      ],
     },
     response: {
       200: {
-        description: "Participant joined the session successfully",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                participant_id: { type: "string" },
-              },
-            },
-          },
+        description: "Participant joined successfully.",
+        type: "object",
+        properties: {
+          participant_id: { type: "string" },
+          game_token: { type: "string" },
         },
       },
-      400: {
-        description: "Invalid request",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                message: { type: "string" },
-              },
-            },
-          },
-        },
-      },
-      404: {
-        description: "Session not found",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                message: { type: "string" },
-              },
-            },
-          },
-        },
-      },
+      400: { type: "object", properties: { message: { type: "string" } } },
+      404: { type: "object", properties: { message: { type: "string" } } },
+      409: { type: "object", properties: { message: { type: "string" } } },
+      500: { type: "object", properties: { message: { type: "string" } } },
     },
   }),
-  Post("/join"),
+  Public(),
+  Post("/join/"),
 ]);
 
 ApplyMethodDecorators(ParticipantController, "leaveSession", [
   Schema({
-    description: "Request body for leaving a session",
+    description: "Internal route to handle session leaving logic.",
     tags: ["Participant", "Session"],
-    body: {
-      type: "object",
-      properties: {
-        session_public_key: { type: "string" },
-        participant_id: { type: "string" },
-      },
-      required: ["session_public_key", "participant_id"],
-    },
+    security: [{ internalToken: [] }],
     response: {
-      200: {
-        description: "Participant left the session successfully",
-      },
-      400: {
-        description: "Invalid request",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                message: { type: "string" },
-              },
-            },
-          },
-        },
-      },
-      404: {
-        description: "Session not found",
-      },
+      200: { description: "Participant left successfully." },
+      401: { type: "object", properties: { message: { type: "string" } } },
+      500: { type: "object", properties: { message: { type: "string" } } },
     },
   }),
-  Post("/leave"),
+  Post("/leave/"),
 ]);
 
 Controller("/sessions")(ParticipantController);

@@ -190,6 +190,9 @@ export class ChoiceService extends BaseService {
           invalidations.push(
             this.valkeyRepository.del(`quiz:${question.quizId}`),
           );
+          invalidations.push(
+            this.valkeyRepository.del(`quiz:full:${question.quizId}`),
+          );
           invalidations.push(this.valkeyRepository.del("quizzes:all"));
         }
         await Promise.all(invalidations);
@@ -251,6 +254,9 @@ export class ChoiceService extends BaseService {
           invalidations.push(
             this.valkeyRepository.del(`quiz:${question.quizId}`),
           );
+          invalidations.push(
+            this.valkeyRepository.del(`quiz:full:${question.quizId}`),
+          );
           invalidations.push(this.valkeyRepository.del("quizzes:all"));
         }
         await Promise.all(invalidations);
@@ -309,6 +315,9 @@ export class ChoiceService extends BaseService {
             );
             invalidations.push(
               this.valkeyRepository.del(`quiz:${question.quizId}`),
+            );
+            invalidations.push(
+              this.valkeyRepository.del(`quiz:full:${question.quizId}`),
             );
           }
         }

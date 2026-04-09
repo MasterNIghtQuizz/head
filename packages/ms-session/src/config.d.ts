@@ -19,6 +19,7 @@ export declare const config: {
     access: { privateKeyPath: string; publicKeyPath: string };
     refresh: { privateKeyPath: string; publicKeyPath: string };
     internal: { privateKeyPath: string; publicKeyPath: string };
+    game: { privateKeyPath: string; publicKeyPath: string };
   };
   otel: {
     enabled: boolean;
@@ -31,5 +32,10 @@ export declare const config: {
     quizzManagement: {
       baseUrl: string;
     };
+  };
+  opensearch?: {
+    enabled: boolean;
+    node: string;
+    index: string;
   };
 };

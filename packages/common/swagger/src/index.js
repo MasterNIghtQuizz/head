@@ -41,6 +41,12 @@ export const registerSwagger = async (
             in: "header",
             description: "Service-to-Service Internal Token",
           },
+          gameToken: {
+            type: "apiKey",
+            name: "game-token",
+            in: "header",
+            description: "Game Participation Token",
+          },
         },
         schemas: {
           BaseError: {
@@ -148,6 +154,7 @@ export const registerSwagger = async (
         { accessToken: [] },
         { refreshToken: [] },
         { internalToken: [] },
+        { gameToken: [] },
       ],
     },
   });

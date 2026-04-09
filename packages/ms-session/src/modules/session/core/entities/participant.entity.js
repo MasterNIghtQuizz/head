@@ -1,7 +1,5 @@
-import { ParticipantRoles } from "./participant-roles.js";
-
 /**
- * @typedef {import('./participant-roles.js').ParticipantRolesType} ParticipantRolesType
+ * @typedef {import('common-contracts').ParticipantRolesType} ParticipantRolesType
  */
 
 export class ParticipantEntity {
