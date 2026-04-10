@@ -1,41 +1,76 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { ParticipantRoles, SessionStatus } from "common-contracts";
+import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { ParticipantService } from "./participant.service.js";
 import {
   createSessionEntity,
   createParticipantEntity,
 } from "./test-helpers.js";
+import { SessionStatus } from "common-contracts";
 import { TokenService } from "common-auth";
+import { call } from "common-axios";
+import {
+  SESSION_NOT_FOUND,
+  SESSION_INVALID_STATUS,
+  QUESTION_TIMED_OUT,
+  INVALID_CHOICE_IDS,
+} from "../errors/session.errors.js";
 
+vi.mock("common-axios");
 vi.mock("common-auth");
 
+/**
+ * @typedef {import('vitest').Mocked<import('../core/ports/session.repository.js').ISessionRepository>} SessionRepositoryMock
+ * @typedef {import('vitest').Mocked<import('../core/ports/participant.repository.js').IParticipantRepository>} ParticipantRepositoryMock
+ * @typedef {import('vitest').Mocked<import('common-valkey').ValkeyRepository>} ValkeyRepositoryMock
+ * @typedef {import('vitest').Mocked<import('common-kafka').KafkaProducer>} KafkaProducerMock
+ * @typedef {import('vitest').Mocked<import('./session.service.js').SessionService>} SessionServiceMock
+ */
+
 describe("ParticipantService unit tests", () => {
-  /** @type {import('./participant.service.js').ParticipantService} */
-  let participantService;
-  /** @type {Record<keyof import('../core/ports/session.repository.js').ISessionRepository, import('vitest').Mock>} */
+  /** @type {ParticipantService} */
+  let service;
+  /** @type {SessionRepositoryMock} */
   let sessionRepositoryMock;
-  /** @type {Record<keyof import('../core/ports/participant.repository.js').IParticipantRepository, import('vitest').Mock>} */
+  /** @type {ParticipantRepositoryMock} */
   let participantRepositoryMock;
+  /** @type {ValkeyRepositoryMock} */
+  let valkeyRepositoryMock;
+  /** @type {KafkaProducerMock} */
+  let kafkaProducerMock;
+  /** @type {SessionServiceMock} */
+  let sessionServiceMock;
 
   beforeEach(() => {
-    sessionRepositoryMock = {
-      create: vi.fn(),
-      update: vi.fn(),
-      delete: vi.fn(),
+    // @ts-ignore
+    sessionRepositoryMock = /** @type {SessionRepositoryMock} */ ({
       find: vi.fn(),
       findByPublicKey: vi.fn(),
-    };
-    participantRepositoryMock = {
-      create: vi.fn(),
-      update: vi.fn(),
-      delete: vi.fn(),
+    });
+    // @ts-ignore
+    participantRepositoryMock = /** @type {ParticipantRepositoryMock} */ ({
       find: vi.fn(),
-      findBySessionId: vi.fn(),
-    };
-    participantService = new ParticipantService(
-      null,
+      create: vi.fn(),
+      delete: vi.fn(),
+    });
+    // @ts-ignore
+    valkeyRepositoryMock = /** @type {ValkeyRepositoryMock} */ ({
+      get: vi.fn(),
+      set: vi.fn(),
+    });
+    // @ts-ignore
+    kafkaProducerMock = /** @type {KafkaProducerMock} */ ({
+      publish: vi.fn(),
+    });
+    // @ts-ignore
+    sessionServiceMock = /** @type {SessionServiceMock} */ ({
+      deleteSession: vi.fn(),
+    });
+
+    service = new ParticipantService(
+      kafkaProducerMock,
       sessionRepositoryMock,
       participantRepositoryMock,
+      valkeyRepositoryMock,
+      sessionServiceMock,
     );
   });
 
@@ -44,80 +79,193 @@ describe("ParticipantService unit tests", () => {
   });
 
   describe("joinSession", () => {
-    it("should allow a participant to join an open session and return a game token", async () => {
-      const data = {
-        session_public_key: "session-123",
-        participant_id: "participant-123",
-        participant_nickname: "Player1",
-      };
-
-      const sessionEntity = createSessionEntity({
+    it("should successfully join a session", async () => {
+      const data = { session_public_key: "pub", participant_nickname: "nick" };
+      const session = createSessionEntity({
+        id: "s1",
         status: SessionStatus.LOBBY,
       });
-      const participantEntity = createParticipantEntity({
-        id: data.participant_id,
-        nickname: data.participant_nickname,
-        role: ParticipantRoles.PLAYER,
-        sessionId: sessionEntity.id,
-      });
 
-      const sessionSpy = vi
-        .mocked(sessionRepositoryMock.findByPublicKey)
-        .mockResolvedValue(sessionEntity);
-      const participantSpy = vi
-        .mocked(participantRepositoryMock.create)
-        .mockResolvedValue(participantEntity);
-      const signSpy = vi
-        .mocked(TokenService.signGameToken)
-        .mockReturnValue("game-token-123");
-
-      const response = await participantService.joinSession(data);
-
-      expect(sessionSpy).toHaveBeenCalledWith(data.session_public_key);
-      expect(participantSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          role: ParticipantRoles.PLAYER,
-          sessionId: sessionEntity.id,
-          nickname: data.participant_nickname,
-        }),
+      vi.mocked(sessionRepositoryMock.findByPublicKey).mockResolvedValue(
+        session,
       );
-      expect(signSpy).toHaveBeenCalled();
-      expect(response).toEqual({
-        participant_id: expect.any(String),
-        game_token: "game-token-123",
+      vi.mocked(participantRepositoryMock.create).mockResolvedValue(
+        createParticipantEntity(),
+      );
+      vi.mocked(TokenService.signGameToken).mockReturnValue("tok");
+
+      const result = await service.joinSession(data);
+
+      expect(participantRepositoryMock.create).toHaveBeenCalled();
+      expect(result.game_token).toBe("tok");
+    });
+
+    it("should throw SESSION_NOT_FOUND if public key is invalid", async () => {
+      vi.mocked(sessionRepositoryMock.findByPublicKey).mockResolvedValue(null);
+      await expect(
+        service.joinSession({
+          session_public_key: "wrong",
+          participant_nickname: "",
+        }),
+      ).rejects.toThrow(SESSION_NOT_FOUND("wrong").message);
+    });
+
+    it("should throw SESSION_INVALID_STATUS if session not in LOBBY", async () => {
+      const session = createSessionEntity({
+        id: "s1",
+        status: SessionStatus.QUESTION_ACTIVE,
       });
+      vi.mocked(sessionRepositoryMock.findByPublicKey).mockResolvedValue(
+        session,
+      );
+      await expect(
+        service.joinSession({
+          session_public_key: "pub",
+          participant_nickname: "",
+        }),
+      ).rejects.toThrow(SESSION_INVALID_STATUS("s1").message);
     });
   });
 
   describe("leaveSession", () => {
-    it("should remove the participant from the session using participantId string", async () => {
-      const participantId = "participant-123";
-      const participantEntity = createParticipantEntity({ id: participantId });
+    it("should delete participant", async () => {
+      const participant = createParticipantEntity({ id: "p1" });
+      vi.mocked(participantRepositoryMock.find).mockResolvedValue(participant);
 
-      const findSpy = vi
-        .mocked(participantRepositoryMock.find)
-        .mockResolvedValue(participantEntity);
-      const deleteSpy = vi
-        .mocked(participantRepositoryMock.delete)
-        .mockResolvedValue(undefined);
+      await service.leaveSession("p1");
 
-      await participantService.leaveSession(participantId);
-
-      expect(findSpy).toHaveBeenCalledWith(participantId);
-      expect(deleteSpy).toHaveBeenCalledWith(participantId);
+      expect(participantRepositoryMock.delete).toHaveBeenCalledWith("p1");
     });
 
-    it("should do nothing if participant is not found", async () => {
-      const participantId = "non-existent";
-      const findSpy = vi
-        .mocked(participantRepositoryMock.find)
-        .mockResolvedValue(null);
-      const deleteSpy = vi.mocked(participantRepositoryMock.delete);
+    it("should do nothing if participant not found", async () => {
+      vi.mocked(participantRepositoryMock.find).mockResolvedValue(null);
+      await service.leaveSession("p1");
+      expect(participantRepositoryMock.delete).not.toHaveBeenCalled();
+    });
+  });
 
-      await participantService.leaveSession(participantId);
+  describe("submitResponse", () => {
+    const defaultParams = {
+      sessionId: "s1",
+      participantId: "p1",
+      choiceIds: ["c1"],
+    };
+    const session = createSessionEntity({
+      id: "s1",
+      status: SessionStatus.QUESTION_ACTIVE,
+      currentQuestionId: "q1",
+      quizzId: "quiz1",
+    });
 
-      expect(findSpy).toHaveBeenCalledWith(participantId);
-      expect(deleteSpy).not.toHaveBeenCalled();
+    it("should successfully submit response", async () => {
+      vi.mocked(sessionRepositoryMock.find).mockResolvedValue(session);
+      vi.mocked(valkeyRepositoryMock.get).mockImplementation(async (key) => {
+        if (key.includes("validation")) {
+          return {
+            id: "q1",
+            type: "single",
+            timer_seconds: 10,
+            choiceIds: ["c1"],
+          };
+        }
+        if (key.includes("question_activated_at")) {
+          return Date.now();
+        }
+        return null;
+      });
+
+      await service.submitResponse(defaultParams);
+
+      expect(kafkaProducerMock.publish).toHaveBeenCalledWith(
+        "quiz.response.submitted",
+        expect.objectContaining({
+          sessionId: "s1",
+          participantId: "p1",
+          choiceId: "c1",
+          submittedAt: expect.any(String),
+        }),
+      );
+    });
+
+    it("should throw QUESTION_TIMED_OUT if too late", async () => {
+      vi.mocked(sessionRepositoryMock.find).mockResolvedValue(session);
+      vi.mocked(valkeyRepositoryMock.get).mockImplementation(async (key) => {
+        if (key.includes("validation")) {
+          return {
+            id: "q1",
+            type: "single",
+            timer_seconds: 10,
+            choiceIds: ["c1"],
+          };
+        }
+        if (key.includes("question_activated_at")) {
+          return Date.now() - 20000;
+        } // 10s timer
+        return null;
+      });
+
+      await expect(service.submitResponse(defaultParams)).rejects.toThrow(
+        QUESTION_TIMED_OUT().message,
+      );
+    });
+
+    it("should throw INVALID_CHOICE_IDS if choiceId not in question choices", async () => {
+      vi.mocked(sessionRepositoryMock.find).mockResolvedValue(session);
+      vi.mocked(valkeyRepositoryMock.get).mockImplementation(async (key) => {
+        if (key.includes("validation")) {
+          return {
+            id: "q1",
+            type: "single",
+            timer_seconds: 10,
+            choiceIds: ["c1"],
+          };
+        }
+        if (key.includes("question_activated_at")) {
+          return Date.now();
+        }
+        return null;
+      });
+
+      await expect(
+        service.submitResponse({ ...defaultParams, choiceIds: ["wrong"] }),
+      ).rejects.toThrow(INVALID_CHOICE_IDS(["wrong"]).message);
+    });
+  });
+
+  describe("submitResponse Resilience", () => {
+    it("should fallback to management service if Valkey fails to provide validation data", async () => {
+      const session = createSessionEntity({
+        id: "s1",
+        status: SessionStatus.QUESTION_ACTIVE,
+        currentQuestionId: "q1",
+        quizzId: "quiz1",
+      });
+      const questionMetadata = { id: "q1", type: "single", timer_seconds: 10 };
+      const choiceIds = ["c1"];
+
+      vi.mocked(sessionRepositoryMock.find).mockResolvedValue(session);
+      vi.mocked(valkeyRepositoryMock.get).mockRejectedValue(
+        new Error("Valkey Down"),
+      );
+      vi.mocked(call).mockImplementation(async (cfg) => {
+        if (cfg.url.includes("/choices/ids")) {
+          return choiceIds;
+        }
+        return questionMetadata;
+      });
+      vi.mocked(TokenService.signInternalToken).mockReturnValue("tok");
+
+      await service.submitResponse({
+        sessionId: "s1",
+        participantId: "p1",
+        choiceIds: ["c1"],
+      });
+
+      expect(call).toHaveBeenCalledTimes(2);
+      expect(kafkaProducerMock.publish).toHaveBeenCalledWith(
+        "quiz.response.submitted",
+        expect.any(Object),
+      );
     });
   });
 });

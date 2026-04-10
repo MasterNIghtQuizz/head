@@ -61,3 +61,27 @@ export declare class ControllerFactory {
     deps?: Args,
   ): void;
 }
+
+export declare class Choice {
+  id: string;
+  text: string;
+  is_correct?: boolean;
+  constructor(props: { id: string; text: string; is_correct?: boolean });
+}
+
+export declare class Question {
+  id: string;
+  label: string;
+  type: string;
+  order_index: number;
+  timer_seconds: number;
+  choices: Choice[];
+  constructor(props: {
+    id: string;
+    label: string;
+    type: string;
+    order_index: number;
+    timer_seconds: number;
+    choices?: (Choice | { id: string; text: string; is_correct?: boolean })[];
+  });
+}

@@ -158,6 +158,30 @@ export class QuestionService extends BaseService {
   }
 
   /**
+   * @param {string} id
+   */
+  async getChoiceIds(id) {
+    logger.info({ id }, "Fetching choice ids for question...");
+    try {
+      const entity = await this.questionRepository.findByIdWithChildren(id);
+      if (!entity) {
+        logger.warn({ id }, "Question not found for choice ids");
+        throw QUESTION_NOT_FOUND(id);
+      }
+      return entity.choices.map((choice) => choice.id);
+    } catch (error) {
+      if (/** @type {BaseError} */ (error).statusCode) {
+        throw error;
+      }
+      logger.error(
+        { error: /** @type {Error} */ (error), id },
+        "Error fetching choice ids for question",
+      );
+      throw DATABASE_ERROR(/** @type {Error} */ (error));
+    }
+  }
+
+  /**
    * @param {import('../contracts/question.dto.js').CreateQuestionRequestDto} data
    */
   async createQuestion(data) {

@@ -1,4 +1,4 @@
-import { BaseService } from "common-core";
+import { BaseService, Question, Choice } from "common-core";
 import { CryptoService } from "common-crypto";
 import { SessionEntity } from "../core/entities/session.entity.js";
 import { CreateSessionResponseDto } from "../contracts/session.dto.js";
@@ -16,7 +16,7 @@ import { ParticipantMapper } from "../infra/mappers/participant.mapper.js";
 import { call } from "common-axios";
 import { config } from "../../../config.js";
 import { TokenService, TokenType, UserRole } from "common-auth";
-import { BaseError, UnauthorizedError } from "common-errors";
+import { UnauthorizedError } from "common-errors";
 
 export class SessionService extends BaseService {
   /** @type {import('../core/ports/session.repository.js').ISessionRepository} */
@@ -104,11 +104,54 @@ export class SessionService extends BaseService {
         quizzId: data.quiz_id,
       });
       const session = await this.sessionRepository.create(sessionEntity);
-
-      await this.valkeyRepository.set(
-        `session:${session.id}:questions`,
-        questions,
+      logger.info(
+        { sessionId: session.id, quizId: data.quiz_id, hostId },
+        "New session created successfully",
       );
+
+      try {
+        const questionIds = questions.map((/** @type {Question} */ q) => q.id);
+        await this.valkeyRepository.set(
+          `session:${session.id}:questions:ids`,
+          questionIds,
+          3600,
+        );
+
+        await Promise.all(
+          questions.map(async (/** @type {Question} */ q) => {
+            const validationData = {
+              id: q.id,
+              type: q.type,
+              timer_seconds: q.timer_seconds,
+              choiceIds: (q.choices || []).map(
+                (/** @type {Choice} */ c) => c.id,
+              ),
+            };
+            const fullQuestion = new Question({
+              ...q,
+              choices: (q.choices || []).map(
+                // eslint-disable-next-line no-unused-vars
+                ({ is_correct, ...rest }) => new Choice(rest),
+              ),
+            });
+
+            await Promise.all([
+              this.valkeyRepository.set(
+                `question:${q.id}:validation`,
+                validationData,
+                3600,
+              ),
+              this.valkeyRepository.set(
+                `question:${q.id}:full`,
+                fullQuestion,
+                3600,
+              ),
+            ]);
+          }),
+        );
+      } catch (err) {
+        logger.error({ err }, "Failed to pre-cache questions in Valkey");
+      }
 
       const hostEntity = new ParticipantEntity({
         id: null,
@@ -135,7 +178,7 @@ export class SessionService extends BaseService {
         game_token: gameToken,
       });
     } catch (error) {
-      const err = /** @type {BaseError} */ (error);
+      const err = /** @type {import('common-errors').BaseError} */ (error);
       logger.error(
         `Error in createSession for quiz ${data.quiz_id}: ${err.message}`,
       );
@@ -152,7 +195,7 @@ export class SessionService extends BaseService {
       const session = await this.sessionRepository.find(sessionId);
       if (!session) {
         logger.warn(`Session with id ${sessionId} not found`);
-        throw SESSION_NOT_FOUND();
+        throw SESSION_NOT_FOUND(sessionId);
       }
 
       const participants =
@@ -162,7 +205,7 @@ export class SessionService extends BaseService {
         participants.map((p) => ParticipantMapper.toDto(p)),
       );
     } catch (error) {
-      const err = /** @type {BaseError} */ (error);
+      const err = /** @type {import('common-errors').BaseError} */ (error);
       logger.error(
         `Error in getSession for session ${sessionId}: ${err.message}`,
       );
@@ -218,15 +261,71 @@ export class SessionService extends BaseService {
 
       const questionId = questions[0].id;
 
-      await this.valkeyRepository.set(
-        `session:${session.id}:questions`,
-        questions,
-      );
+      try {
+        const questionIds = questions.map((q) => q.id);
+        await this.valkeyRepository.set(
+          `session:${session.id}:questions:ids`,
+          questionIds,
+          3600,
+        );
+
+        await Promise.all(
+          questions.map(async (/** @type {Question} */ q) => {
+            const validationData = {
+              id: q.id,
+              type: q.type,
+              timer_seconds: q.timer_seconds,
+              choiceIds: (q.choices || []).map(
+                (/** @type {Choice} */ c) => c.id,
+              ),
+            };
+            const fullQuestion = new Question({
+              ...q,
+              choices: (q.choices || []).map(
+                // eslint-disable-next-line no-unused-vars
+                ({ is_correct, ...rest }) => new Choice(rest),
+              ),
+            });
+
+            await Promise.all([
+              this.valkeyRepository.set(
+                `question:${q.id}:validation`,
+                validationData,
+                3600,
+              ),
+              this.valkeyRepository.set(
+                `question:${q.id}:full`,
+                fullQuestion,
+                3600,
+              ),
+            ]);
+          }),
+        );
+      } catch (err) {
+        logger.error(
+          { err },
+          "Failed to pre-cache questions in Valkey during start",
+        );
+      }
 
       await this.sessionRepository.update(session.id, {
         status: SessionStatus.QUESTION_ACTIVE,
         currentQuestionId: questionId,
       });
+
+      logger.info(
+        { sessionId: session.id, questionId },
+        "Session started, first question activated",
+      );
+
+      try {
+        await this.valkeyRepository.set(
+          `session:${session.id}:question_activated_at`,
+          Date.now(),
+        );
+      } catch (err) {
+        logger.error({ err }, "Failed to set question_activated_at in Valkey");
+      }
 
       if (this.kafkaProducer) {
         await this.kafkaProducer.publish(
@@ -244,7 +343,7 @@ export class SessionService extends BaseService {
         );
       }
     } catch (error) {
-      const err = /** @type {BaseError} */ (error);
+      const err = /** @type {import('common-errors').BaseError} */ (error);
       logger.error(
         `Error in startSession for session ${sessionId}: ${err.message}`,
       );
@@ -275,16 +374,16 @@ export class SessionService extends BaseService {
         throw SESSION_INVALID_STATUS(sessionId);
       }
 
-      const cachedQuestions = await this.valkeyRepository.get(
-        `session:${session.id}:questions`,
+      const cachedQuestionIds = await this.valkeyRepository.get(
+        `session:${session.id}:questions:ids`,
       );
-      let questions;
+      let questionIds;
 
-      if (cachedQuestions) {
-        questions = cachedQuestions;
+      if (cachedQuestionIds) {
+        questionIds = cachedQuestionIds;
       } else {
         const quizResponse = await call({
-          url: `${config.services.quizzManagement.baseUrl}/quizzes/get-full`,
+          url: `${config.services.quizzManagement.baseUrl}/quizzes/get-ids`,
           method: "POST",
           data: { quizId: session.quizzId },
           headers: {
@@ -292,32 +391,42 @@ export class SessionService extends BaseService {
           },
         }).catch((err) => {
           logger.warn(
-            `Failed to fetch questions for quiz with name ${session.quizzId}: `,
+            `Failed to fetch question IDs for quiz ${session.quizzId}: `,
             err,
           );
           throw QUIZZ_NOT_FOUND(session.quizzId);
         });
-        questions = quizResponse.questions;
-        await this.valkeyRepository.set(
-          `session:${session.id}:questions`,
-          questions,
+        questionIds = quizResponse.questions.map(
+          (/** @type {import('common-contracts').FullQuestionResponse} */ q) =>
+            q.id,
         );
+        try {
+          await this.valkeyRepository.set(
+            `session:${session.id}:questions:ids`,
+            questionIds,
+            3600,
+          );
+        } catch (err) {
+          logger.error({ err }, "Failed to set question IDs in Valkey");
+        }
       }
-      if (!questions || !Array.isArray(questions) || questions.length === 0) {
+      if (
+        !questionIds ||
+        !Array.isArray(questionIds) ||
+        questionIds.length === 0
+      ) {
         logger.warn(`Quiz with id ${session.quizzId} has no questions`);
         throw EMPTY_QUIZZ(session.quizzId);
       }
 
-      const currentIndex = questions.findIndex(
-        (q) => q.id === session.currentQuestionId,
-      );
+      const currentIndex = questionIds.indexOf(session.currentQuestionId);
       if (currentIndex === -1) {
         logger.warn(
           `Current question with id ${session.currentQuestionId} not found in quiz ${session.quizzId}`,
         );
         throw QUIZZ_NOT_FOUND(session.quizzId);
       }
-      if (currentIndex === questions.length - 1) {
+      if (currentIndex === questionIds.length - 1) {
         logger.warn(
           `No more questions available for quiz with id ${session.quizzId}`,
         );
@@ -325,19 +434,27 @@ export class SessionService extends BaseService {
         return;
       }
 
-      if (!questions[currentIndex + 1] || !questions[currentIndex + 1].id) {
-        logger.warn(
-          `Quiz with id ${session.quizzId} has invalid questions format`,
-        );
-        throw EMPTY_QUIZZ(session.quizzId);
-      }
-
-      const questionId = questions[currentIndex + 1].id;
+      const questionId = questionIds[currentIndex + 1];
 
       await this.sessionRepository.update(session.id, {
         status: SessionStatus.QUESTION_ACTIVE,
         currentQuestionId: questionId,
       });
+
+      logger.info(
+        { sessionId: session.id, questionId },
+        "Advanced to next question",
+      );
+
+      try {
+        await this.valkeyRepository.set(
+          `session:${session.id}:question_activated_at`,
+          Date.now(),
+        );
+      } catch (err) {
+        logger.error({ err }, "Failed to set question_activated_at in Valkey");
+      }
+
       if (this.kafkaProducer) {
         await this.kafkaProducer.publish(
           "session-next-question",
@@ -348,7 +465,7 @@ export class SessionService extends BaseService {
         );
       }
     } catch (error) {
-      const err = /** @type {BaseError} */ (error);
+      const err = /** @type {import('common-errors').BaseError} */ (error);
       logger.error(
         `Error in nextQuestion for session ${sessionId}: ${err.message}`,
       );
@@ -369,6 +486,7 @@ export class SessionService extends BaseService {
       await this.sessionRepository.update(session.id, {
         status: SessionStatus.FINISHED,
       });
+      logger.info({ sessionId: session.id }, "Session finished successfully");
 
       if (this.kafkaProducer) {
         await this.kafkaProducer.publish(
@@ -379,7 +497,7 @@ export class SessionService extends BaseService {
         );
       }
     } catch (error) {
-      const err = /** @type {BaseError} */ (error);
+      const err = /** @type {import('common-errors').BaseError} */ (error);
       logger.error(
         `Error in endSession for session ${sessionId}: ${err.message}`,
       );
@@ -398,9 +516,23 @@ export class SessionService extends BaseService {
         throw SESSION_NOT_FOUND();
       }
 
-      await this.sessionRepository.delete(sessionId);
+      const participants =
+        await this.participantRepository.findBySessionId(sessionId);
+      await Promise.all(
+        participants.map((p) => this.participantRepository.delete(p.id)),
+      );
 
-      await this.valkeyRepository.del(`session:${session.id}:questions`);
+      await this.sessionRepository.delete(sessionId);
+      logger.info({ sessionId }, "Session deleted and cleaned up");
+
+      await Promise.all([
+        this.valkeyRepository.del(`session:${session.id}:questions:ids`),
+        this.valkeyRepository.del(
+          `session:${session.id}:question_activated_at`,
+        ),
+      ]).catch((err) =>
+        logger.error({ err }, "Failed to clear session cache during delete"),
+      );
 
       if (this.kafkaProducer) {
         await this.kafkaProducer.publish(
@@ -411,7 +543,7 @@ export class SessionService extends BaseService {
         );
       }
     } catch (error) {
-      const err = /** @type {BaseError} */ (error);
+      const err = /** @type {import('common-errors').BaseError} */ (error);
       logger.error(
         `Error in deleteSession for session ${sessionId}: ${err.message}`,
       );
@@ -422,7 +554,7 @@ export class SessionService extends BaseService {
   /**
    * @param {string} sessionId
    * @param {import("http").IncomingHttpHeaders} headers
-   * @returns {Promise<any | null>}
+   * @returns {Promise<import('common-core').Question | null>}
    */
   async getCurrentQuestion(sessionId, headers) {
     try {
@@ -440,72 +572,97 @@ export class SessionService extends BaseService {
         return null;
       }
 
-      const cachedQuestions = await this.valkeyRepository.get(
-        `session:${session.id}:questions`,
+      const cachedFullQuestion = await this.valkeyRepository.get(
+        `question:${session.currentQuestionId}:full`,
       );
 
-      if (cachedQuestions && Array.isArray(cachedQuestions)) {
-        const questions = cachedQuestions;
-        const question = questions.find(
-          /** @param {any} q */ (q) => q.id === session.currentQuestionId,
+      if (cachedFullQuestion) {
+        logger.debug(
+          { sessionId, questionId: session.currentQuestionId },
+          "Current question retrieved from cache",
         );
-
-        if (question) {
-          return {
-            ...question,
-            choices: (question.choices || []).map(
-              (/** @type {{ [x: string]: any; is_correct: boolean; }} */ c) => {
-                const { is_correct, ...rest } = c;
-                return rest;
-              },
-            ),
-          };
-        }
+        return new Question(cachedFullQuestion);
       }
+      logger.info(
+        { sessionId, questionId: session.currentQuestionId },
+        "Cache miss for current question, fetching from management service",
+      );
 
-      const questions = await call({
+      const quizData = await call({
         url: `${config.services.quizzManagement.baseUrl}/quizzes/get-full`,
         method: "POST",
         data: { quizId: session.quizzId },
         headers: {
           "internal-token": internalToken || "",
         },
-      })
-        .then((res) => res.questions)
-        .catch((err) => {
-          logger.warn(
-            `Failed to fetch full quiz for session ${session.id}: `,
-            err,
-          );
-          return null;
-        });
-
-      if (questions && Array.isArray(questions)) {
-        await this.valkeyRepository
-          .set(`session:${session.id}:questions`, questions)
-          .catch((e) =>
-            logger.warn(`Failed to hydrate cache for session ${session.id}`, e),
-          );
-
-        const question = questions.find(
-          (q) => q.id === session.currentQuestionId,
+      }).catch((err) => {
+        logger.warn(
+          `Failed to fetch full quiz for session ${session.id}: `,
+          err,
         );
-        if (question) {
-          return {
-            ...question,
-            choices: (question.choices || []).map(
-              (/** @type {{ [x: string]: any; is_correct: boolean; }} */ c) => {
-                const { is_correct, ...rest } = c;
-                return rest;
-              },
-            ),
-          };
-        }
+        return null;
+      });
+
+      if (quizData && quizData.questions) {
+        const questions = quizData.questions;
+        /** @type {Question[]} */
+        const questionIds = questions.map(
+          (/** @type {import('common-contracts').FullQuestionResponse} */ q) =>
+            q.id,
+        );
+        await this.valkeyRepository.set(
+          `session:${session.id}:questions:ids`,
+          questionIds,
+          3600,
+        );
+
+        let targetQuestion = null;
+        await Promise.all(
+          questions.map(
+            async (
+              /** @type {import('common-contracts').FullQuestionResponse} */ q,
+            ) => {
+              const validationData = {
+                id: q.id,
+                type: q.type,
+                timer_seconds: q.timer_seconds,
+                choiceIds: (q.choices || []).map(
+                  (/** @type {Choice} */ c) => c.id,
+                ),
+              };
+              const fullQuestion = new Question({
+                ...q,
+                choices: (q.choices || []).map(
+                  ({ is_correct: _is_correct, ...rest }) => new Choice(rest),
+                ),
+              });
+
+              await Promise.all([
+                this.valkeyRepository.set(
+                  `question:${q.id}:validation`,
+                  validationData,
+                  3600,
+                ),
+                this.valkeyRepository.set(
+                  `question:${q.id}:full`,
+                  fullQuestion,
+                  3600,
+                ),
+              ]);
+
+              if (q.id === session.currentQuestionId) {
+                targetQuestion = fullQuestion;
+              }
+            },
+          ),
+        );
+
+        return targetQuestion;
       }
 
       return null;
     } catch (error) {
-      const err = /** @type {BaseError} */ (error);
+      const err = /** @type {import('common-errors').BaseError} */ (error);
       logger.error(
         `Error in getCurrentQuestion for session ${sessionId}: ${err.message}`,
       );

@@ -18,6 +18,7 @@ describe("ParticipantController unit tests", () => {
     participantServiceMock = /** @type {ParticipantServiceMock} */ ({
       joinSession: vi.fn(),
       leaveSession: vi.fn(),
+      submitResponse: vi.fn(),
     });
     controller = new ParticipantController(participantServiceMock);
 
@@ -75,6 +76,34 @@ describe("ParticipantController unit tests", () => {
         payload.participantId,
       );
       expect(replyMock.code).toHaveBeenCalledWith(200);
+    });
+  });
+
+  describe("submitResponse", () => {
+    it("should extract payload, call service and return 206", async () => {
+      const body = { choiceIds: ["c1"] };
+      const payload = { sessionId: "s1", participantId: "p1" };
+
+      // @ts-ignore
+      vi.spyOn(controller, "_getInternalPayload").mockReturnValue(payload);
+      vi.mocked(participantServiceMock.submitResponse).mockResolvedValue(
+        undefined,
+      );
+
+      await controller.submitResponse(
+        /** @type {import('fastify').FastifyRequest} */ (
+          // @ts-ignore
+          /** @type {unknown} */ ({ body })
+        ),
+        replyMock,
+      );
+
+      expect(participantServiceMock.submitResponse).toHaveBeenCalledWith({
+        sessionId: payload.sessionId,
+        participantId: payload.participantId,
+        choiceIds: body.choiceIds,
+      });
+      expect(replyMock.code).toHaveBeenCalledWith(206);
     });
   });
 });

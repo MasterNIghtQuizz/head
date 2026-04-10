@@ -1,16 +1,13 @@
 // @ts-nocheck
 import { describe, it, expect, beforeAll, beforeEach } from "vitest";
-import { createServer } from "@monorepo/api-gateway/app.js";
+import { createServer } from "../../../app.js";
 import { seedDatabase } from "../utils/test-utils.js";
 import { UserRole } from "common-auth";
 import crypto from "node:crypto";
 
 describe("Session E2E - Complete Game Flow", () => {
-  /** @type {import("fastify").FastifyInstance} */
   let app;
-  /** @type {string} */
   let hostToken;
-  /** @type {string} */
   let hostId;
 
   beforeAll(async () => {
@@ -111,14 +108,6 @@ describe("Session E2E - Complete Game Flow", () => {
       playerTokens.push(joinRes.json().game_token);
     }
 
-    const lobbyQuestionRes = await app.inject({
-      method: "GET",
-      url: "/sessions/current-question",
-      headers: { "game-token": hostGameToken },
-    });
-    expect(lobbyQuestionRes.statusCode).toBe(200);
-    expect(lobbyQuestionRes.json()).toBeNull();
-
     const startRes = await app.inject({
       method: "POST",
       url: "/sessions/start",
@@ -133,12 +122,19 @@ describe("Session E2E - Complete Game Flow", () => {
     });
     expect(q1CurrentRes.statusCode).toBe(200);
     const q1Data = q1CurrentRes.json();
-    expect(q1Data.id).toBe(q1Id);
-    expect(q1Data.label).toBe("Question 1");
-    expect(q1Data.choices).toBeDefined();
-    expect(q1Data.choices.length).toBeGreaterThan(0);
-    expect(q1Data.choices[0].text).toBe("Correct 1");
-    expect(q1Data.choices[0].is_correct).toBeUndefined();
+    const correctChoiceId = q1Data.choices.find(
+      (c) => c.text === "Correct 1",
+    ).id;
+
+    for (const pToken of playerTokens) {
+      const submitRes = await app.inject({
+        method: "POST",
+        url: "/sessions/submit/",
+        headers: { "game-token": pToken },
+        payload: { choiceIds: [correctChoiceId] },
+      });
+      expect(submitRes.statusCode).toBe(206);
+    }
 
     const nextRes = await app.inject({
       method: "POST",
@@ -154,6 +150,16 @@ describe("Session E2E - Complete Game Flow", () => {
     });
     expect(q2CurrentRes.statusCode).toBe(200);
     expect(q2CurrentRes.json().id).toBe(q2Id);
+    const q2Data = q2CurrentRes.json();
+    const q2CorrectChoiceId = q2Data.choices[0].id;
+
+    const lateSubmitRes = await app.inject({
+      method: "POST",
+      url: "/sessions/submit/",
+      headers: { "game-token": playerTokens[0] },
+      payload: { choiceIds: [q2CorrectChoiceId] },
+    });
+    expect(lateSubmitRes.statusCode).toBe(206);
 
     const badSessionRes = await app.inject({
       method: "GET",

@@ -1,9 +1,4 @@
-import {
-  NotFoundError,
-  ConflictError,
-  InternalServerError,
-  BadRequestError,
-} from "common-errors";
+import { NotFoundError, ConflictError, BadRequestError } from "common-errors";
 
 /** @param {string} [id] */
 export const SESSION_INVALID_STATUS = (id) =>
@@ -20,3 +15,19 @@ export const QUIZZ_NOT_FOUND = (id) =>
 /** @param {string|null} [id] */
 export const EMPTY_QUIZZ = (id) =>
   new BadRequestError(`Quizz with id ${id} has no questions`);
+
+export const QUESTION_TIMED_OUT = () =>
+  new BadRequestError("Question has timed out");
+
+/** @param {string} choiceId */
+export const INVALID_CHOICE = (choiceId) =>
+  new BadRequestError(
+    `Choice with id ${choiceId} is not valid for this question`,
+  );
+
+export const MISSING_CHOICE_IDS = () =>
+  new BadRequestError("Missing choiceIds for this question type");
+
+/** @param {string[]} ids */
+export const INVALID_CHOICE_IDS = (ids) =>
+  new BadRequestError(`Invalid choiceIds submitted: ${ids.join(", ")}`);
