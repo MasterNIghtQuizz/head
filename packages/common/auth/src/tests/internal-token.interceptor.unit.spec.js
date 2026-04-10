@@ -44,7 +44,7 @@ describe("hookInternalTokenInterceptor (Interceptor Unit Test)", () => {
     expect(loggerSpy).toHaveBeenCalled();
     expect(done).toHaveBeenCalledWith(expect.any(UnauthorizedError));
     expect(done.mock.calls[0][0].message).toBe(
-      "Unauthorized: Missing user context",
+      "Unauthorized: Missing auth context",
     );
 
     vi.clearAllMocks();

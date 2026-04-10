@@ -6,7 +6,7 @@ KEYS_DIR="./keys"
 # Create directory if it doesn't exist
 mkdir -p "$KEYS_DIR"
 
-echo "Generating RSA keys for access, refresh, and internal..."
+echo "Generating RSA keys for access, refresh, internal, and game..."
 
 # Generate access key pair
 openssl genrsa -out "$KEYS_DIR/access-private.pem" 2048
@@ -19,6 +19,10 @@ openssl rsa -in "$KEYS_DIR/refresh-private.pem" -pubout -out "$KEYS_DIR/refresh-
 # Generate internal key pair
 openssl genrsa -out "$KEYS_DIR/internal-private.pem" 2048
 openssl rsa -in "$KEYS_DIR/internal-private.pem" -pubout -out "$KEYS_DIR/internal-public.pem"
+
+# Generate game key pair
+openssl genrsa -out "$KEYS_DIR/game-private.pem" 2048
+openssl rsa -in "$KEYS_DIR/game-private.pem" -pubout -out "$KEYS_DIR/game-public.pem"
 
 echo "Keys generated successfully in $KEYS_DIR"
 echo "Remember to NEVER commit these keys!"

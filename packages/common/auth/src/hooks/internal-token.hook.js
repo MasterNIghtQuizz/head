@@ -32,6 +32,8 @@ export function hookInternalToken(options) {
       request.user = {
         userId: payload.userId,
         role: payload.role,
+        sessionId: payload.sessionId,
+        participantId: payload.participantId,
         type: payload.type,
       };
       logger.info({ user: request.user }, "Internal token verified");

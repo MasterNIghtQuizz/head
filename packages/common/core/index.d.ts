@@ -39,6 +39,7 @@ export declare const IS_PUBLIC: string;
 export declare function Public(): MethodDecorator;
 export declare function Roles(roles: string[]): MethodDecorator;
 export declare function UseRefreshToken(): MethodDecorator;
+export declare function UseGameToken(): MethodDecorator;
 export declare function ApplyMethodDecorators(
   targetClass: Function,
   methodName: string,

@@ -42,6 +42,7 @@ export async function createServer() {
   const fastify = Fastify({
     loggerInstance: logger,
     disableRequestLogging: true,
+    ignoreTrailingSlash: true,
   });
   fastify.addSchema(ChoiceResponseSchema);
   fastify.addSchema(QuestionResponseSchema);

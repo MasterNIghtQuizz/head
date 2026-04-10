@@ -7,6 +7,7 @@ import {
   hookAccessToken,
   hookInternalTokenInterceptor,
   hookRefreshToken,
+  hookGameToken,
 } from "common-auth";
 import { hookRoles } from "./infrastructure/hooks/roles.hook.js";
 import { HelpersController } from "./modules/helpers/controllers/helpers.controller.js";
@@ -19,11 +20,42 @@ import { QuestionController } from "./modules/quiz/controllers/question.controll
 import { QuestionService } from "./modules/quiz/services/question.service.js";
 import { ChoiceController } from "./modules/quiz/controllers/choice.controller.js";
 import { ChoiceService } from "./modules/quiz/services/choice.service.js";
+import { SessionService } from "./modules/session/services/session.service.js";
+import { SessionController } from "./modules/session/controllers/session.controller.js";
 
 export async function createServer() {
   const fastify = Fastify({
     loggerInstance: logger,
     disableRequestLogging: true,
+    ignoreTrailingSlash: true,
+  });
+
+  fastify.addContentTypeParser(
+    "application/json",
+    { parseAs: "string" },
+    (req, body, done) => {
+      if (!body || body.toString().trim() === "") {
+        done(null, {});
+        return;
+      }
+      try {
+        const json = JSON.parse(body.toString());
+        done(null, json);
+      } catch (err) {
+        const error = /** @type {import('common-errors').BaseError} */ (err);
+        error.statusCode = 400;
+        done(error);
+      }
+    },
+  );
+
+  fastify.addHook("onRequest", async (request) => {
+    if (
+      (request.method === "POST" || request.method === "PUT") &&
+      !request.headers["content-type"]
+    ) {
+      request.headers["content-type"] = "application/json";
+    }
   });
 
   fastify.addHook(
@@ -33,6 +65,10 @@ export async function createServer() {
   fastify.addHook(
     "onRequest",
     hookRefreshToken({ publicKeyPath: config.auth.refresh.publicKeyPath }),
+  );
+  fastify.addHook(
+    "onRequest",
+    hookGameToken({ publicKeyPath: config.auth.game.publicKeyPath }),
   );
   fastify.addHook(
     "onRequest",
@@ -78,6 +114,9 @@ export async function createServer() {
 
   const choiceService = new ChoiceService();
   ControllerFactory.register(fastify, ChoiceController, [choiceService]);
+
+  const sessionService = new SessionService();
+  ControllerFactory.register(fastify, SessionController, [sessionService]);
 
   fastify.get("/health", { config: { isPublic: true } }, async () => {
     return { status: "ok", service: "api-gateway" };

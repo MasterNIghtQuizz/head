@@ -25,6 +25,7 @@ COPY packages/common/monitoring/package.json ./packages/common/monitoring/
 COPY packages/api-gateway/package.json ./packages/api-gateway/
 COPY packages/ms-user/package.json ./packages/ms-user/
 COPY packages/ms-quizz-management/package.json ./packages/ms-quizz-management/
+COPY packages/ms-session/package.json ./packages/ms-session/
 
 
 RUN yarn install --immutable

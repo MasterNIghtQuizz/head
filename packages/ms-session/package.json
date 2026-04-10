@@ -1,0 +1,32 @@
+{
+  "name": "@monorepo/ms-session",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "migrations:run": "node src/run-migrations.js",
+    "lint": "yarn run -T eslint src",
+    "lint:fix": "yarn run -T eslint src --fix",
+    "test": "yarn run -T vitest run"
+  },
+  "dependencies": {
+    "common-auth": "workspace:*",
+    "common-axios": "workspace:*",
+    "common-config": "workspace:*",
+    "common-contracts": "workspace:^",
+    "common-core": "workspace:^",
+    "common-crypto": "workspace:*",
+    "common-database": "workspace:*",
+    "common-kafka": "workspace:*",
+    "common-logger": "workspace:*",
+    "common-monitoring": "workspace:*",
+    "common-swagger": "workspace:*",
+    "common-valkey": "workspace:*",
+    "fastify": "^5.6.2",
+    "joi": "^18.0.2",
+    "pg": "^8.13.3",
+    "reflect-metadata": "^0.2.2",
+    "typeorm": "^0.3.20"
+  }
+}

@@ -19,6 +19,7 @@ jobs:
           - "@monorepo/api-gateway"
           - "@monorepo/ms-quizz-management"
           - "@monorepo/ms-user"
+          - "@monorepo/ms-session"
           - "common-auth"
           - "common-axios"
           - "common-config"

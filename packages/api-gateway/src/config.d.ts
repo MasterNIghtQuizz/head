@@ -5,6 +5,7 @@ export declare const config: {
   services: {
     user: string;
     quizz: string;
+    session: string;
   };
   kafka: {
     brokers: string[];
@@ -13,6 +14,7 @@ export declare const config: {
     access: { privateKeyPath: string; publicKeyPath: string };
     refresh: { privateKeyPath: string; publicKeyPath: string };
     internal: { privateKeyPath: string; publicKeyPath: string };
+    game: { privateKeyPath: string; publicKeyPath: string };
   };
   valkey: {
     host: string;

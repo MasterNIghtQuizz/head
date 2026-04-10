@@ -18,6 +18,7 @@ const schema = Joi.object({
   services: Joi.object({
     user: Joi.string().uri().required(),
     quizz: Joi.string().uri().required(),
+    session: Joi.string().uri().required(),
   }).required(),
   auth: Joi.object({
     access: Joi.object({
@@ -29,6 +30,10 @@ const schema = Joi.object({
       publicKeyPath: Joi.string().required(),
     }).required(),
     internal: Joi.object({
+      privateKeyPath: Joi.string().required(),
+      publicKeyPath: Joi.string().required(),
+    }).required(),
+    game: Joi.object({
       privateKeyPath: Joi.string().required(),
       publicKeyPath: Joi.string().required(),
     }).required(),
@@ -63,7 +68,7 @@ const resolveKeyPath = (/** @type {string} */ keyPath) =>
   path.isAbsolute(keyPath) ? keyPath : path.resolve(projectRoot, keyPath);
 
 const rawAuth =
-  /** @type {{ access: { privateKeyPath: string; publicKeyPath: string; }; refresh: { privateKeyPath: string; publicKeyPath: string; }; internal: { privateKeyPath: string; publicKeyPath: string; } }} */ (
+  /** @type {{ access: { privateKeyPath: string; publicKeyPath: string; }; refresh: { privateKeyPath: string; publicKeyPath: string; }; internal: { privateKeyPath: string; publicKeyPath: string; }; game: { privateKeyPath: string; publicKeyPath: string; } }} */ (
     Config.get("auth")
   );
 
@@ -72,7 +77,7 @@ export const config = {
   env: /** @type {string} */ (Config.get("app.env")),
   port: /** @type {number} */ (Config.get("app.port")),
   logger: /** @type {Record<string, unknown>} */ (Config.get("logger")),
-  services: /** @type {{ user: string; quizz: string }} */ (
+  services: /** @type {{ user: string; quizz: string; session:string }} */ (
     Config.get("services")
   ),
   kafka: /** @type {{ brokers: string[] }} */ (Config.get("kafka")),
@@ -88,6 +93,10 @@ export const config = {
     internal: {
       privateKeyPath: resolveKeyPath(rawAuth.internal.privateKeyPath),
       publicKeyPath: resolveKeyPath(rawAuth.internal.publicKeyPath),
+    },
+    game: {
+      privateKeyPath: resolveKeyPath(rawAuth.game.privateKeyPath),
+      publicKeyPath: resolveKeyPath(rawAuth.game.publicKeyPath),
     },
   },
   valkey: /** @type {typeof config.valkey} */ (Config.get("valkey")),

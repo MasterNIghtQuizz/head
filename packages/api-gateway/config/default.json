@@ -9,7 +9,8 @@
   },
   "services": {
     "user": "http://localhost:4001",
-    "quizz": "http://localhost:4002"
+    "quizz": "http://localhost:4002",
+    "session": "http://localhost:4003"
   },
   "auth": {
     "access": {
@@ -23,6 +24,10 @@
     "internal": {
       "privateKeyPath": "../../keys/internal-private.pem",
       "publicKeyPath": "../../keys/internal-public.pem"
+    },
+    "game": {
+      "privateKeyPath": "../../keys/game-private.pem",
+      "publicKeyPath": "../../keys/game-public.pem"
     }
   },
   "kafka": {
