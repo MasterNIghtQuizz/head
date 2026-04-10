@@ -3,6 +3,7 @@ import {
   BaseController,
   Get,
   Post,
+  Delete,
   ApplyMethodDecorators,
   Schema,
   Roles,
@@ -110,6 +111,18 @@ export class SessionController extends BaseController {
       request.headers,
     );
     return reply.code(200).send(question);
+  }
+
+  /**
+   * @param {import('fastify').FastifyRequest<{ Body: { choiceIds: string[] } }>} request
+   * @param {import('fastify').FastifyReply} reply
+   */
+  async submitResponse(request, reply) {
+    await this.sessionService.submitResponse(
+      request.body.choiceIds,
+      request.headers,
+    );
+    return reply.code(206).send();
   }
 }
 
@@ -289,8 +302,9 @@ ApplyMethodDecorators(SessionController, "deleteSession", [
       500: ErrorResponse,
     },
   }),
-  Roles([UserRole.ADMIN]),
-  Post("/delete/"),
+  UseGameToken(),
+  Roles([UserRole.ADMIN, UserRole.MODERATOR]),
+  Delete("/"),
 ]);
 
 ApplyMethodDecorators(SessionController, "nextQuestion", [
@@ -421,6 +435,31 @@ ApplyMethodDecorators(SessionController, "getCurrentQuestion", [
   }),
   UseGameToken(),
   Get("/current-question/"),
+]);
+
+ApplyMethodDecorators(SessionController, "submitResponse", [
+  Schema({
+    description: "Submit a response for the current question.",
+    tags: ["Session"],
+    security: [{ gameToken: [] }],
+    body: {
+      type: "object",
+      required: ["choiceIds"],
+      properties: {
+        choiceIds: {
+          type: "array",
+          items: { type: "string" },
+        },
+      },
+    },
+    response: {
+      206: { description: "Response acknowledged, processing asynchronously." },
+      401: ErrorResponse,
+      500: ErrorResponse,
+    },
+  }),
+  UseGameToken(),
+  Post("/submit/"),
 ]);
 
 Controller("/sessions")(SessionController);

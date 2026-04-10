@@ -3,6 +3,7 @@ import {
   BaseController,
   Get,
   Post,
+  Delete,
   ApplyMethodDecorators,
   Schema,
 } from "common-core";
@@ -260,7 +261,7 @@ ApplyMethodDecorators(SessionController, "deleteSession", [
       500: { type: "object", properties: { message: { type: "string" } } },
     },
   }),
-  Post("/delete/"),
+  Delete("/"),
 ]);
 
 ApplyMethodDecorators(SessionController, "getCurrentQuestion", [

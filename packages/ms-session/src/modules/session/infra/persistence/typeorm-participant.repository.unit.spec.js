@@ -35,7 +35,20 @@ describe("TypeOrmParticipantRepository unit tests", () => {
       getRepository: vi.fn().mockReturnValue(typeOrmRepoMock),
     });
 
-    repository = new TypeOrmParticipantRepository(dataSourceMock);
+    // @ts-ignore
+    const valkeyRepositoryMock = {
+      get: vi.fn(),
+      set: vi.fn(),
+      del: vi.fn(),
+    };
+
+    repository = new TypeOrmParticipantRepository(
+      dataSourceMock,
+      // @ts-ignore
+      valkeyRepositoryMock,
+    );
+    // @ts-ignore
+    repository.valkeyRepository = valkeyRepositoryMock;
   });
 
   afterEach(() => {

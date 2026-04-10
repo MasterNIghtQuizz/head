@@ -20,3 +20,7 @@ export interface QuestionResponse {
   order_index: number;
   timer_seconds: number;
 }
+
+export interface FullQuestionResponse extends QuestionResponse {
+  choices: ChoiceResponse[];
+}

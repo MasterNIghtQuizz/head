@@ -4,11 +4,20 @@ import { ParticipantEntity } from "../core/entities/participant.entity.js";
 import {
   SESSION_INVALID_STATUS,
   SESSION_NOT_FOUND,
+  QUESTION_TIMED_OUT,
+  MISSING_CHOICE_IDS,
+  INVALID_CHOICE_IDS,
 } from "../errors/session.errors.js";
-import { ParticipantRoles, SessionStatus } from "common-contracts";
+import {
+  QuestionType,
+  ParticipantRoles,
+  SessionStatus,
+} from "common-contracts";
 import { TokenService, TokenType, UserRole } from "common-auth";
 import { config } from "../../../config.js";
 import { randomUUID } from "node:crypto";
+import logger from "common-logger";
+import { call } from "common-axios";
 
 export class ParticipantService extends BaseService {
   /** @type {import('../core/ports/session.repository.js').ISessionRepository} */
@@ -17,17 +26,32 @@ export class ParticipantService extends BaseService {
   kafkaProducer;
   /** @type {import('../core/ports/participant.repository.js').IParticipantRepository} */
   participantRepository;
+  /** @type {import("common-valkey").ValkeyRepository} */
+  valkeyRepository;
+
+  /** @type {import('./session.service.js').SessionService} */
+  sessionService;
 
   /**
    * @param {import('common-kafka').KafkaProducer | null} kafkaProducer
    * @param {import('../core/ports/session.repository.js').ISessionRepository} sessionRepository
    * @param {import('../core/ports/participant.repository.js').IParticipantRepository} participantRepository
+   * @param {import("common-valkey").ValkeyRepository} valkeyRepository
+   * @param {import('./session.service.js').SessionService} sessionService
    */
-  constructor(kafkaProducer, sessionRepository, participantRepository) {
+  constructor(
+    kafkaProducer,
+    sessionRepository,
+    participantRepository,
+    valkeyRepository,
+    sessionService,
+  ) {
     super();
     this.sessionRepository = sessionRepository;
     this.kafkaProducer = kafkaProducer;
     this.participantRepository = participantRepository;
+    this.valkeyRepository = valkeyRepository;
+    this.sessionService = sessionService;
   }
 
   /**
@@ -40,7 +64,7 @@ export class ParticipantService extends BaseService {
     );
 
     if (!session) {
-      throw SESSION_NOT_FOUND();
+      throw SESSION_NOT_FOUND(data.session_public_key);
     }
     if (session.status !== SessionStatus.LOBBY) {
       throw SESSION_INVALID_STATUS(session.id);
@@ -55,6 +79,14 @@ export class ParticipantService extends BaseService {
       socketId: "",
     });
     await this.participantRepository.create(participantEntity);
+    logger.info(
+      {
+        sessionId: session.id,
+        participantId,
+        nickname: data.participant_nickname,
+      },
+      "Participant joined session",
+    );
 
     const gameToken = TokenService.signGameToken(
       {
@@ -81,6 +113,171 @@ export class ParticipantService extends BaseService {
     if (!participant) {
       return;
     }
-    await this.participantRepository.delete(participant.id);
+    if (participant.role === ParticipantRoles.HOST) {
+      logger.info(
+        { sessionId: participant.sessionId },
+        "Host left, deleting session",
+      );
+      await this.sessionService.deleteSession(participant.sessionId);
+    } else {
+      await this.participantRepository.delete(participant.id);
+      logger.info(
+        { sessionId: participant.sessionId, participantId: participant.id },
+        "Participant left session",
+      );
+    }
+  }
+
+  /**
+   * @param {Object} params
+   * @param {string} params.sessionId
+   * @param {string} params.participantId
+   * @param {string[]} params.choiceIds
+   * @returns {Promise<void>}
+   */
+  async submitResponse({ sessionId, participantId, choiceIds }) {
+    const session = await this.sessionRepository.find(sessionId);
+    if (!session) {
+      throw SESSION_NOT_FOUND(sessionId);
+    }
+
+    if (session.status !== SessionStatus.QUESTION_ACTIVE) {
+      throw SESSION_INVALID_STATUS(sessionId);
+    }
+
+    // eslint-disable-next-line prefer-const
+    let [questionData, activatedAt] = await Promise.all([
+      this.valkeyRepository.get(
+        `question:${session.currentQuestionId}:validation`,
+      ),
+      this.valkeyRepository.get(`session:${sessionId}:question_activated_at`),
+    ]).catch((err) => {
+      logger.error({ err }, "Valkey error in submitResponse");
+      return [null, null];
+    });
+
+    if (!questionData) {
+      logger.info(
+        { sessionId, questionId: session.currentQuestionId },
+        "Valkey missing question validation data, fetching from management service",
+      );
+      try {
+        const internalToken = TokenService.signInternalToken(
+          {
+            userId: "ms-session",
+            role: UserRole.ADMIN,
+            type: TokenType.INTERNAL,
+          },
+          config.auth.internal.privateKeyPath,
+        );
+
+        const [questionMetadata, choiceIdsList] = await Promise.all([
+          call({
+            url: `${config.services.quizzManagement.baseUrl}/questions/${session.currentQuestionId}`,
+            method: "GET",
+            headers: { "internal-token": internalToken },
+          }),
+          call({
+            url: `${config.services.quizzManagement.baseUrl}/questions/${session.currentQuestionId}/choices/ids`,
+            method: "GET",
+            headers: { "internal-token": internalToken },
+          }),
+        ]);
+
+        questionData = {
+          id: questionMetadata.id,
+          type: questionMetadata.type,
+          timer_seconds: questionMetadata.timer_seconds,
+          choiceIds: choiceIdsList,
+        };
+
+        try {
+          await this.valkeyRepository.set(
+            `question:${session.currentQuestionId}:validation`,
+            questionData,
+            3600,
+          );
+        } catch (err) {
+          logger.warn(
+            { err },
+            "Failed to update Valkey cache after fallback fetch",
+          );
+        }
+      } catch (error) {
+        logger.error(
+          { error },
+          "Failed to fetch question validation data from fallback",
+        );
+        throw SESSION_NOT_FOUND(sessionId);
+      }
+    }
+
+    const question = questionData;
+
+    if (activatedAt && question.timer_seconds) {
+      const now = Date.now();
+      const limit = Number(activatedAt) + question.timer_seconds * 1000;
+      if (now > limit) {
+        throw QUESTION_TIMED_OUT();
+      }
+    } else if (question.timer_seconds) {
+      logger.warn(
+        { sessionId },
+        "Activation time missing, skipping timer validation (potential Valkey failure)",
+      );
+    }
+
+    if (question.type === QuestionType.BUZZER) {
+      logger.info({ sessionId, participantId }, "Buzzer question submitted");
+    } else {
+      const validChoiceIds = question.choiceIds || [];
+
+      if (!choiceIds || choiceIds.length === 0) {
+        throw MISSING_CHOICE_IDS();
+      }
+
+      const invalidChoiceIds = choiceIds.filter(
+        (id) => !validChoiceIds.includes(id),
+      );
+
+      if (invalidChoiceIds.length > 0) {
+        throw INVALID_CHOICE_IDS(invalidChoiceIds);
+      }
+    }
+    await Promise.all(
+      (choiceIds || []).map((choiceId) => {
+        if (!this.kafkaProducer) {
+          return;
+        }
+        this.kafkaProducer.publish("quiz.response.submitted", {
+          sessionId,
+          participantId,
+          choiceId,
+          submittedAt: new Date().toISOString(),
+        });
+      }),
+    );
+
+    if (question.type === "buzzer" && (!choiceIds || choiceIds.length === 0)) {
+      if (!this.kafkaProducer) {
+        return;
+      }
+      await this.kafkaProducer.publish("quiz.response.submitted", {
+        sessionId,
+        participantId,
+        choiceId: null,
+        type: "buzzer",
+        submittedAt: new Date().toISOString(),
+      });
+    }
+    logger.info(
+      {
+        sessionId,
+        participantId,
+        questionId: session.currentQuestionId,
+        choiceCount: (choiceIds || []).length,
+      },
+      "Response submitted and published to Kafka",
+    );
   }
 }

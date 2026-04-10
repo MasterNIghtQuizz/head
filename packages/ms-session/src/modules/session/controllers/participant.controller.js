@@ -7,9 +7,13 @@ import {
   Public,
 } from "common-core";
 import { JoinSessionRequestDto } from "../contracts/session.dto.js";
-import { CryptoService } from "common-crypto";
-import { config } from "../../../config.js";
-import { UnauthorizedError, ConflictError, NotFoundError } from "common-errors";
+import {
+  UnauthorizedError,
+  ConflictError,
+  NotFoundError,
+  BadRequestError,
+} from "common-errors";
+import logger from "common-logger";
 
 export class ParticipantController extends BaseController {
   /** @type {import('../services/participant.service.js').ParticipantService} */
@@ -72,6 +76,47 @@ export class ParticipantController extends BaseController {
     await this.participantService.leaveSession(participantId);
     return reply.code(200).send();
   }
+
+  /**
+   * @param {import('fastify').FastifyRequest<{ Body: { choiceIds: string[] } }>} request
+   * @param {import('fastify').FastifyReply} reply
+   * @returns {Promise<void>}
+   */
+  async submitResponse(request, reply) {
+    const { sessionId, participantId } = this._getInternalPayload(request);
+    if (!sessionId || !participantId) {
+      throw new UnauthorizedError("Missing session id or participant id");
+    }
+    let { choiceIds } = request.body;
+
+    if (!Array.isArray(choiceIds)) {
+      choiceIds = [choiceIds];
+    }
+
+    try {
+      await this.participantService.submitResponse({
+        sessionId,
+        participantId,
+        choiceIds,
+      });
+
+      logger.info(
+        { sessionId, participantId, choiceIds },
+        "Participant submitted a response",
+      );
+
+      return reply.code(206).send();
+    } catch (error) {
+      if (error instanceof ConflictError) {
+        return reply.code(409).send({ message: error.message });
+      } else if (error instanceof NotFoundError) {
+        return reply.code(404).send({ message: error.message });
+      } else if (error instanceof BadRequestError) {
+        return reply.code(400).send({ message: error.message });
+      }
+      throw error;
+    }
+  }
 }
 
 ApplyMethodDecorators(ParticipantController, "joinSession", [
@@ -118,6 +163,30 @@ ApplyMethodDecorators(ParticipantController, "leaveSession", [
     },
   }),
   Post("/leave/"),
+]);
+
+ApplyMethodDecorators(ParticipantController, "submitResponse", [
+  Schema({
+    description: "Submit a response for the current question.",
+    tags: ["Participant", "Session"],
+    security: [{ internalToken: [] }],
+    body: {
+      type: "object",
+      required: ["choiceIds"],
+      properties: {
+        choiceIds: {
+          type: "array",
+          items: { type: "string" },
+        },
+      },
+    },
+    response: {
+      206: { description: "Response acknowledged, processing asynchronously." },
+      401: { type: "object", properties: { message: { type: "string" } } },
+      500: { type: "object", properties: { message: { type: "string" } } },
+    },
+  }),
+  Post("/submit/"),
 ]);
 
 Controller("/sessions")(ParticipantController);

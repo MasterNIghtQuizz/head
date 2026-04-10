@@ -3,7 +3,7 @@ export class QuestionEntity {
    * @param {Object} params
    * @param {string} [params.id]
    * @param {string} params.label
-   * @param {string} params.type
+   * @param {keyof typeof import('common-contracts').QuestionType | string} params.type
    * @param {number} params.order_index
    * @param {number} params.timer_seconds
    * @param {string} [params.quizId]

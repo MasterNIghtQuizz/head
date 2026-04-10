@@ -1,7 +1,8 @@
-import {
-  GetSessionResponseDto,
-  ParticipantDto,
-} from "../../contracts/session.dto.js";
+import { GetSessionResponseDto } from "../../contracts/session.dto.js";
+
+/**
+ * @typedef {import('../../contracts/session.dto.js').ParticipantDto} ParticipantDto
+ */
 import { SessionEntity } from "../../core/entities/session.entity.js";
 import { SessionModel } from "../models/session.model.js";
 

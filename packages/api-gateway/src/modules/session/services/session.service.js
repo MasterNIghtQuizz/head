@@ -68,8 +68,8 @@ export class SessionService extends BaseService {
    */
   async deleteSession(headers) {
     await call({
-      method: "POST",
-      url: `${config.services.session}/sessions/delete/`,
+      method: "DELETE",
+      url: `${config.services.session}/sessions/`,
       data: {},
       headers: /** @type {Record<string, string>} */ (headers),
     });
@@ -123,6 +123,20 @@ export class SessionService extends BaseService {
     return call({
       method: "GET",
       url: `${config.services.session}/sessions/current-question/`,
+      headers: /** @type {Record<string, string>} */ (headers),
+    });
+  }
+
+  /**
+   * @param {string[]} choiceIds
+   * @param {import("http").IncomingHttpHeaders} headers
+   * @returns {Promise<void>}
+   */
+  async submitResponse(choiceIds, headers) {
+    await call({
+      method: "POST",
+      url: `${config.services.session}/sessions/submit/`,
+      data: { choiceIds },
       headers: /** @type {Record<string, string>} */ (headers),
     });
   }

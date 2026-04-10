@@ -1,5 +1,3 @@
-import Joi from "joi";
-
 /**
  * @typedef {import('common-contracts').FullQuizResponse} FullQuizResponse
  */

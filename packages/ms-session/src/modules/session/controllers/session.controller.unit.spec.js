@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { SessionController } from "./session.controller.js";
 // @ts-ignore
-import { createSessionEntity } from "../services/test-helpers.js";
 
 /**
  * @typedef {import('vitest').Mocked<import('../services/session.service.js').SessionService>} SessionServiceMock

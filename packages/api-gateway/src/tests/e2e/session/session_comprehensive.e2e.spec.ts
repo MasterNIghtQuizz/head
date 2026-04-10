@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from "vitest";
-import { createServer } from "@monorepo/api-gateway/app.js";
+import { createServer } from "../../../app.js";
 import { seedDatabase } from "../utils/test-utils.js";
 import { UserRole } from "common-auth";
 import { randomUUID } from "node:crypto";
