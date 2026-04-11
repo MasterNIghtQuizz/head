@@ -9,6 +9,7 @@ import { CreateSessionsAndParticipantsTables1680960000000 } from "./migrations/1
 import { TypeOrmSessionModel } from "./modules/session/infra/models/session.model.js";
 import { TypeOrmParticipantModel } from "./modules/session/infra/models/participant.model.js";
 import { ValkeyService } from "common-valkey";
+import logger from "./logger.js";
 
 const strategy = new TypeORMStrategy();
 export const db = new DatabaseContext(strategy);

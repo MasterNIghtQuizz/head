@@ -1,3 +1,5 @@
+import logger from "common-logger";
+
 /** @typedef {import('./index.js').ValkeyService} ValkeyService */
 
 export class ValkeyRepository {
@@ -16,14 +18,19 @@ export class ValkeyRepository {
    * @returns {Promise<any>}
    */
   async get(key) {
-    const data = await this.#valkeyService.client.get(key);
-    if (!data) {
-      return null;
-    }
     try {
-      return JSON.parse(data);
-    } catch {
-      return data;
+      const data = await this.#valkeyService.client.get(key);
+      if (!data) {
+        return null;
+      }
+      try {
+        return JSON.parse(data);
+      } catch {
+        return data;
+      }
+    } catch (err) {
+      logger.warn({ err, key }, "Valkey get failed: degraded mode");
+      return null;
     }
   }
 
@@ -34,12 +41,16 @@ export class ValkeyRepository {
    * @returns {Promise<void>}
    */
   async set(key, value, ttl) {
-    const serializedValue =
-      typeof value === "string" ? value : JSON.stringify(value);
-    if (ttl) {
-      await this.#valkeyService.client.set(key, serializedValue, "EX", ttl);
-    } else {
-      await this.#valkeyService.client.set(key, serializedValue);
+    try {
+      const serializedValue =
+        typeof value === "string" ? value : JSON.stringify(value);
+      if (ttl) {
+        await this.#valkeyService.client.set(key, serializedValue, "EX", ttl);
+      } else {
+        await this.#valkeyService.client.set(key, serializedValue);
+      }
+    } catch (err) {
+      logger.warn({ err, key }, "Valkey set failed: degraded mode");
     }
   }
 
@@ -48,7 +59,11 @@ export class ValkeyRepository {
    * @returns {Promise<void>}
    */
   async del(key) {
-    await this.#valkeyService.client.del(key);
+    try {
+      await this.#valkeyService.client.del(key);
+    } catch (err) {
+      logger.warn({ err, key }, "Valkey del failed: degraded mode");
+    }
   }
 
   /**
@@ -56,9 +71,16 @@ export class ValkeyRepository {
    * @returns {Promise<void>}
    */
   async delByPattern(pattern) {
-    const keys = await this.#valkeyService.client.keys(pattern);
-    if (keys.length > 0) {
-      await this.#valkeyService.client.del(...keys);
+    try {
+      const keys = await this.#valkeyService.client.keys(pattern);
+      if (keys.length > 0) {
+        await this.#valkeyService.client.del(...keys);
+      }
+    } catch (err) {
+      logger.warn(
+        { err, pattern },
+        "Valkey delByPattern failed: degraded mode",
+      );
     }
   }
 }
