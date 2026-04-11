@@ -32,6 +32,8 @@ export const initDatabase = async () => {
   });
 
   if (config.valkey?.enabled) {
-    await valkey.connect();
+    valkey.connect().catch((_err) => {
+      // Handled internally by ValkeyService logs
+    });
   }
 };

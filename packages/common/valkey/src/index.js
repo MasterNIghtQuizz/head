@@ -76,7 +76,9 @@ export class ValkeyService {
       logger.warn("Valkey connection closed");
     });
 
-    return this.#client;
+    return this.#client
+      .connect()
+      .then(() => /** @type {Redis} */(this.#client));
   }
 
   /**
