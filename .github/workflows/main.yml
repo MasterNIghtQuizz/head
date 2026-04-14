@@ -20,6 +20,7 @@ jobs:
           - "@monorepo/ms-quizz-management"
           - "@monorepo/ms-user"
           - "@monorepo/ms-session"
+          - "@monorepo/ms-response"
           - "common-auth"
           - "common-axios"
           - "common-config"
