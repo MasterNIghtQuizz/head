@@ -31,7 +31,9 @@ jobs:
           - "common-errors"
           - "common-kafka"
           - "common-logger"
+          - "common-monitoring"
           - "common-swagger"
+          - "common-valkey"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
