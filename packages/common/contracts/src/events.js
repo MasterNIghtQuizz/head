@@ -15,8 +15,6 @@ export const UserEventTypes = {
   USER_DELETED: "USER_DELETED",
 };
 
-<<<<<<< Updated upstream
-=======
 export const ResponseEventTypes = {
   ANSWER_SUBMITTED: "ANSWER_SUBMITTED",
 };
@@ -35,7 +33,6 @@ export const SessionEventTypes = {
   QUIZ_RESPONSE_SUBMITTED: "quiz.response.submitted",
 };
 
->>>>>>> Stashed changes
 /**
  * @typedef {Object} UserCreatedEventPayload
  * @property {string} userId
