@@ -9,7 +9,11 @@ import {
   SESSION_NOT_FOUND,
 } from "../errors/session.errors.js";
 import { ParticipantEntity } from "../core/entities/participant.entity.js";
-import { ParticipantRoles, SessionStatus } from "common-contracts";
+import {
+  ParticipantRoles,
+  SessionStatus,
+  SessionEventTypes,
+} from "common-contracts";
 import logger from "../../../logger.js";
 import { SessionMapper } from "../infra/mappers/session.mapper.js";
 import { ParticipantMapper } from "../infra/mappers/participant.mapper.js";
@@ -59,19 +63,10 @@ export class SessionService extends BaseService {
         ? internalTokenHeader[0]
         : internalTokenHeader;
 
-      const quiz = await call({
-        url: `${config.services.quizzManagement.baseUrl}/quizzes/get-full`,
-        method: "POST",
-        data: { quizId: data.quiz_id },
-        headers: {
-          "internal-token": internalToken || "",
-        },
-      }).catch((err) => {
-        if (err.statusCode === 404) {
-          throw QUIZZ_NOT_FOUND(data.quiz_id);
-        }
-        throw err;
-      });
+      const quiz = await this._getQuizWithFallback(
+        data.quiz_id,
+        internalToken || "",
+      );
 
       if (!quiz) {
         throw QUIZZ_NOT_FOUND(data.quiz_id);
@@ -172,6 +167,14 @@ export class SessionService extends BaseService {
         config.auth.game.privateKeyPath,
       );
 
+      if (this.kafkaProducer) {
+        await this.kafkaProducer.publish(SessionEventTypes.SESSION_CREATED, {
+          session_id: session.id,
+          participant_id: host.id,
+          role: host.role,
+        });
+      }
+
       return new CreateSessionResponseDto({
         session_id: session.id,
         public_key: session.publicKey,
@@ -231,6 +234,10 @@ export class SessionService extends BaseService {
         throw SESSION_NOT_FOUND();
       }
 
+      if (!session.quizzId) {
+        throw new Error(`Session ${sessionId} has no associated quiz ID`);
+      }
+
       if (session.status !== SessionStatus.LOBBY) {
         logger.warn(
           `Session with id ${sessionId} is in invalid status ${session.status} for starting`,
@@ -238,20 +245,10 @@ export class SessionService extends BaseService {
         throw SESSION_INVALID_STATUS(sessionId);
       }
 
-      const quiz = await call({
-        url: `${config.services.quizzManagement.baseUrl}/quizzes/get-full`,
-        method: "POST",
-        data: { quizId: session.quizzId },
-        headers: {
-          "internal-token": internalToken || "",
-        },
-      }).catch((err) => {
-        logger.warn(
-          `Failed to fetch full quiz for quiz with id ${session.quizzId}: `,
-          err,
-        );
-        throw QUIZZ_NOT_FOUND(session.quizzId);
-      });
+      const quiz = await this._getQuizWithFallback(
+        session.quizzId,
+        internalToken || "",
+      );
 
       const questions = quiz.questions;
       if (!questions || !Array.isArray(questions) || questions.length === 0) {
@@ -328,18 +325,15 @@ export class SessionService extends BaseService {
       }
 
       if (this.kafkaProducer) {
+        await this.kafkaProducer.publish(SessionEventTypes.SESSION_STARTED, {
+          session_id: session.id,
+        });
         await this.kafkaProducer.publish(
-          "session-started",
-          JSON.stringify({
-            session_id: session.id,
-          }),
-        );
-        await this.kafkaProducer.publish(
-          "session-next-question",
-          JSON.stringify({
+          SessionEventTypes.SESSION_NEXT_QUESTION,
+          {
             session_id: session.id,
             question_id: questionId,
-          }),
+          },
         );
       }
     } catch (error) {
@@ -374,6 +368,11 @@ export class SessionService extends BaseService {
         throw SESSION_INVALID_STATUS(sessionId);
       }
 
+      const { quizzId } = session;
+      if (!quizzId) {
+        throw new Error(`Session ${sessionId} has no associated quiz ID`);
+      }
+
       const cachedQuestionIds = await this.valkeyRepository.get(
         `session:${session.id}:questions:ids`,
       );
@@ -385,16 +384,16 @@ export class SessionService extends BaseService {
         const quizResponse = await call({
           url: `${config.services.quizzManagement.baseUrl}/quizzes/get-ids`,
           method: "POST",
-          data: { quizId: session.quizzId },
+          data: { quizId: quizzId },
           headers: {
             "internal-token": internalToken || "",
           },
         }).catch((err) => {
           logger.warn(
-            `Failed to fetch question IDs for quiz ${session.quizzId}: `,
+            `Failed to fetch question IDs for quiz ${quizzId}: `,
             err,
           );
-          throw QUIZZ_NOT_FOUND(session.quizzId);
+          throw QUIZZ_NOT_FOUND(quizzId);
         });
         questionIds = quizResponse.questions.map(
           (/** @type {import('common-contracts').FullQuestionResponse} */ q) =>
@@ -457,11 +456,11 @@ export class SessionService extends BaseService {
 
       if (this.kafkaProducer) {
         await this.kafkaProducer.publish(
-          "session-next-question",
-          JSON.stringify({
+          SessionEventTypes.SESSION_NEXT_QUESTION,
+          {
             session_id: session.id,
             question_id: questionId,
-          }),
+          },
         );
       }
     } catch (error) {
@@ -489,12 +488,9 @@ export class SessionService extends BaseService {
       logger.info({ sessionId: session.id }, "Session finished successfully");
 
       if (this.kafkaProducer) {
-        await this.kafkaProducer.publish(
-          "session-ended",
-          JSON.stringify({
-            session_id: session.id,
-          }),
-        );
+        await this.kafkaProducer.publish(SessionEventTypes.SESSION_ENDED, {
+          session_id: session.id,
+        });
       }
     } catch (error) {
       const err = /** @type {import('common-errors').BaseError} */ (error);
@@ -535,12 +531,9 @@ export class SessionService extends BaseService {
       );
 
       if (this.kafkaProducer) {
-        await this.kafkaProducer.publish(
-          "session-deleted",
-          JSON.stringify({
-            session_id: sessionId,
-          }),
-        );
+        await this.kafkaProducer.publish(SessionEventTypes.SESSION_DELETED, {
+          session_id: sessionId,
+        });
       }
     } catch (error) {
       const err = /** @type {import('common-errors').BaseError} */ (error);
@@ -588,16 +581,16 @@ export class SessionService extends BaseService {
         "Cache miss for current question, fetching from management service",
       );
 
-      const quizData = await call({
-        url: `${config.services.quizzManagement.baseUrl}/quizzes/get-full`,
-        method: "POST",
-        data: { quizId: session.quizzId },
-        headers: {
-          "internal-token": internalToken || "",
-        },
-      }).catch((err) => {
+      if (!session.quizzId) {
+        throw new Error(`Session ${sessionId} has no associated quiz ID`);
+      }
+
+      const quizData = await this._getQuizWithFallback(
+        session.quizzId,
+        internalToken || "",
+      ).catch((err) => {
         logger.warn(
-          `Failed to fetch full quiz for session ${session.id}: `,
+          `Failed to fetch full quiz for session ${session.id} after fallback: `,
           err,
         );
         return null;
@@ -666,6 +659,54 @@ export class SessionService extends BaseService {
       logger.error(
         `Error in getCurrentQuestion for session ${sessionId}: ${err.message}`,
       );
+      throw err;
+    }
+  }
+
+  /**
+   * @private
+   * @param {string} quizId
+   * @param {string} internalToken
+   * @returns {Promise<any>}
+   */
+  async _getQuizWithFallback(quizId, internalToken) {
+    const cacheKey = `quiz-cache:${quizId}`;
+
+    try {
+      const quiz = await call({
+        url: `${config.services.quizzManagement.baseUrl}/quizzes/get-full`,
+        method: "POST",
+        data: { quizId },
+        headers: {
+          "internal-token": internalToken || "",
+        },
+      });
+
+      if (quiz) {
+        await this.valkeyRepository
+          .set(cacheKey, quiz, 3600)
+          .catch((err) =>
+            logger.warn({ err }, "Failed to update quiz fallback cache"),
+          );
+        return quiz;
+      }
+    } catch (err) {
+      const error = /** @type {import('common-errors').BaseError} */ (err);
+      if (error.statusCode === 404) {
+        throw QUIZZ_NOT_FOUND(quizId);
+      }
+
+      logger.warn(
+        { quizId, err: error.message },
+        "ms-quizz unreachable, trying fallback cache",
+      );
+      const cachedQuiz = await this.valkeyRepository.get(cacheKey);
+
+      if (cachedQuiz) {
+        logger.info({ quizId }, "Using cached quiz data (Degraded Mode)");
+        return cachedQuiz;
+      }
+
       throw err;
     }
   }

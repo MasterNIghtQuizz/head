@@ -44,8 +44,10 @@ describe("TypeOrmSessionRepository unit tests", () => {
 
     repository = new TypeOrmSessionRepository(
       dataSourceMock,
+      // @ts-ignore
       valkeyRepositoryMock,
     );
+    // @ts-ignore
     repository.valkeyRepository = valkeyRepositoryMock;
   });
 
