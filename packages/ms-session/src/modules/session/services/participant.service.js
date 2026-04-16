@@ -12,6 +12,7 @@ import {
   QuestionType,
   ParticipantRoles,
   SessionStatus,
+  SessionEventTypes,
 } from "common-contracts";
 import { TokenService, TokenType, UserRole } from "common-auth";
 import { config } from "../../../config.js";
@@ -79,6 +80,14 @@ export class ParticipantService extends BaseService {
       socketId: "",
     });
     await this.participantRepository.create(participantEntity);
+
+    if (this.kafkaProducer) {
+      await this.kafkaProducer.publish(SessionEventTypes.PARTICIPANT_JOINED, {
+        session_id: session.id,
+        participant_id: participantId,
+        role: participantEntity.role,
+      });
+    }
     logger.info(
       {
         sessionId: session.id,
@@ -113,6 +122,14 @@ export class ParticipantService extends BaseService {
     if (!participant) {
       return;
     }
+    if (this.kafkaProducer) {
+      await this.kafkaProducer.publish(SessionEventTypes.PARTICIPANT_LEFT, {
+        session_id: participant.sessionId,
+        participant_id: participant.id,
+        role: participant.role,
+      });
+    }
+
     if (participant.role === ParticipantRoles.HOST) {
       logger.info(
         { sessionId: participant.sessionId },
@@ -249,7 +266,7 @@ export class ParticipantService extends BaseService {
         if (!this.kafkaProducer) {
           return;
         }
-        this.kafkaProducer.publish("quiz.response.submitted", {
+        this.kafkaProducer.publish(SessionEventTypes.QUIZ_RESPONSE_SUBMITTED, {
           sessionId,
           participantId,
           choiceId,
@@ -262,13 +279,16 @@ export class ParticipantService extends BaseService {
       if (!this.kafkaProducer) {
         return;
       }
-      await this.kafkaProducer.publish("quiz.response.submitted", {
-        sessionId,
-        participantId,
-        choiceId: null,
-        type: "buzzer",
-        submittedAt: new Date().toISOString(),
-      });
+      await this.kafkaProducer.publish(
+        SessionEventTypes.QUIZ_RESPONSE_SUBMITTED,
+        {
+          sessionId,
+          participantId,
+          choiceId: null,
+          type: "buzzer",
+          submittedAt: new Date().toISOString(),
+        },
+      );
     }
     logger.info(
       {

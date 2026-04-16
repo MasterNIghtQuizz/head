@@ -55,7 +55,7 @@ export class KafkaProducer {
         topic,
         messages: [message],
       });
-      logger.debug({ topic }, "Message published successfully");
+      logger.info({ topic }, "Message published successfully");
     } catch (error) {
       logger.error({ error, topic }, "Failed to publish Kafka message");
       throw error;

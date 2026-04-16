@@ -48,5 +48,8 @@
     "enabled": false,
     "node": "http://localhost:9200",
     "index": "logs-api-gateway"
+  },
+  "metrics": {
+    "enabled": true
   }
 }

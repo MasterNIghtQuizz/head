@@ -16,24 +16,29 @@ export const db = new DatabaseContext(strategy);
 export const valkey = new ValkeyService(config.valkey);
 
 export const initDatabase = async () => {
-  await db.connect({
-    host: config.postgres.host,
-    port: config.postgres.port,
-    user: config.postgres.user,
-    password: config.postgres.password,
-    database: config.postgres.database,
-    env: config.env,
-    entities: [
-      TypeOrmSessionModel,
-      TypeOrmParticipantModel,
-      ProcessedEventEntity,
-    ],
-    migrations: [CreateSessionsAndParticipantsTables1680960000000],
-  });
+  try {
+    await db.connect({
+      host: config.postgres.host,
+      port: config.postgres.port,
+      user: config.postgres.user,
+      password: config.postgres.password,
+      database: config.postgres.database,
+      env: config.env,
+      entities: [
+        TypeOrmSessionModel,
+        TypeOrmParticipantModel,
+        ProcessedEventEntity,
+      ],
+      migrations: [CreateSessionsAndParticipantsTables1680960000000],
+    });
+  } catch (error) {
+    logger.error(
+      { error },
+      "Database connection failed. Service will start in degraded mode.",
+    );
+  }
 
   if (config.valkey?.enabled) {
-    valkey.connect().catch((_err) => {
-      // Handled internally by ValkeyService logs
-    });
+    valkey.connect().catch((_err) => {});
   }
 };

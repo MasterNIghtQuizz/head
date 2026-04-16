@@ -58,6 +58,9 @@ const schema = Joi.object({
     node: Joi.string().uri().required(),
     index: Joi.string().required(),
   }).optional(),
+  metrics: Joi.object({
+    enabled: Joi.boolean().default(true),
+  }).optional(),
 });
 
 Config.init({ directory: configDirectory, schema });
@@ -99,7 +102,10 @@ export const config = {
       publicKeyPath: resolveKeyPath(rawAuth.game.publicKeyPath),
     },
   },
-  valkey: /** @type {typeof config.valkey} */ (Config.get("valkey")),
+  valkey:
+    /** @type {{ enabled: boolean; host: string; port: number; password: string; db: number; ttl: number }} */ (
+      Config.get("valkey")
+    ),
   otel: /** @type {{ enabled: boolean; exporterUrl: string }} */ (
     Config.get("otel")
   ),

@@ -10,22 +10,35 @@ import { TypeOrmQuestionModel as QuestionEntity } from "./modules/quiz/infra/mod
 import { TypeOrmChoiceModel as ChoiceEntity } from "./modules/quiz/infra/models/choice.model.js";
 import { CreateProcessedEventsTable1710000000000 } from "./migrations/1710000000000-CreateProcessedEventsTable.js";
 import { CreateQuizTables1710000000001 } from "./migrations/1710000000001-CreateQuizTables.js";
+import logger from "./logger.js";
 
 const strategy = new TypeORMStrategy();
 export const db = new DatabaseContext(strategy);
 
 export const initDatabase = async () => {
-  await db.connect({
-    host: config.postgres.host,
-    port: config.postgres.port,
-    user: config.postgres.user,
-    password: config.postgres.password,
-    database: config.postgres.database,
-    env: config.env,
-    entities: [QuizEntity, QuestionEntity, ChoiceEntity, ProcessedEventEntity],
-    migrations: [
-      CreateProcessedEventsTable1710000000000,
-      CreateQuizTables1710000000001,
-    ],
-  });
+  try {
+    await db.connect({
+      host: config.postgres.host,
+      port: config.postgres.port,
+      user: config.postgres.user,
+      password: config.postgres.password,
+      database: config.postgres.database,
+      env: config.env,
+      entities: [
+        QuizEntity,
+        QuestionEntity,
+        ChoiceEntity,
+        ProcessedEventEntity,
+      ],
+      migrations: [
+        CreateProcessedEventsTable1710000000000,
+        CreateQuizTables1710000000001,
+      ],
+    });
+  } catch (error) {
+    logger.error(
+      { error },
+      "Database connection failed. Service will start in degraded mode.",
+    );
+  }
 };

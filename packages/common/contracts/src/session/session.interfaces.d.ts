@@ -44,11 +44,14 @@ export interface LeaveSessionRequest {}
 
 export interface GetSessionRequest {}
 
+import { FullQuestionResponse } from "../quiz/question.interfaces";
+
 export interface GetSessionResponse {
   session_id: string;
   public_key: string;
   status: SessionStatusType | null;
   current_question_id: string | null;
+  current_question?: FullQuestionResponse | null;
   quizz_id: string | null;
   host_id: string | null;
   participants: Participant[];
