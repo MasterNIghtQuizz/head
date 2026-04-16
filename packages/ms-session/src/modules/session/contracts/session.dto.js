@@ -109,6 +109,7 @@ export class GetSessionResponseDto {
     this.public_key = data.public_key;
     this.status = data.status;
     this.current_question_id = data.current_question_id;
+    this.current_question = data.current_question;
     this.quizz_id = data.quizz_id;
     this.host_id = data.host_id;
     this.participants = data.participants;

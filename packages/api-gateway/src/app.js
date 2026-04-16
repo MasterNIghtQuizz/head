@@ -3,6 +3,8 @@ import logger from "./logger.js";
 import { config } from "./config.js";
 import { registerSwagger } from "common-swagger";
 import { ControllerFactory } from "common-core";
+import { createMetricsPlugin } from "common-metrics";
+import { Config } from "common-config";
 import {
   hookAccessToken,
   hookInternalTokenInterceptor,
@@ -92,6 +94,16 @@ export async function createServer() {
       "request completed",
     );
   });
+
+  const metricsEnabled = /** @type {{ enabled: boolean }} */ (
+    Config.get("metrics")
+  ).enabled;
+  await fastify.register(
+    createMetricsPlugin({
+      serviceName: "api-gateway",
+      enabled: metricsEnabled,
+    }),
+  );
 
   // @ts-ignore
   await registerSwagger(fastify, {

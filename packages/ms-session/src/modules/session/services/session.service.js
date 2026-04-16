@@ -191,9 +191,10 @@ export class SessionService extends BaseService {
 
   /**
    * @param {string} sessionId
+   * @param {import("http").IncomingHttpHeaders} [headers={}]
    * @returns {Promise<import('../contracts/session.dto.js').GetSessionResponseDto>}
    */
-  async getSession(sessionId) {
+  async getSession(sessionId, headers = {}) {
     try {
       const session = await this.sessionRepository.find(sessionId);
       if (!session) {
@@ -201,11 +202,23 @@ export class SessionService extends BaseService {
         throw SESSION_NOT_FOUND(sessionId);
       }
 
-      const participants =
-        await this.participantRepository.findBySessionId(sessionId);
+      const [participants, currentQuestion] = await Promise.all([
+        this.participantRepository.findBySessionId(sessionId),
+        session.currentQuestionId
+          ? this.getCurrentQuestion(sessionId, headers).catch((err) => {
+              logger.warn(
+                { sessionId, err: err.message },
+                "Failed to fetch current question during getSession",
+              );
+              return null;
+            })
+          : Promise.resolve(null),
+      ]);
+
       return SessionMapper.toDto(
         session,
         participants.map((p) => ParticipantMapper.toDto(p)),
+        currentQuestion,
       );
     } catch (error) {
       const err = /** @type {import('common-errors').BaseError} */ (error);
@@ -683,11 +696,11 @@ export class SessionService extends BaseService {
       });
 
       if (quiz) {
-        await this.valkeyRepository
-          .set(cacheKey, quiz, 3600)
-          .catch((err) =>
-            logger.warn({ err }, "Failed to update quiz fallback cache"),
-          );
+        try {
+          await this.valkeyRepository.set(cacheKey, quiz, 3600);
+        } catch (err) {
+          logger.warn({ err }, "Failed to update quiz fallback cache");
+        }
         return quiz;
       }
     } catch (err) {

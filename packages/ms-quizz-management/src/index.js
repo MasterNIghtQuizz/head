@@ -1,5 +1,6 @@
 import { initTracing } from "common-monitoring";
 import { config } from "./config.js";
+import { Config } from "common-config";
 
 initTracing({
   serviceName: "ms-quizz-management",
@@ -16,6 +17,7 @@ import { registerSwagger } from "common-swagger";
 import { hookInternalToken } from "common-auth";
 import { ProcessedEventEntity } from "common-database";
 import { createKafkaClient, KafkaConsumer } from "common-kafka";
+import { createMetricsPlugin, KafkaLagCollector } from "common-metrics";
 import { UserEventsConsumer } from "./infrastructure/kafka/consumers/user-events.consumer.js";
 import { ValkeyService, ValkeyRepository } from "common-valkey";
 import { QuizService } from "./modules/quiz/services/quiz.service.js";
@@ -50,6 +52,11 @@ export async function createServer() {
   fastify.addSchema(QuizAnswersResponseSchema);
   fastify.addSchema(FullQuizResponseSchema);
   fastify.addSchema(QuizIdsResponseSchema);
+  const metricsEnabled = /** @type {{ enabled: boolean }} */ (
+    Config.get("metrics")
+  ).enabled;
+  await fastify.register(createMetricsPlugin({ serviceName: "ms-quizz-management", enabled: metricsEnabled }));
+
   fastify.addHook(
     "onRequest",
     hookInternalToken({
@@ -104,7 +111,21 @@ export async function createServer() {
     const processedEventRepo = db.instance.getRepository(ProcessedEventEntity);
     new UserEventsConsumer(kafkaConsumer, processedEventRepo).register();
 
-    await kafkaConsumer.start();
+    try {
+      await kafkaConsumer.start();
+    } catch (error) {
+      logger.error(
+        { error },
+        "Kafka connection failed. Service will start without Kafka consumer.",
+      );
+    }
+
+    if (metricsEnabled) {
+      const lagCollector = new KafkaLagCollector(kafkaClient, [
+        { groupId: "ms-quizz-management-group", topics: ["user.events"] },
+      ]);
+      lagCollector.start();
+    }
   }
 
   const questionRepository = new QuestionRepository(

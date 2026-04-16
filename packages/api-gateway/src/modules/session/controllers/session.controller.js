@@ -209,6 +209,26 @@ ApplyMethodDecorators(SessionController, "getSession", [
             nullable: true,
             description: "ID of the currently active question, if any.",
           },
+          current_question: {
+            type: "object",
+            nullable: true,
+            properties: {
+              id: { type: "string" },
+              label: { type: "string" },
+              type: { type: "string" },
+              timer_seconds: { type: "integer" },
+              choices: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    id: { type: "string" },
+                    text: { type: "string" },
+                  },
+                },
+              },
+            },
+          },
           quizz_id: {
             type: "string",
             description: "ID of the quiz being played.",

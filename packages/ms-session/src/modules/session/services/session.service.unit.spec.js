@@ -182,7 +182,7 @@ describe("SessionService unit tests", () => {
       );
       expect(kafkaProducerMock.publish).toHaveBeenCalledWith(
         "session-started",
-        expect.any(String),
+        expect.objectContaining({ session_id: "s1" }),
       );
     });
 
@@ -253,7 +253,7 @@ describe("SessionService unit tests", () => {
       });
       expect(kafkaProducerMock.publish).toHaveBeenCalledWith(
         "session-ended",
-        expect.any(String),
+        expect.objectContaining({ session_id: "s1" }),
       );
     });
   });

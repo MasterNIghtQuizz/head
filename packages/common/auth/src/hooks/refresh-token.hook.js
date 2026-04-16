@@ -9,7 +9,9 @@ export function hookRefreshToken(options) {
   return function refreshTokenHook(request, reply, done) {
     if (
       request.routeOptions?.config?.isPublic ||
-      !request.routeOptions?.config?.useRefreshToken
+      !request.routeOptions?.config?.useRefreshToken ||
+      request.url.endsWith("/metrics") ||
+      request.url.endsWith("/metric")
     ) {
       done();
       return;

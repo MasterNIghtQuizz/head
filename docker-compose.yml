@@ -99,6 +99,53 @@ services:
       kafka:
         condition: service_healthy
 
+  # ────────────────────────────────────────────────────────
+  #  METRICS — Prometheus + Grafana  (profile: monitoring)
+  # ────────────────────────────────────────────────────────
+  prometheus:
+    profiles: [monitoring]
+    image: prom/prometheus:v2.53.0
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ${PROMETHEUS_CONFIG:-./monitoring/prometheus/prometheus.yml}:/etc/prometheus/prometheus.yml:ro
+      - prometheusdata:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=15d"
+      - "--web.enable-lifecycle"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9090/-/healthy || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  grafana:
+    profiles: [monitoring]
+    image: grafana/grafana:11.1.0
+    container_name: grafana
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/1-platform-overview.json
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafanadata:/var/lib/grafana
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   otel-collector:
     profiles: [monitoring]
     image: otel/opentelemetry-collector:latest
@@ -209,6 +256,7 @@ services:
       OPENSEARCH_ENABLED: ${MONITORING_ENABLED:-false}
       OPENSEARCH_NODE: "http://opensearch:9200"
       OPENSEARCH_INDEX: "logs-api-gateway"
+      METRICS_ENABLED: "true"
     depends_on:
       kafka:
         condition: service_healthy
@@ -237,6 +285,7 @@ services:
       OPENSEARCH_ENABLED: ${MONITORING_ENABLED:-false}
       OPENSEARCH_NODE: "http://opensearch:9200"
       OPENSEARCH_INDEX: "logs-ms-user"
+      METRICS_ENABLED: "true"
     command: >
       sh -c "yarn workspace @monorepo/ms-user run migrations:run &&
              yarn workspace @monorepo/ms-user run start"
@@ -268,6 +317,7 @@ services:
       OPENSEARCH_ENABLED: ${MONITORING_ENABLED:-false}
       OPENSEARCH_NODE: "http://opensearch:9200"
       OPENSEARCH_INDEX: "logs-ms-quizz-management"
+      METRICS_ENABLED: "true"
     command: >
       sh -c "yarn workspace @monorepo/ms-quizz-management run migrations:run &&
              yarn workspace @monorepo/ms-quizz-management run start"
@@ -303,6 +353,7 @@ services:
       OPENSEARCH_ENABLED: ${MONITORING_ENABLED:-false}
       OPENSEARCH_NODE: "http://opensearch:9200"
       OPENSEARCH_INDEX: "logs-ms-session"
+      METRICS_ENABLED: "true"
     command: >
       sh -c "yarn workspace @monorepo/ms-session run migrations:run &&
              yarn workspace @monorepo/ms-session run start"
@@ -508,3 +559,5 @@ volumes:
   valkeydata:
   valkeydata-test:
   opensearchdata:
+  prometheusdata:
+  grafanadata:

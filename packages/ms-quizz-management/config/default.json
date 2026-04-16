@@ -39,5 +39,8 @@
     "enabled": false,
     "node": "http://localhost:9200",
     "index": "logs-ms-quizz-management"
+  },
+  "metrics": {
+    "enabled": true
   }
 }

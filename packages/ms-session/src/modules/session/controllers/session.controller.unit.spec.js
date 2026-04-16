@@ -94,6 +94,7 @@ describe("SessionController unit tests", () => {
 
       expect(sessionServiceMock.getSession).toHaveBeenCalledWith(
         payload.sessionId,
+        headers,
       );
       expect(replyMock.code).toHaveBeenCalledWith(200);
     });

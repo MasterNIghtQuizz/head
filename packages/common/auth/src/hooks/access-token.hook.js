@@ -8,7 +8,11 @@ import { UnauthorizedError } from "common-errors";
  */
 export function hookAccessToken(options) {
   return function accessTokenHook(request, reply, done) {
-    if (request.routeOptions?.config?.isPublic) {
+    if (
+      request.routeOptions?.config?.isPublic ||
+      request.url.endsWith("/metrics") ||
+      request.url.endsWith("/metric")
+    ) {
       done();
       return;
     }
