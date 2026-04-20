@@ -1,5 +1,6 @@
 import logger from "../../../logger.js";
-import { Topics, ResponseEventTypes } from "common-contracts";
+import { Topics } from "common-contracts";
+import {SessionEventTypes} from "common-contracts/src/events.js";
 import {CreateResponseRequestDto} from "../../../modules/response/contracts/response.dto.js";
 
 export class ResponseEventsConsumer {
@@ -35,12 +36,20 @@ export class ResponseEventsConsumer {
 
     try {
       switch (message.eventType) {
-        case ResponseEventTypes.ANSWER_SUBMITTED:
+        case SessionEventTypes.QUIZ_RESPONSE_SUBMITTED:
           await this.onAnswerSubmitted(message.payload);
           break;
 
-        case ResponseEventTypes.SESSION_ENDED:
+        case SessionEventTypes.SESSION_ENDED:
           await this.onSessionEnded(message.payload);
+          break;
+
+        case SessionEventTypes.SESSION_STARTED:
+          await this.onSessionStarted(message.payload);
+          break;
+
+        case SessionEventTypes.SESSION_NEXT_QUESTION:
+          await this.onNextQuestion(message.payload);
           break;
 
         default:
@@ -73,5 +82,17 @@ export class ResponseEventsConsumer {
     logger.info(payload + "Clearing session");
 
     await this.responseService.clearSession(payload.sessionId);
+  }
+
+  async onSessionStarted(payload) {
+    logger.info(payload + "creating session");
+
+    await this.responseService.startNewSession(payload.sessionId, payload.hostId, {});
+  }
+
+  async onNextQuestion(payload) {
+    logger.info(payload + "Next question");
+
+    await this.responseService.gotoNextQuestion(payload.sessionId, payload.questionId);
   }
 }

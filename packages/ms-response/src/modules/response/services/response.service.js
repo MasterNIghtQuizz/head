@@ -16,14 +16,15 @@ export class ResponseService extends BaseService{
 
   async handleAnswer(event) {
     const isBuzzer = event.is_correct !== undefined;
+    const cacheKey = `currentSessionQuestion:${event.sessionId}`;
 
+    const questionId = await this.valkeyRepository.get(cacheKey);
     if (!isBuzzer) {
       const existing =
         await this.responseRepository.findByParticipantAndQuestion(
           event.participantId,
-          event.questionId,
+          questionId,
         );
-
       if (existing) {
         throw new Error("ALREADY_ANSWERED");
       }
@@ -31,7 +32,7 @@ export class ResponseService extends BaseService{
 
     const response = {
       participantId: event.participantId,
-      questionId: event.questionId,
+      questionId: questionId,
       sessionId: event.sessionId,
       choiceId: event.choice_id ?? null,
       isCorrect: isBuzzer ? event.is_correct : null,
@@ -103,8 +104,19 @@ export class ResponseService extends BaseService{
     await this.responseRepository.deleteBySessionId(sessionId);
   }
 
-  async fetchQuizz(quizzID, hostId, request) {
-    const cacheKey = `quiz:${quizzID}`;
+  async startNewSession(sessionId) {
+    const quizz = (await this.fetchQuizz(sessionId));
+    const cacheKey = `currentSessionQuestion:${sessionId}`;
+
+    await this.valkeyRepository.set(
+      cacheKey,
+      JSON.stringify(quizz.questions[0].id),
+      3600,
+    );
+  }
+
+  async fetchQuizz(sessionId, quizzID, hostId, request) {
+    const cacheKey = `sessionId:${sessionId}`;
     //const cached = await this.valkeyRepository.get(cacheKey);
     // if (cached) {
     //   return JSON.parse(cached);
@@ -132,6 +144,12 @@ export class ResponseService extends BaseService{
       console.warn("Valkey set failed", e);
     }
     return quiz;
+  }
+
+  async gotoNextQuestion(sessionId, questionId){
+    const cacheKey = `currentSessionQuestion:${sessionId}`;
+
+    await this.valkeyRepository.set(cacheKey, questionId, 3600);
   }
 
   async getIsCorrectFromCache(quizId, questionId, choiceId) {
