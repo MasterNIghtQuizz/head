@@ -1,5 +1,6 @@
 import { initTracing } from "common-monitoring";
 import { config } from "./config.js";
+import { Config } from "common-config";
 
 initTracing({
   serviceName: "ms-quizz-management",
@@ -16,6 +17,7 @@ import { registerSwagger } from "common-swagger";
 import { hookInternalToken } from "common-auth";
 import { ProcessedEventEntity } from "common-database";
 import { createKafkaClient, KafkaConsumer } from "common-kafka";
+import { createMetricsPlugin, KafkaLagCollector } from "common-metrics";
 import { UserEventsConsumer } from "./infrastructure/kafka/consumers/user-events.consumer.js";
 import { ValkeyService, ValkeyRepository } from "common-valkey";
 import { QuizService } from "./modules/quiz/services/quiz.service.js";
@@ -31,16 +33,30 @@ import { ChoiceController } from "./modules/quiz/controllers/choice.controller.j
 import { QuestionController } from "./modules/quiz/controllers/question.controller.js";
 import { ChoiceResponseSchema } from "./modules/quiz/contracts/choice.dto.js";
 import { QuestionResponseSchema } from "./modules/quiz/contracts/question.dto.js";
-import { QuizResponseSchema } from "./modules/quiz/contracts/quiz.dto.js";
+import {
+  QuizResponseSchema,
+  QuizAnswersResponseSchema,
+  FullQuizResponseSchema,
+  QuizIdsResponseSchema,
+} from "./modules/quiz/contracts/quiz.dto.js";
 
 export async function createServer() {
   const fastify = Fastify({
     loggerInstance: logger,
     disableRequestLogging: true,
+    ignoreTrailingSlash: true,
   });
   fastify.addSchema(ChoiceResponseSchema);
   fastify.addSchema(QuestionResponseSchema);
   fastify.addSchema(QuizResponseSchema);
+  fastify.addSchema(QuizAnswersResponseSchema);
+  fastify.addSchema(FullQuizResponseSchema);
+  fastify.addSchema(QuizIdsResponseSchema);
+  const metricsEnabled = /** @type {{ enabled: boolean }} */ (
+    Config.get("metrics")
+  ).enabled;
+  await fastify.register(createMetricsPlugin({ serviceName: "ms-quizz-management", enabled: metricsEnabled }));
+
   fastify.addHook(
     "onRequest",
     hookInternalToken({
@@ -74,7 +90,9 @@ export async function createServer() {
   await initDatabase();
   const valkeyService = new ValkeyService(config.valkey);
   if (config.valkey.enabled) {
-    await valkeyService.connect();
+    valkeyService.connect().catch((_err) => {
+      // Handled internally by ValkeyService logs
+    });
   }
   const valkeyRepository = new ValkeyRepository(valkeyService);
   const valkeyTtl = config.valkey.ttl ?? 3600;
@@ -93,7 +111,21 @@ export async function createServer() {
     const processedEventRepo = db.instance.getRepository(ProcessedEventEntity);
     new UserEventsConsumer(kafkaConsumer, processedEventRepo).register();
 
-    await kafkaConsumer.start();
+    try {
+      await kafkaConsumer.start();
+    } catch (error) {
+      logger.error(
+        { error },
+        "Kafka connection failed. Service will start without Kafka consumer.",
+      );
+    }
+
+    if (metricsEnabled) {
+      const lagCollector = new KafkaLagCollector(kafkaClient, [
+        { groupId: "ms-quizz-management-group", topics: ["user.events"] },
+      ]);
+      lagCollector.start();
+    }
   }
 
   const questionRepository = new QuestionRepository(

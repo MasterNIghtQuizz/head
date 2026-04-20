@@ -10,7 +10,11 @@ export function hookAccessToken(options) {
   return function accessTokenHook(request, reply, done) {
     const isWebSocketRequest =
       request.url?.startsWith("/ws") && request.headers.upgrade === "websocket";
-    if (request.routeOptions?.config?.isPublic) {
+    if (
+      request.routeOptions?.config?.isPublic ||
+      request.url.endsWith("/metrics") ||
+      request.url.endsWith("/metric")
+    ) {
       done();
       return;
     }
@@ -26,6 +30,10 @@ export function hookAccessToken(options) {
       token = /** @type {string | undefined} */ (
         request.headers["access-token"]
       );
+    }
+    if (request.routeOptions?.config?.useGameToken) {
+      done();
+      return;
     }
 
     if (!token) {

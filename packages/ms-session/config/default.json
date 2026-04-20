@@ -1,0 +1,66 @@
+{
+  "app": {
+    "port": 4003,
+    "env": "development"
+  },
+  "logger": {
+    "level": "info",
+    "pretty": true
+  },
+  "postgres": {
+    "host": "localhost",
+    "port": 5433,
+    "database": "ms_session_db",
+    "user": "postgres",
+    "password": "postgres_password"
+  },
+  "auth": {
+    "access": {
+      "privateKeyPath": "../../keys/access-private.pem",
+      "publicKeyPath": "../../keys/access-public.pem"
+    },
+    "refresh": {
+      "privateKeyPath": "../../keys/refresh-private.pem",
+      "publicKeyPath": "../../keys/refresh-public.pem"
+    },
+    "internal": {
+      "privateKeyPath": "../../keys/internal-private.pem",
+      "publicKeyPath": "../../keys/internal-public.pem"
+    },
+    "game": {
+      "privateKeyPath": "../../keys/game-private.pem",
+      "publicKeyPath": "../../keys/game-public.pem"
+    }
+  },
+  "kafka": {
+    "brokers": ["localhost:9092"],
+    "enabled": true
+  },
+  "valkey": {
+    "host": "localhost",
+    "port": 6379,
+    "password": "",
+    "db": 0,
+    "ttl": 3600
+  },
+  "services": {
+    "session": {
+      "baseUrl": "http://localhost:4003"
+    },
+    "quizzManagement": {
+      "baseUrl": "http://localhost:4002"
+    }
+  },
+  "otel": {
+    "enabled": false,
+    "exporterUrl": "http://localhost:4317"
+  },
+  "opensearch": {
+    "enabled": false,
+    "node": "http://localhost:9200",
+    "index": "logs-ms-session"
+  },
+  "metrics": {
+    "enabled": true
+  }
+}

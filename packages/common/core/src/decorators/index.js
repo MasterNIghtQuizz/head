@@ -10,6 +10,7 @@ export const MetadataKeys = {
   IS_PUBLIC: "isPublic",
   ROLES: "roles",
   USE_REFRESH_TOKEN: "useRefreshToken",
+  USE_GAME_TOKEN: "useGameToken",
 };
 
 /**
@@ -133,6 +134,22 @@ export function UseRefreshToken() {
   return function (target, propertyKey, _descriptor) {
     Reflect.defineMetadata(
       MetadataKeys.USE_REFRESH_TOKEN,
+      true,
+      target.constructor,
+      propertyKey,
+    );
+  };
+}
+
+export function UseGameToken() {
+  /**
+   * @param {any} target
+   * @param {string} propertyKey
+   * @param {PropertyDescriptor} _descriptor
+   */
+  return function (target, propertyKey, _descriptor) {
+    Reflect.defineMetadata(
+      MetadataKeys.USE_GAME_TOKEN,
       true,
       target.constructor,
       propertyKey,

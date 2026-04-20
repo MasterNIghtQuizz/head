@@ -39,6 +39,7 @@ export declare const IS_PUBLIC: string;
 export declare function Public(): MethodDecorator;
 export declare function Roles(roles: string[]): MethodDecorator;
 export declare function UseRefreshToken(): MethodDecorator;
+export declare function UseGameToken(): MethodDecorator;
 export declare function ApplyMethodDecorators(
   targetClass: Function,
   methodName: string,
@@ -59,4 +60,28 @@ export declare class ControllerFactory {
     ControllerClass: new (...args: Args) => T,
     deps?: Args,
   ): void;
+}
+
+export declare class Choice {
+  id: string;
+  text: string;
+  is_correct?: boolean;
+  constructor(props: { id: string; text: string; is_correct?: boolean });
+}
+
+export declare class Question {
+  id: string;
+  label: string;
+  type: string;
+  order_index: number;
+  timer_seconds: number;
+  choices: Choice[];
+  constructor(props: {
+    id: string;
+    label: string;
+    type: string;
+    order_index: number;
+    timer_seconds: number;
+    choices?: (Choice | { id: string; text: string; is_correct?: boolean })[];
+  });
 }

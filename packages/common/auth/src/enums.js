@@ -8,4 +8,5 @@ export const TokenType = Object.freeze({
   ACCESS: "access",
   REFRESH: "refresh",
   INTERNAL: "internal",
+  GAME: "game",
 });

@@ -40,6 +40,14 @@ export class QuestionController extends BaseController {
   }
 
   /**
+   * @param {import('fastify').FastifyRequest<{Params: {id: string}}>} request
+   * @param {import('fastify').FastifyReply} _reply
+   */
+  async getChoiceIds(request, _reply) {
+    return this.questionService.getChoiceIds(request.params.id);
+  }
+
+  /**
    * @param {import('fastify').FastifyRequest<{Params: {quizId: string}}>} request
    * @param {import('fastify').FastifyReply} _reply
    */
@@ -117,6 +125,28 @@ ApplyMethodDecorators(QuestionController, "getQuestionById", [
     },
   }),
   Get("/:id"),
+]);
+
+ApplyMethodDecorators(QuestionController, "getChoiceIds", [
+  Schema({
+    description:
+      "Get all choice IDs for a specific question. Roles: USER, ACCESS, INTERNAL",
+    tags: ["Question"],
+    params: {
+      type: "object",
+      properties: {
+        id: { type: "string", format: "uuid" },
+      },
+    },
+    response: {
+      200: {
+        type: "array",
+        items: { type: "string", format: "uuid" },
+      },
+      404: { type: "object", properties: { message: { type: "string" } } },
+    },
+  }),
+  Get("/:id/choices/ids"),
 ]);
 
 ApplyMethodDecorators(QuestionController, "getQuestionsByQuizId", [

@@ -5,6 +5,7 @@ import { DATABASE_ERROR } from "../errors/internal.errors.js";
 import { BaseError } from "common-errors";
 import { ChoiceEntity } from "../core/entities/choice.entity.js";
 import { ChoiceMapper } from "../infra/mappers/choice.mapper.js";
+import { QuestionType } from "common-contracts";
 
 export class ChoiceService extends BaseService {
   /**
@@ -166,6 +167,13 @@ export class ChoiceService extends BaseService {
   async createChoice(data) {
     logger.info({ text: data.text }, "Creating new choice...");
     try {
+      const question = await this.questionRepository.findOne(data.question_id);
+      if (!question) {
+        throw CHOICE_NOT_FOUND(data.question_id);
+      }
+      if (question.type === QuestionType.BUZZER) {
+        throw new BaseError("Buzzer questions cannot have choices", 400);
+      }
       const entity = new ChoiceEntity({
         text: data.text,
         is_correct: data.is_correct,
@@ -189,6 +197,9 @@ export class ChoiceService extends BaseService {
           );
           invalidations.push(
             this.valkeyRepository.del(`quiz:${question.quizId}`),
+          );
+          invalidations.push(
+            this.valkeyRepository.del(`quiz:full:${question.quizId}`),
           );
           invalidations.push(this.valkeyRepository.del("quizzes:all"));
         }
@@ -251,6 +262,9 @@ export class ChoiceService extends BaseService {
           invalidations.push(
             this.valkeyRepository.del(`quiz:${question.quizId}`),
           );
+          invalidations.push(
+            this.valkeyRepository.del(`quiz:full:${question.quizId}`),
+          );
           invalidations.push(this.valkeyRepository.del("quizzes:all"));
         }
         await Promise.all(invalidations);
@@ -309,6 +323,9 @@ export class ChoiceService extends BaseService {
             );
             invalidations.push(
               this.valkeyRepository.del(`quiz:${question.quizId}`),
+            );
+            invalidations.push(
+              this.valkeyRepository.del(`quiz:full:${question.quizId}`),
             );
           }
         }

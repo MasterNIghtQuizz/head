@@ -1,6 +1,6 @@
 {
   "app": {
-    "port": 3000,
+    "port": 3010,
     "env": "development"
   },
   "logger": {
@@ -10,7 +10,8 @@
   "services": {
     "user": "http://localhost:4001",
     "quizz": "http://localhost:4002",
-    "websocket": "http://localhost:3333"
+    "websocket": "http://localhost:3333",
+    "session": "http://localhost:4003"
   },
   "auth": {
     "access": {
@@ -24,6 +25,10 @@
     "internal": {
       "privateKeyPath": "../../keys/internal-private.pem",
       "publicKeyPath": "../../keys/internal-public.pem"
+    },
+    "game": {
+      "privateKeyPath": "../../keys/game-private.pem",
+      "publicKeyPath": "../../keys/game-public.pem"
     }
   },
   "kafka": {
@@ -44,5 +49,8 @@
     "enabled": false,
     "node": "http://localhost:9200",
     "index": "logs-api-gateway"
+  },
+  "metrics": {
+    "enabled": true
   }
 }

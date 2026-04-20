@@ -18,10 +18,20 @@ export interface RefreshTokenPayload {
 }
 
 export interface InternalTokenPayload {
-  userId: string;
-  role: UserRoleValue;
+  userId?: string;
+  role?: UserRoleValue;
+  sessionId?: string;
+  participantId?: string;
   type: typeof TokenType.INTERNAL;
   source: string;
+  [key: string]: unknown;
+}
+
+export interface GameTokenPayload {
+  sessionId: string;
+  participantId: string;
+  role: UserRoleValue;
+  type: typeof TokenType.GAME;
   [key: string]: unknown;
 }
 
@@ -39,8 +49,12 @@ export interface InternalTokenInterceptorOptions {
 
 declare module "fastify" {
   interface FastifyRequest {
-    user?: AccessTokenPayload | Omit<InternalTokenPayload, "source">;
+    user?:
+      | AccessTokenPayload
+      | Omit<InternalTokenPayload, "source">
+      | GameTokenPayload;
     refreshTokenPayload?: RefreshTokenPayload;
     internalTokenPayload?: InternalTokenPayload;
+    gameTokenPayload?: GameTokenPayload;
   }
 }

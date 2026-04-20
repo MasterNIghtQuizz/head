@@ -1,5 +1,6 @@
 import { initTracing } from "common-monitoring";
 import { config } from "./config.js";
+import { Config } from "common-config";
 
 initTracing({
   serviceName: "ms-user",
@@ -14,6 +15,7 @@ import { initDatabase } from "./database.js";
 import { registerSwagger } from "common-swagger";
 import { hookInternalToken } from "common-auth";
 import { ControllerFactory } from "common-core";
+import { createMetricsPlugin } from "common-metrics";
 import { UserController } from "./modules/user/controllers/user.controller.js";
 import { TestingController } from "./modules/user/controllers/testing.controller.js";
 import { UserService } from "./modules/user/services/user.service.js";
@@ -25,7 +27,13 @@ import { db, valkey } from "./database.js";
 const fastify = Fastify({
   loggerInstance: logger,
   disableRequestLogging: true,
+  ignoreTrailingSlash: true,
 });
+
+const metricsEnabled = /** @type {{ enabled: boolean }} */ (
+  Config.get("metrics")
+).enabled;
+await fastify.register(createMetricsPlugin({ serviceName: "ms-user", enabled: metricsEnabled }));
 
 fastify.addHook(
   "onRequest",
@@ -55,6 +63,7 @@ await registerSwagger(fastify, {
 
 await initDatabase();
 
+/** @type {import('common-kafka').KafkaProducer | null} */
 let kafkaProducer = null;
 if (config.kafka.enabled) {
   const kafkaClient = createKafkaClient({
@@ -62,7 +71,14 @@ if (config.kafka.enabled) {
     brokers: config.kafka.brokers,
   });
   kafkaProducer = new KafkaProducer(kafkaClient);
-  await kafkaProducer.connect();
+  try {
+    await kafkaProducer.connect();
+  } catch (error) {
+    logger.error(
+      { error },
+      "Kafka connection failed. Service will start without Kafka producer.",
+    );
+  }
 }
 
 const valkeyRepository = new ValkeyRepository(valkey);

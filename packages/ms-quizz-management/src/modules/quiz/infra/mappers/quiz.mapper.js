@@ -3,6 +3,12 @@ import { QuizResponseDto } from "../../contracts/quiz.dto.js";
 import { QuizModel } from "../models/quiz.model.js";
 import { QuestionMapper } from "./question.mapper.js";
 
+/**
+ * @typedef {import('common-contracts').QuizResponse} QuizResponse
+ * @typedef {import('common-contracts').FullQuizResponse} FullQuizResponse
+ * @typedef {import('common-contracts').QuizIdsResponse} QuizIdsResponse
+ */
+
 export class QuizMapper {
   /**
    * @param {QuizEntity} entity
@@ -63,5 +69,47 @@ export class QuizMapper {
    */
   static toDomains(models) {
     return models.map((model) => this.toDomain(model));
+  }
+
+  /**
+   * @param {QuizEntity} entity
+   * @returns {FullQuizResponse}
+   */
+  static toFullDto(entity) {
+    return {
+      id: entity.id || "",
+      title: entity.title,
+      description: entity.description,
+      createdAt: entity.createdAt ? entity.createdAt.toISOString() : "",
+      updatedAt: entity.updatedAt ? entity.updatedAt.toISOString() : "",
+      questions: entity.questions.map((q) => ({
+        id: q.id || "",
+        label: q.label,
+        type: q.type,
+        order_index: q.order_index,
+        timer_seconds: q.timer_seconds,
+        choices: q.choices.map((c) => ({
+          id: c.id || "",
+          text: c.text,
+          is_correct: c.is_correct,
+        })),
+      })),
+    };
+  }
+
+  /**
+   * @param {QuizEntity} entity
+   * @returns {QuizIdsResponse}
+   */
+  static toIdsDto(entity) {
+    return {
+      quizId: entity.id || "",
+      questions: entity.questions.map((q) => ({
+        id: q.id || "",
+        choices: q.choices.map((c) => ({
+          id: c.id || "",
+        })),
+      })),
+    };
   }
 }

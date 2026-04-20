@@ -250,4 +250,60 @@ describe("Technical Quizz Full E2E Scenarios", () => {
     });
     expect(res.statusCode).toBe(404);
   });
+
+  it("should return full quiz and quiz ids structure", async () => {
+    const qz = await app.inject({
+      method: "POST",
+      url: "/quizzes",
+      headers: { "access-token": token },
+      payload: { title: "Full Data Quiz" },
+    });
+    const quizId = qz.json().id;
+
+    const qn = await app.inject({
+      method: "POST",
+      url: "/questions",
+      headers: { "access-token": token },
+      payload: {
+        quiz_id: quizId,
+        label: "Q",
+        type: "single",
+        order_index: 0,
+        timer_seconds: 10,
+      },
+    });
+    const questionId = qn.json().id;
+
+    await app.inject({
+      method: "POST",
+      url: "/choices",
+      headers: { "access-token": token },
+      payload: { question_id: questionId, text: "Correct", is_correct: true },
+    });
+
+    const fullRes = await app.inject({
+      method: "POST",
+      url: "/quizzes/get-full",
+      headers: { "access-token": token },
+      payload: { quizId },
+    });
+    expect(fullRes.statusCode).toBe(200);
+    const fullBody = fullRes.json();
+    expect(fullBody.id).toBe(quizId);
+    expect(fullBody.questions).toHaveLength(1);
+    expect(fullBody.questions[0].choices).toHaveLength(1);
+
+    const idsRes = await app.inject({
+      method: "POST",
+      url: "/quizzes/get-ids",
+      headers: { "access-token": token },
+      payload: { quizId },
+    });
+    expect(idsRes.statusCode).toBe(200);
+    const idsBody = idsRes.json();
+    expect(idsBody.quizId).toBe(quizId);
+    expect(idsBody.questions[0].id).toBe(questionId);
+    expect(idsBody.questions[0].choices).toHaveLength(1);
+    expect(idsBody.questions[0].choices[0].id).toBeDefined();
+  });
 });

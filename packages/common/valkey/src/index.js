@@ -38,6 +38,9 @@ export class ValkeyService {
       password: this.#config.password,
       db: this.#config.db || 0,
       lazyConnect: true,
+      maxRetriesPerRequest: 0,
+      enableOfflineQueue: false,
+      connectTimeout: 5000,
       /** @param {number} times */
       retryStrategy(times) {
         const delay = Math.min(times * 50, 2000);
@@ -58,15 +61,24 @@ export class ValkeyService {
 
     /** @param {Error} err */
     this.#client.on("error", (err) => {
-      logger.error({ err }, "Valkey client error");
+      // @ts-ignore
+      if (err.code === "ECONNREFUSED") {
+        logger.warn(
+          { host: this.#config.host, port: this.#config.port },
+          "Valkey connection refused: degraded mode active",
+        );
+      } else {
+        logger.error({ err }, "Valkey client error");
+      }
     });
 
     this.#client.on("close", () => {
       logger.warn("Valkey connection closed");
     });
 
-    await this.#client.connect();
-    return this.#client;
+    return this.#client
+      .connect()
+      .then(() => /** @type {Redis} */(this.#client));
   }
 
   /**

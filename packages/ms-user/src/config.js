@@ -60,6 +60,9 @@ const schema = Joi.object({
     node: Joi.string().uri().required(),
     index: Joi.string().required(),
   }).optional(),
+  metrics: Joi.object({
+    enabled: Joi.boolean().default(true),
+  }).optional(),
 });
 
 Config.init({ directory: configDirectory, schema });

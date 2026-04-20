@@ -11,4 +11,8 @@ echo "MS-QUIZZ-MANAGEMENT"
 yarn workspace @monorepo/ms-quizz-management run migrations:run
 
 echo "----------------------------------------"
+echo "MS-SESSION"
+yarn workspace @monorepo/ms-session run migrations:run
+
+echo "----------------------------------------"
 echo "All migrations completed."

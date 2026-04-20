@@ -9,8 +9,7 @@
     "node": ">=24.0.0"
   },
   "scripts": {
-    "start": "concurrently -k -p \"[{name}]\" -n \"GATEWAY,USER,QUIZZ\" -c \"cyan,green,yellow\" \"yarn workspace @monorepo/api-gateway start\" \"yarn workspace @monorepo/ms-user start\" \"yarn workspace @monorepo/ms-quizz-management start\"",
-    "mini-front:serve": "yarn dlx serve packages/mini-front -l 4173",
+    "start": "concurrently -k -p \"[{name}]\" -n \"GATEWAY,USER,QUIZZ,SESSION\" -c \"cyan,green,yellow,magenta\" \"yarn workspace @monorepo/api-gateway start\" \"yarn workspace @monorepo/ms-user start\" \"yarn workspace @monorepo/ms-quizz-management start\" \"yarn workspace @monorepo/ms-session start\"",
     "lint": "yarn eslint .",
     "test": "vitest",
     "test:unit": "vitest run --project unit",

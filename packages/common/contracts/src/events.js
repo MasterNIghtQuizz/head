@@ -15,6 +15,24 @@ export const UserEventTypes = {
   USER_DELETED: "USER_DELETED",
 };
 
+export const ResponseEventTypes = {
+  ANSWER_SUBMITTED: "ANSWER_SUBMITTED",
+};
+
+/**
+ * Event Types corresponding to specific Session Events.
+ */
+export const SessionEventTypes = {
+  SESSION_CREATED: "session-created",
+  SESSION_STARTED: "session-started",
+  SESSION_NEXT_QUESTION: "session-next-question",
+  SESSION_ENDED: "session-ended",
+  SESSION_DELETED: "session-deleted",
+  PARTICIPANT_JOINED: "participant-joined",
+  PARTICIPANT_LEFT: "participant-left",
+  QUIZ_RESPONSE_SUBMITTED: "quiz.response.submitted",
+};
+
 /**
  * @typedef {Object} UserCreatedEventPayload
  * @property {string} userId

@@ -23,22 +23,55 @@ export function hookInternalTokenInterceptor(options) {
       return;
     }
 
-    if (!request.user || !request.user.userId || !request.user.role) {
+    const authContext = request.user || request.gameTokenPayload;
+
+    if (!authContext) {
+      if (request.routeOptions?.config?.isPublic) {
+        return done();
+      }
+      logger.error({ url: request.url }, "Auth context missing");
+      return done(new UnauthorizedError("Unauthorized: Missing auth context"));
+    }
+
+    const hasId = !!(authContext.userId || authContext.participantId);
+    const hasRole = !!authContext.role;
+
+    if (!hasId || !hasRole) {
+      if (request.routeOptions?.config?.isPublic) {
+        return done();
+      }
       logger.error(
-        { url: request.url, user: request.user },
-        "Cannot generate internal token: missing or incomplete request.user (route is not public)",
+        {
+          url: request.url,
+          hasId,
+          hasRole,
+          userId: authContext.userId,
+          participantId: authContext.participantId,
+          role: authContext.role,
+        },
+        "Incomplete auth context for internal token generation",
       );
-      return done(new UnauthorizedError("Unauthorized: Missing user context"));
+      return done(
+        new UnauthorizedError("Unauthorized: Incomplete auth context"),
+      );
     }
 
     try {
       /** @type {import('../types.d.ts').InternalTokenPayload} */
       const payload = {
-        userId: request.user.userId,
-        role: request.user.role,
+        userId: request.user?.userId,
+        role: request.user?.role,
+        sessionId: request.gameTokenPayload?.sessionId,
+        participantId: request.gameTokenPayload?.participantId,
         type: TokenType.INTERNAL,
         source,
       };
+      logger.info({ payload }, "Generated internal token payload");
+
+      if (request.user && !payload.sessionId && request.user.sessionId) {
+        payload.sessionId = request.user.sessionId;
+        payload.participantId = request.user.participantId;
+      }
 
       const internalToken = CryptoService.sign(payload, privateKeyPath, {
         expiresIn:

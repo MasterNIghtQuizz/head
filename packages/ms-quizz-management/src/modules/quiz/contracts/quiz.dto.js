@@ -88,3 +88,116 @@ export const QuizResponseSchema = {
   },
   required: ["id", "title", "createdAt", "updatedAt"],
 };
+
+/**
+ * @typedef {import('common-contracts').QuizAnswersResponse} QuizAnswersResponse
+ */
+
+export const QuizAnswersResponseSchema = {
+  $id: "QuizAnswersResponseDto",
+  type: "object",
+  properties: {
+    answers: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          questionId: { type: "string", format: "uuid" },
+          choiceId: { type: "string", format: "uuid" },
+        },
+        required: ["questionId", "choiceId"],
+      },
+    },
+  },
+  required: ["answers"],
+};
+
+/**
+ * @typedef {import('common-contracts').GetQuizRequest} GetQuizRequest
+ */
+export class GetQuizRequestDto {
+  /**
+   * @param {GetQuizRequest} data
+   */
+  constructor(data) {
+    this.quizId = data.quizId;
+  }
+  /**
+   * @param {GetQuizRequest} data
+   * @returns {import('joi').ValidationResult<GetQuizRequest>}
+   */
+  static validate(data) {
+    const schema = Joi.object({
+      quizId: Joi.string().uuid().required(),
+    });
+    return schema.validate(data);
+  }
+}
+
+export const FullQuizResponseSchema = {
+  $id: "FullQuizResponseDto",
+  type: "object",
+  properties: {
+    id: { type: "string", format: "uuid" },
+    title: { type: "string" },
+    description: { type: "string", nullable: true },
+    createdAt: { type: "string", format: "date-time" },
+    updatedAt: { type: "string", format: "date-time" },
+    questions: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          label: { type: "string" },
+          type: { type: "string" },
+          order_index: { type: "integer" },
+          timer_seconds: { type: "integer" },
+          choices: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                id: { type: "string", format: "uuid" },
+                text: { type: "string" },
+                is_correct: { type: "boolean" },
+              },
+              required: ["id", "text", "is_correct"],
+            },
+          },
+        },
+        required: ["id", "label", "type", "order_index", "timer_seconds"],
+      },
+    },
+  },
+  required: ["id", "title", "createdAt", "updatedAt"],
+};
+
+export const QuizIdsResponseSchema = {
+  $id: "QuizIdsResponseDto",
+  type: "object",
+  properties: {
+    quizId: { type: "string", format: "uuid" },
+    questions: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          choices: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                id: { type: "string", format: "uuid" },
+              },
+              required: ["id"],
+            },
+          },
+        },
+        required: ["id"],
+      },
+    },
+  },
+  required: ["quizId"],
+};

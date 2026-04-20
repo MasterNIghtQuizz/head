@@ -99,6 +99,53 @@ services:
       kafka:
         condition: service_healthy
 
+  # ────────────────────────────────────────────────────────
+  #  METRICS — Prometheus + Grafana  (profile: monitoring)
+  # ────────────────────────────────────────────────────────
+  prometheus:
+    profiles: [monitoring]
+    image: prom/prometheus:v2.53.0
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ${PROMETHEUS_CONFIG:-./monitoring/prometheus/prometheus.yml}:/etc/prometheus/prometheus.yml:ro
+      - prometheusdata:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=15d"
+      - "--web.enable-lifecycle"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9090/-/healthy || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  grafana:
+    profiles: [monitoring]
+    image: grafana/grafana:11.1.0
+    container_name: grafana
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/1-platform-overview.json
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafanadata:/var/lib/grafana
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   otel-collector:
     profiles: [monitoring]
     image: otel/opentelemetry-collector:latest
@@ -201,6 +248,7 @@ services:
       KAFKA_BROKERS: '["kafka:29092"]'
       USER_SERVICE_URL: "http://ms-user:4001"
       QUIZZ_SERVICE_URL: "http://ms-quizz-management:4002"
+      SESSION_SERVICE_URL: "http://ms-session:4003"
       VALKEY_HOST: valkey
       VALKEY_PORT: 6379
       OTEL_ENABLED: ${MONITORING_ENABLED:-false}
@@ -208,6 +256,7 @@ services:
       OPENSEARCH_ENABLED: ${MONITORING_ENABLED:-false}
       OPENSEARCH_NODE: "http://opensearch:9200"
       OPENSEARCH_INDEX: "logs-api-gateway"
+      METRICS_ENABLED: "true"
     depends_on:
       kafka:
         condition: service_healthy
@@ -236,6 +285,7 @@ services:
       OPENSEARCH_ENABLED: ${MONITORING_ENABLED:-false}
       OPENSEARCH_NODE: "http://opensearch:9200"
       OPENSEARCH_INDEX: "logs-ms-user"
+      METRICS_ENABLED: "true"
     command: >
       sh -c "yarn workspace @monorepo/ms-user run migrations:run &&
              yarn workspace @monorepo/ms-user run start"
@@ -267,9 +317,46 @@ services:
       OPENSEARCH_ENABLED: ${MONITORING_ENABLED:-false}
       OPENSEARCH_NODE: "http://opensearch:9200"
       OPENSEARCH_INDEX: "logs-ms-quizz-management"
+      METRICS_ENABLED: "true"
     command: >
       sh -c "yarn workspace @monorepo/ms-quizz-management run migrations:run &&
              yarn workspace @monorepo/ms-quizz-management run start"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+
+  ms-session:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.ms-session
+    ports:
+      - "4003:4003"
+    environment:
+      NODE_ENV: production
+      PORT: 4003
+      LOG_PRETTY: false
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ms_session_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password
+      KAFKA_BROKERS: '["kafka:29092"]'
+      VALKEY_HOST: valkey
+      VALKEY_PORT: 6379
+      OTEL_ENABLED: ${MONITORING_ENABLED:-false}
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+      OPENSEARCH_ENABLED: ${MONITORING_ENABLED:-false}
+      OPENSEARCH_NODE: "http://opensearch:9200"
+      OPENSEARCH_INDEX: "logs-ms-session"
+      METRICS_ENABLED: "true"
+    command: >
+      sh -c "yarn workspace @monorepo/ms-session run migrations:run &&
+             yarn workspace @monorepo/ms-session run start"
     depends_on:
       postgres:
         condition: service_healthy
@@ -286,15 +373,16 @@ services:
     profiles: [test]
     environment:
       <<: *common-env
-      POSTGRES_DB: ms_quizz_test_db
+      POSTGRES_DB: postgres
     ports:
       - "5434:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d ms_quizz_test_db"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
     volumes:
+      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
       - pgdata-test:/var/lib/postgresql/data
   api-gateway-test:
     profiles: [test]
@@ -312,6 +400,7 @@ services:
       KAFKA_ENABLED: "false"
       USER_SERVICE_URL: "http://ms-user-test:4011"
       QUIZZ_SERVICE_URL: "http://ms-quizz-management-test:4012"
+      SESSION_SERVICE_URL: "http://ms-session-test:4013"
       VALKEY_HOST: valkey-test
       VALKEY_PORT: 6379
     volumes:
@@ -344,7 +433,7 @@ services:
       PORT: 4011
       POSTGRES_HOST: postgres-test
       POSTGRES_PORT: 5432
-      POSTGRES_DB: ms_quizz_test_db
+      POSTGRES_DB: ms_user_test_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres_password
       VALKEY_HOST: valkey-test
@@ -363,6 +452,7 @@ services:
       interval: 3s
       timeout: 3s
       retries: 20
+      start_period: 20s
     depends_on:
       postgres-test:
         condition: service_healthy
@@ -405,6 +495,49 @@ services:
       interval: 3s
       timeout: 3s
       retries: 20
+      start_period: 20s
+
+  ms-session-test:
+    profiles: [test]
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.ms-session
+      args:
+        PRODUCTION: "false"
+    ports:
+      - "4013:4013"
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      valkey-test:
+        condition: service_healthy
+    environment:
+      NODE_ENV: test
+      PORT: 4013
+      POSTGRES_HOST: postgres-test
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ms_session_test_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password
+      VALKEY_HOST: valkey-test
+      VALKEY_PORT: 6379
+      KAFKA_BROKERS: "[]"
+      KAFKA_ENABLED: "false"
+      QUIZZ_SERVICE_URL: "http://ms-quizz-management-test:4012"
+      USER_SERVICE_URL: "http://ms-user-test:4011"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -qO- http://127.0.0.1:4013/health | grep ok || exit 1",
+        ]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 20s
 
   valkey-test:
     image: valkey/valkey:8
@@ -426,3 +559,5 @@ volumes:
   valkeydata:
   valkeydata-test:
   opensearchdata:
+  prometheusdata:
+  grafanadata:

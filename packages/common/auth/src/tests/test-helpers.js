@@ -11,16 +11,21 @@ import { vi } from "vitest";
 /**
  * @param {Record<string, string>} headers
  * @param {import('../types.d.ts').AccessTokenPayload | undefined} [user]
+ * @param {boolean} [isPublic]
  * @returns {ExecutionContext}
  */
-export function createExecutionContext(headers = {}, user = undefined) {
+export function createExecutionContext(
+  headers = {},
+  user = undefined,
+  isPublic = false,
+) {
   const request = /** @type {import('fastify').FastifyRequest} */ (
     /** @type {unknown} */ ({
       headers,
       url: "/test-route",
       routeOptions: {
         config: {
-          isPublic: false,
+          isPublic,
         },
       },
       user,

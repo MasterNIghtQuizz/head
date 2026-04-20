@@ -3,15 +3,19 @@ set -e
 
 export QUIZZ_SERVICE_URL="${QUIZZ_SERVICE_URL:-http://localhost:4012}"
 export USER_SERVICE_URL="${USER_SERVICE_URL:-http://localhost:4011}"
+export SESSION_SERVICE_URL="${SESSION_SERVICE_URL:-http://localhost:4013}"
 
 QUIZZ_URL="$QUIZZ_SERVICE_URL"
 USER_URL="$USER_SERVICE_URL"
+SESSION_URL="$SESSION_SERVICE_URL"
 
 HEALTH_QUIZZ="${QUIZZ_URL}/health"
 HEALTH_USER="${USER_URL}/health"
+HEALTH_SESSION="${SESSION_URL}/health"
 
 SEED_QUIZZ="${QUIZZ_URL}/testing/seed"
 SEED_USER="${USER_URL}/testing/seed"
+SEED_SESSION="${SESSION_URL}/testing/seed"
 
 MAX_RETRIES="${E2E_MAX_RETRIES:-30}"
 RETRY_INTERVAL="${E2E_RETRY_INTERVAL:-2}"
@@ -85,6 +89,7 @@ wait_for_service() {
 
 wait_for_service "ms-quizz-management" "$HEALTH_QUIZZ"
 wait_for_service "ms-user" "$HEALTH_USER"
+wait_for_service "ms-session" "$HEALTH_SESSION"
 
 log "Step 2/3 — Seeding databases..."
 INTERNAL_TOKEN=$(generate_internal_token)
@@ -104,6 +109,7 @@ seed_service() {
 
 seed_service "ms-quizz-management" "$SEED_QUIZZ"
 seed_service "ms-user" "$SEED_USER"
+seed_service "ms-session" "$SEED_SESSION"
 
 log "Step 3/3 — Running E2E tests..."
 exec yarn vitest run --config vitest.config.e2e.js --no-file-parallelism --maxWorkers=1 --dir packages/api-gateway "$@"

@@ -54,5 +54,11 @@
     },
     "node": "OPENSEARCH_NODE",
     "index": "OPENSEARCH_INDEX"
+  },
+  "metrics": {
+    "enabled": {
+      "__name": "METRICS_ENABLED",
+      "__format": "json"
+    }
   }
 }

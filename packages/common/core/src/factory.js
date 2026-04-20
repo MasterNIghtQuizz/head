@@ -38,6 +38,12 @@ export class ControllerFactory {
               ControllerClass,
               route.handler,
             ) === true;
+          const useGameToken =
+            Reflect.getMetadata(
+              MetadataKeys.USE_GAME_TOKEN,
+              ControllerClass,
+              route.handler,
+            ) === true;
 
           const roles = Reflect.getMetadata(
             MetadataKeys.ROLES,
@@ -49,7 +55,7 @@ export class ControllerFactory {
             method: route.method,
             url: route.path,
             schema: schema || {},
-            config: { isPublic, roles, useRefreshToken },
+            config: { isPublic, roles, useRefreshToken, useGameToken },
             handler: instance[route.handler].bind(instance),
           });
         });

@@ -6,6 +6,7 @@ export declare const config: {
     user: string;
     quizz: string;
     websocket: string;
+    session: string;
   };
   kafka: {
     brokers: string[];
@@ -14,6 +15,7 @@ export declare const config: {
     access: { privateKeyPath: string; publicKeyPath: string };
     refresh: { privateKeyPath: string; publicKeyPath: string };
     internal: { privateKeyPath: string; publicKeyPath: string };
+    game: { privateKeyPath: string; publicKeyPath: string };
   };
   valkey: {
     host: string;

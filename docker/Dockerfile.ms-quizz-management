@@ -19,7 +19,7 @@ RUN if [ "$PRODUCTION" = "true" ]; then \
     fi
 
 FROM node:24-alpine AS runtime
-WORKDIR /app
+WORKDIR /app/packages/ms-quizz-management
 
 RUN corepack enable && corepack prepare yarn@4.11.0 --activate
 
@@ -28,6 +28,6 @@ COPY --from=base /app /app
 EXPOSE 4002
 
 HEALTHCHECK --interval=10s --timeout=3s --retries=5 \
-  CMD wget -qO- http://127.0.0.1:${PORT:-4002}/health | grep ok || exit 1
+  CMD wget -qO- http://127.0.0.1:${PORT:-4012}/health | grep ok || exit 1
 
-CMD ["yarn", "workspace", "@monorepo/ms-quizz-management", "run", "start"]
+CMD ["node", "src/index.js"]

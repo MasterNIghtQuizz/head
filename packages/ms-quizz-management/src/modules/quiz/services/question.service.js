@@ -158,6 +158,30 @@ export class QuestionService extends BaseService {
   }
 
   /**
+   * @param {string} id
+   */
+  async getChoiceIds(id) {
+    logger.info({ id }, "Fetching choice ids for question...");
+    try {
+      const entity = await this.questionRepository.findByIdWithChildren(id);
+      if (!entity) {
+        logger.warn({ id }, "Question not found for choice ids");
+        throw QUESTION_NOT_FOUND(id);
+      }
+      return entity.choices.map((choice) => choice.id);
+    } catch (error) {
+      if (/** @type {BaseError} */ (error).statusCode) {
+        throw error;
+      }
+      logger.error(
+        { error: /** @type {Error} */ (error), id },
+        "Error fetching choice ids for question",
+      );
+      throw DATABASE_ERROR(/** @type {Error} */ (error));
+    }
+  }
+
+  /**
    * @param {import('../contracts/question.dto.js').CreateQuestionRequestDto} data
    */
   async createQuestion(data) {
@@ -179,6 +203,9 @@ export class QuestionService extends BaseService {
             : Promise.resolve(),
           data.quiz_id
             ? this.valkeyRepository.del(`quiz:${data.quiz_id}`)
+            : Promise.resolve(),
+          data.quiz_id
+            ? this.valkeyRepository.del(`quiz:full:${data.quiz_id}`)
             : Promise.resolve(),
           this.valkeyRepository.del("quizzes:all"),
         ]);
@@ -232,6 +259,9 @@ export class QuestionService extends BaseService {
           invalidations.push(
             this.valkeyRepository.del(`quiz:${updatedEntity.quizId}`),
           );
+          invalidations.push(
+            this.valkeyRepository.del(`quiz:full:${updatedEntity.quizId}`),
+          );
         }
         await Promise.all(invalidations);
       } catch (cacheError) {
@@ -275,7 +305,11 @@ export class QuestionService extends BaseService {
       ];
 
       if (entity.quizId) {
-        keys.push(`quiz:questions:${entity.quizId}`, `quiz:${entity.quizId}`);
+        keys.push(
+          `quiz:questions:${entity.quizId}`,
+          `quiz:${entity.quizId}`,
+          `quiz:full:${entity.quizId}`,
+        );
       }
 
       if (entity.choices?.length > 0) {
