@@ -1,9 +1,9 @@
 import { sendMessageToUser } from "../lib/messaging.js";
 import {
-  userCreateRoom,
-  userJoinRoom,
-  userStartRoom,
-} from "./room-membership.handler.js";
+  userCreateSession,
+  userJoinSession,
+  userStartSession,
+} from "./session-membership.handler.js";
 import { errorType, messageType } from "common-websocket";
 
 /**
@@ -66,10 +66,10 @@ export function handleDirectChatMessage(ws, senderId, payload) {
 
 /**
  * @param {import("ws").WebSocket} ws
- * @param {import("common-websocket").JoinRoomPayload} payload
+ * @param {import("common-websocket").JoinSessionPayload} payload
  * @returns {void}
  */
-export function handleJoinRoomMessage(ws, payload) {
+export function handleJoinSessionMessage(ws, payload) {
   if (!payload || typeof payload !== "object") {
     ws.send(
       JSON.stringify({
@@ -81,25 +81,25 @@ export function handleJoinRoomMessage(ws, payload) {
   }
 
   if (
-    typeof payload.roomId !== "string" ||
-    payload.roomId.trim().length === 0
+    typeof payload.sessionId !== "string" ||
+    payload.sessionId.trim().length === 0
   ) {
     ws.send(
       JSON.stringify({
         type: messageType.ERROR,
-        payload: { reason: errorType.MISSING_ROOM_ID },
+        payload: { reason: errorType.MISSING_SESSION_ID },
       }),
     );
     return;
   }
 
-  const updatedUser = userJoinRoom(ws, payload.roomId);
+  const updatedUser = userJoinSession(ws, payload.sessionId);
   if (!updatedUser || "error" in updatedUser) {
     ws.send(
       JSON.stringify({
         type: messageType.ERROR,
         payload: {
-          reason: updatedUser?.error ?? errorType.JOIN_ROOM_FAILED,
+          reason: updatedUser?.error ?? errorType.JOIN_SESSION_FAILED,
         },
       }),
     );
@@ -108,18 +108,18 @@ export function handleJoinRoomMessage(ws, payload) {
 
   ws.send(
     JSON.stringify({
-      type: messageType.JOINED_ROOM,
-      payload: { roomId: updatedUser.roomId },
+      type: messageType.JOINED_SESSION,
+      payload: { sessionId: updatedUser.sessionId },
     }),
   );
 }
 
 /**
  * @param {import("ws").WebSocket} ws
- * @param {import("common-websocket").CreateRoomPayload} payload
+ * @param {import("common-websocket").CreateSessionPayload} payload
  * @returns {void}
  */
-export function handleCreateRoomMessage(ws, payload) {
+export function handleCreateSessionMessage(ws, payload) {
   if (!payload || typeof payload !== "object") {
     ws.send(
       JSON.stringify({
@@ -131,13 +131,13 @@ export function handleCreateRoomMessage(ws, payload) {
   }
 
   if (
-    typeof payload.roomId !== "string" ||
-    payload.roomId.trim().length === 0
+    typeof payload.sessionId !== "string" ||
+    payload.sessionId.trim().length === 0
   ) {
     ws.send(
       JSON.stringify({
         type: messageType.ERROR,
-        payload: { reason: errorType.MISSING_ROOM_ID },
+        payload: { reason: errorType.MISSING_SESSION_ID },
       }),
     );
     return;
@@ -154,13 +154,13 @@ export function handleCreateRoomMessage(ws, payload) {
     return;
   }
 
-  const updatedUser = userCreateRoom(ws, payload.roomId, maxUsers);
+  const updatedUser = userCreateSession(ws, payload.sessionId, maxUsers);
   if (!updatedUser || "error" in updatedUser) {
     ws.send(
       JSON.stringify({
         type: messageType.ERROR,
         payload: {
-          reason: updatedUser?.error ?? errorType.CREATE_ROOM_FAILED,
+          reason: updatedUser?.error ?? errorType.CREATE_SESSION_FAILED,
         },
       }),
     );
@@ -169,18 +169,18 @@ export function handleCreateRoomMessage(ws, payload) {
 
   ws.send(
     JSON.stringify({
-      type: messageType.ROOM_CREATED,
-      payload: { roomId: updatedUser.roomId, max_users: maxUsers },
+      type: messageType.SESSION_CREATED,
+      payload: { sessionId: updatedUser.sessionId, max_users: maxUsers },
     }),
   );
 }
 
 /**
  * @param {import("ws").WebSocket} ws
- * @param {import("common-websocket").StartRoomPayload} payload
+ * @param {import("common-websocket").StartSessionPayload} payload
  * @returns {void}
  */
-export function handleStartRoomMessage(ws, payload) {
+export function handleStartSessionMessage(ws, payload) {
   if (!payload || typeof payload !== "object") {
     ws.send(
       JSON.stringify({
@@ -192,25 +192,25 @@ export function handleStartRoomMessage(ws, payload) {
   }
 
   if (
-    typeof payload.roomId !== "string" ||
-    payload.roomId.trim().length === 0
+    typeof payload.sessionId !== "string" ||
+    payload.sessionId.trim().length === 0
   ) {
     ws.send(
       JSON.stringify({
         type: messageType.ERROR,
-        payload: { reason: errorType.MISSING_ROOM_ID },
+        payload: { reason: errorType.MISSING_SESSION_ID },
       }),
     );
     return;
   }
 
-  const startedRoom = userStartRoom(ws, payload.roomId);
-  if (!startedRoom || "error" in startedRoom) {
+  const startedSession = userStartSession(ws, payload.sessionId);
+  if (!startedSession || "error" in startedSession) {
     ws.send(
       JSON.stringify({
         type: messageType.ERROR,
         payload: {
-          reason: startedRoom?.error ?? errorType.START_ROOM_FAILED,
+          reason: startedSession?.error ?? errorType.START_SESSION_FAILED,
         },
       }),
     );
@@ -219,10 +219,10 @@ export function handleStartRoomMessage(ws, payload) {
 
   ws.send(
     JSON.stringify({
-      type: messageType.ROOM_STARTED,
+      type: messageType.SESSION_STARTED,
       payload: {
-        roomId: startedRoom.roomId,
-        ownerId: startedRoom.ownerId,
+        sessionId: startedSession.sessionId,
+        ownerId: startedSession.ownerId,
       },
     }),
   );

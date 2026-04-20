@@ -5,15 +5,15 @@ import {
   setSocketContext,
   getSocketContext,
 } from "../lib/connection-store.js";
-import { broadcastToRoom } from "../lib/messaging.js";
+import { broadcastToSession } from "../lib/messaging.js";
 import { messageType } from "common-websocket";
-import { handleRoomDeparture } from "./room-membership.handler.js";
+import { handleSessionDeparture } from "./session-membership.handler.js";
 import logger from "../logger.js";
 
 /**
  * @param {import("ws").WebSocket} ws
  * @param {import("http").IncomingMessage} req
- * @returns {{ userId: string, userName: string, roomId: string | null } | null}
+ * @returns {{ userId: string, userName: string, sessionId: string | null } | null}
  */
 function userConnect(ws, req) {
   logger.debug({}, `raw headers: ${JSON.stringify(req.headers)}`);
@@ -52,10 +52,10 @@ function userConnect(ws, req) {
   setSocketContext(ws, {
     userId,
     userName,
-    roomId: null,
+    sessionId: null,
   });
 
-  return { userId, userName, roomId: null };
+  return { userId, userName, sessionId: null };
 }
 
 /**
@@ -68,7 +68,7 @@ function userDisconnect(ws, userId, userName) {
   const context = getSocketContext(ws);
   remove(userId, ws);
 
-  if (!context?.roomId) {
+  if (!context?.sessionId) {
     return;
   }
 
@@ -76,8 +76,8 @@ function userDisconnect(ws, userId, userName) {
     return;
   }
 
-  broadcastToRoom(
-    context.roomId,
+  broadcastToSession(
+    context.sessionId,
     {
       type: messageType.USER_OFFLINE,
       payload: { userId: userId, userName: userName },
@@ -85,7 +85,7 @@ function userDisconnect(ws, userId, userName) {
     userId,
   );
 
-  handleRoomDeparture(context.roomId, userId);
+  handleSessionDeparture(context.sessionId, userId);
 }
 
 export { userConnect, userDisconnect };

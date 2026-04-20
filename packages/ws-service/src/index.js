@@ -4,10 +4,10 @@ import { config } from "./config.js";
 
 import { userConnect, userDisconnect } from "./handlers/connection.handler.js";
 import {
-  handleCreateRoomMessage,
+  handleCreateSessionMessage,
   handleDirectChatMessage,
-  handleJoinRoomMessage,
-  handleStartRoomMessage,
+  handleJoinSessionMessage,
+  handleStartSessionMessage,
   parseClientMessage,
 } from "./handlers/incoming-message.handler.js";
 
@@ -40,14 +40,14 @@ wss.on(
 
       const parsedType = parsedMessage.type;
       switch (parsedType) {
-        case messageType.CREATE_ROOM:
-          handleCreateRoomMessage(ws, parsedMessage.payload);
+        case messageType.CREATE_SESSION:
+          handleCreateSessionMessage(ws, parsedMessage.payload);
           break;
-        case messageType.START_ROOM:
-          handleStartRoomMessage(ws, parsedMessage.payload);
+        case messageType.START_SESSION:
+          handleStartSessionMessage(ws, parsedMessage.payload);
           break;
-        case messageType.JOIN_ROOM:
-          handleJoinRoomMessage(ws, parsedMessage.payload);
+        case messageType.JOIN_SESSION:
+          handleJoinSessionMessage(ws, parsedMessage.payload);
           break;
         case messageType.CHAT_MESSAGE:
           handleDirectChatMessage(

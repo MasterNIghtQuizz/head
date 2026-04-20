@@ -60,10 +60,10 @@ function getSocketContext(ws) {
 
 /**
  * @param {import("ws").WebSocket} ws
- * @param {string | null} roomId
+ * @param {string | null} sessionId
  * @returns {import("common-websocket").SocketContext | null}
  */
-function setSocketRoom(ws, roomId) {
+function setSocketSession(ws, sessionId) {
   const context = getSocketContext(ws);
   if (!context) {
     return null;
@@ -71,21 +71,21 @@ function setSocketRoom(ws, roomId) {
 
   const updated = {
     ...context,
-    roomId,
+    sessionId,
   };
   socketContexts.set(ws, updated);
   return updated;
 }
 
 /**
- * @param {string} roomId
+ * @param {string} sessionId
  * @returns {Set<import("ws").WebSocket>}
  */
-function getRoomSockets(roomId) {
+function getSessionSockets(sessionId) {
   const sockets = new Set();
 
   for (const [socket, context] of socketContexts.entries()) {
-    if (context.roomId === roomId) {
+    if (context.sessionId === sessionId) {
       sockets.add(socket);
     }
   }
@@ -100,6 +100,6 @@ export {
   clients,
   setSocketContext,
   getSocketContext,
-  setSocketRoom,
-  getRoomSockets,
+  setSocketSession,
+  getSessionSockets,
 };

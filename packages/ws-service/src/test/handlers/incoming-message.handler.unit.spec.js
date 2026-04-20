@@ -5,25 +5,25 @@ vi.mock("../../lib/messaging.js", () => ({
   sendMessageToUser: vi.fn(),
 }));
 
-vi.mock("../../handlers/room-membership.handler.js", () => ({
-  userCreateRoom: vi.fn(),
-  userJoinRoom: vi.fn(),
-  userStartRoom: vi.fn(),
+vi.mock("../../handlers/session-membership.handler.js", () => ({
+  userCreateSession: vi.fn(),
+  userJoinSession: vi.fn(),
+  userStartSession: vi.fn(),
 }));
 
 import {
   parseClientMessage,
   handleDirectChatMessage,
-  handleJoinRoomMessage,
-  handleCreateRoomMessage,
-  handleStartRoomMessage,
+  handleJoinSessionMessage,
+  handleCreateSessionMessage,
+  handleStartSessionMessage,
 } from "../../handlers/incoming-message.handler.js";
 import { sendMessageToUser } from "../../lib/messaging.js";
 import {
-  userCreateRoom,
-  userJoinRoom,
-  userStartRoom,
-} from "../../handlers/room-membership.handler.js";
+  userCreateSession,
+  userJoinSession,
+  userStartSession,
+} from "../../handlers/session-membership.handler.js";
 
 /**
  * @param {unknown} ws
@@ -57,15 +57,15 @@ describe("incoming-message.handler", () => {
       const result = parseClientMessage(
         Buffer.from(
           JSON.stringify({
-            type: messageType.JOIN_ROOM,
-            payload: { roomId: "r1" },
+            type: messageType.JOIN_SESSION,
+            payload: { sessionId: "r1" },
           }),
         ),
       );
 
       expect(result).toEqual({
-        type: messageType.JOIN_ROOM,
-        payload: { roomId: "r1" },
+        type: messageType.JOIN_SESSION,
+        payload: { sessionId: "r1" },
       });
     });
 
@@ -151,11 +151,11 @@ describe("incoming-message.handler", () => {
     });
   });
 
-  describe("handleJoinRoomMessage", () => {
+  describe("handleJoinSessionMessage", () => {
     it("sends INVALID_PAYLOAD when payload is invalid", () => {
       const ws = createWsMock();
 
-      handleJoinRoomMessage(asWebSocket(ws), /** @type {any} */ (null));
+      handleJoinSessionMessage(asWebSocket(ws), /** @type {any} */ (null));
 
       expect(lastSentMessage(ws)).toEqual({
         type: messageType.ERROR,
@@ -163,63 +163,63 @@ describe("incoming-message.handler", () => {
       });
     });
 
-    it("sends MISSING_ROOM_ID when roomId is missing", () => {
+    it("sends MISSING_SESSION_ID when sessionId is missing", () => {
       const ws = createWsMock();
 
-      handleJoinRoomMessage(asWebSocket(ws), { roomId: "" });
+      handleJoinSessionMessage(asWebSocket(ws), { sessionId: "" });
 
       expect(lastSentMessage(ws)).toEqual({
         type: messageType.ERROR,
-        payload: { reason: errorType.MISSING_ROOM_ID },
+        payload: { reason: errorType.MISSING_SESSION_ID },
       });
     });
 
-    it("sends explicit join error returned by room handler", () => {
+    it("sends explicit join error returned by session handler", () => {
       const ws = createWsMock();
-      vi.mocked(userJoinRoom).mockReturnValue({ error: errorType.ROOM_FULL });
+      vi.mocked(userJoinSession).mockReturnValue({ error: errorType.SESSION_FULL });
 
-      handleJoinRoomMessage(asWebSocket(ws), { roomId: "room-1" });
+      handleJoinSessionMessage(asWebSocket(ws), { sessionId: "session-1" });
 
       expect(lastSentMessage(ws)).toEqual({
         type: messageType.ERROR,
-        payload: { reason: errorType.ROOM_FULL },
+        payload: { reason: errorType.SESSION_FULL },
       });
     });
 
-    it("sends JOIN_ROOM_FAILED fallback when room handler returns null", () => {
+    it("sends JOIN_SESSION_FAILED fallback when session handler returns null", () => {
       const ws = createWsMock();
-      vi.mocked(userJoinRoom).mockReturnValue(null);
+      vi.mocked(userJoinSession).mockReturnValue(null);
 
-      handleJoinRoomMessage(asWebSocket(ws), { roomId: "room-1" });
+      handleJoinSessionMessage(asWebSocket(ws), { sessionId: "session-1" });
 
       expect(lastSentMessage(ws)).toEqual({
         type: messageType.ERROR,
-        payload: { reason: errorType.JOIN_ROOM_FAILED },
+        payload: { reason: errorType.JOIN_SESSION_FAILED },
       });
     });
 
-    it("sends JOINED_ROOM when join succeeds", () => {
+    it("sends JOINED_SESSION when join succeeds", () => {
       const ws = createWsMock();
-      vi.mocked(userJoinRoom).mockReturnValue({
+      vi.mocked(userJoinSession).mockReturnValue({
         userId: "u1",
         userName: "alice",
-        roomId: "room-1",
+        sessionId: "session-1",
       });
 
-      handleJoinRoomMessage(asWebSocket(ws), { roomId: "room-1" });
+      handleJoinSessionMessage(asWebSocket(ws), { sessionId: "session-1" });
 
       expect(lastSentMessage(ws)).toEqual({
-        type: messageType.JOINED_ROOM,
-        payload: { roomId: "room-1" },
+        type: messageType.JOINED_SESSION,
+        payload: { sessionId: "session-1" },
       });
     });
   });
 
-  describe("handleCreateRoomMessage", () => {
+  describe("handleCreateSessionMessage", () => {
     it("sends INVALID_PAYLOAD when payload is invalid", () => {
       const ws = createWsMock();
 
-      handleCreateRoomMessage(asWebSocket(ws), /** @type {any} */ (null));
+      handleCreateSessionMessage(asWebSocket(ws), /** @type {any} */ (null));
 
       expect(lastSentMessage(ws)).toEqual({
         type: messageType.ERROR,
@@ -227,22 +227,22 @@ describe("incoming-message.handler", () => {
       });
     });
 
-    it("sends MISSING_ROOM_ID when roomId is missing", () => {
+    it("sends MISSING_SESSION_ID when sessionId is missing", () => {
       const ws = createWsMock();
 
-      handleCreateRoomMessage(asWebSocket(ws), { roomId: " ", max_users: 2 });
+      handleCreateSessionMessage(asWebSocket(ws), { sessionId: " ", max_users: 2 });
 
       expect(lastSentMessage(ws)).toEqual({
         type: messageType.ERROR,
-        payload: { reason: errorType.MISSING_ROOM_ID },
+        payload: { reason: errorType.MISSING_SESSION_ID },
       });
     });
 
     it("sends MISSING_OR_INVALID_MAX_USERS when max_users is invalid", () => {
       const ws = createWsMock();
 
-      handleCreateRoomMessage(asWebSocket(ws), {
-        roomId: "room-1",
+      handleCreateSessionMessage(asWebSocket(ws), {
+        sessionId: "session-1",
         max_users: 0,
       });
 
@@ -252,63 +252,63 @@ describe("incoming-message.handler", () => {
       });
     });
 
-    it("sends explicit create error returned by room handler", () => {
+    it("sends explicit create error returned by session handler", () => {
       const ws = createWsMock();
-      vi.mocked(userCreateRoom).mockReturnValue({
-        error: errorType.ROOM_ALREADY_EXISTS,
+      vi.mocked(userCreateSession).mockReturnValue({
+        error: errorType.SESSION_ALREADY_EXISTS,
       });
 
-      handleCreateRoomMessage(asWebSocket(ws), {
-        roomId: "room-1",
+      handleCreateSessionMessage(asWebSocket(ws), {
+        sessionId: "session-1",
         max_users: 3,
       });
 
       expect(lastSentMessage(ws)).toEqual({
         type: messageType.ERROR,
-        payload: { reason: errorType.ROOM_ALREADY_EXISTS },
+        payload: { reason: errorType.SESSION_ALREADY_EXISTS },
       });
     });
 
-    it("sends CREATE_ROOM_FAILED fallback when room handler returns null", () => {
+    it("sends CREATE_SESSION_FAILED fallback when session handler returns null", () => {
       const ws = createWsMock();
-      vi.mocked(userCreateRoom).mockReturnValue(null);
+      vi.mocked(userCreateSession).mockReturnValue(null);
 
-      handleCreateRoomMessage(asWebSocket(ws), {
-        roomId: "room-1",
+      handleCreateSessionMessage(asWebSocket(ws), {
+        sessionId: "session-1",
         max_users: 3,
       });
 
       expect(lastSentMessage(ws)).toEqual({
         type: messageType.ERROR,
-        payload: { reason: errorType.CREATE_ROOM_FAILED },
+        payload: { reason: errorType.CREATE_SESSION_FAILED },
       });
     });
 
-    it("sends ROOM_CREATED when room creation succeeds", () => {
+    it("sends SESSION_CREATED when session creation succeeds", () => {
       const ws = createWsMock();
-      vi.mocked(userCreateRoom).mockReturnValue({
+      vi.mocked(userCreateSession).mockReturnValue({
         userId: "u1",
         userName: "alice",
-        roomId: "room-1",
+        sessionId: "session-1",
       });
 
-      handleCreateRoomMessage(asWebSocket(ws), {
-        roomId: "room-1",
+      handleCreateSessionMessage(asWebSocket(ws), {
+        sessionId: "session-1",
         max_users: 4,
       });
 
       expect(lastSentMessage(ws)).toEqual({
-        type: messageType.ROOM_CREATED,
-        payload: { roomId: "room-1", max_users: 4 },
+        type: messageType.SESSION_CREATED,
+        payload: { sessionId: "session-1", max_users: 4 },
       });
     });
   });
 
-  describe("handleStartRoomMessage", () => {
+  describe("handleStartSessionMessage", () => {
     it("sends INVALID_PAYLOAD when payload is invalid", () => {
       const ws = createWsMock();
 
-      handleStartRoomMessage(asWebSocket(ws), /** @type {any} */ (null));
+      handleStartSessionMessage(asWebSocket(ws), /** @type {any} */ (null));
 
       expect(lastSentMessage(ws)).toEqual({
         type: messageType.ERROR,
@@ -316,55 +316,55 @@ describe("incoming-message.handler", () => {
       });
     });
 
-    it("sends MISSING_ROOM_ID when roomId is missing", () => {
+    it("sends MISSING_SESSION_ID when sessionId is missing", () => {
       const ws = createWsMock();
 
-      handleStartRoomMessage(asWebSocket(ws), { roomId: "" });
+      handleStartSessionMessage(asWebSocket(ws), { sessionId: "" });
 
       expect(lastSentMessage(ws)).toEqual({
         type: messageType.ERROR,
-        payload: { reason: errorType.MISSING_ROOM_ID },
+        payload: { reason: errorType.MISSING_SESSION_ID },
       });
     });
 
-    it("sends explicit start error returned by room handler", () => {
+    it("sends explicit start error returned by session handler", () => {
       const ws = createWsMock();
-      vi.mocked(userStartRoom).mockReturnValue({
-        error: errorType.NOT_ROOM_OWNER,
+      vi.mocked(userStartSession).mockReturnValue({
+        error: errorType.NOT_SESSION_OWNER,
       });
 
-      handleStartRoomMessage(asWebSocket(ws), { roomId: "room-1" });
+      handleStartSessionMessage(asWebSocket(ws), { sessionId: "session-1" });
 
       expect(lastSentMessage(ws)).toEqual({
         type: messageType.ERROR,
-        payload: { reason: errorType.NOT_ROOM_OWNER },
+        payload: { reason: errorType.NOT_SESSION_OWNER },
       });
     });
 
-    it("sends START_ROOM_FAILED fallback when room handler returns null", () => {
+    it("sends START_SESSION_FAILED fallback when session handler returns null", () => {
       const ws = createWsMock();
-      vi.mocked(userStartRoom).mockReturnValue(null);
+      vi.mocked(userStartSession).mockReturnValue(null);
 
-      handleStartRoomMessage(asWebSocket(ws), { roomId: "room-1" });
+      handleStartSessionMessage(asWebSocket(ws), { sessionId: "session-1" });
 
       expect(lastSentMessage(ws)).toEqual({
         type: messageType.ERROR,
-        payload: { reason: errorType.START_ROOM_FAILED },
+        payload: { reason: errorType.START_SESSION_FAILED },
       });
     });
 
-    it("sends ROOM_STARTED when room start succeeds", () => {
+    it("sends SESSION_STARTED when session start succeeds", () => {
       const ws = createWsMock();
-      vi.mocked(userStartRoom).mockReturnValue({
-        roomId: "room-1",
+      vi.mocked(userStartSession).mockReturnValue({
+        sessionId: "session-1",
         ownerId: "u1",
       });
 
-      handleStartRoomMessage(asWebSocket(ws), { roomId: "room-1" });
+      handleStartSessionMessage(asWebSocket(ws), { sessionId: "session-1" });
 
       expect(lastSentMessage(ws)).toEqual({
-        type: messageType.ROOM_STARTED,
-        payload: { roomId: "room-1", ownerId: "u1" },
+        type: messageType.SESSION_STARTED,
+        payload: { sessionId: "session-1", ownerId: "u1" },
       });
     });
   });

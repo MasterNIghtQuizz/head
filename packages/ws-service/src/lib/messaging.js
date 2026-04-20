@@ -1,6 +1,6 @@
 import {
   clients,
-  getRoomSockets,
+  getSessionSockets,
   getSocketContext,
 } from "./connection-store.js";
 import { messageType } from "common-websocket";
@@ -44,13 +44,13 @@ function sendMessageToUser(senderId, message, receiverId) {
 }
 
 /**
- * @param {string} roomId
+ * @param {string} sessionId
  * @param {import("common-websocket").ServerToClientMessage} message
  * @param {string?} excludeUserId
  * @returns {void}
  */
-function broadcastToRoom(roomId, message, excludeUserId) {
-  const sockets = getRoomSockets(roomId);
+function broadcastToSession(sessionId, message, excludeUserId) {
+  const sockets = getSessionSockets(sessionId);
 
   for (const socket of sockets) {
     const socketContext = getSocketContext(socket);
@@ -62,4 +62,4 @@ function broadcastToRoom(roomId, message, excludeUserId) {
   }
 }
 
-export { broadcast, broadcastToRoom, sendMessageToUser };
+export { broadcast, broadcastToSession, sendMessageToUser };

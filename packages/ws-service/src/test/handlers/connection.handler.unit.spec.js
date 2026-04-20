@@ -10,11 +10,11 @@ vi.mock("../../lib/connection-store.js", () => ({
 }));
 
 vi.mock("../../lib/messaging.js", () => ({
-  broadcastToRoom: vi.fn(),
+  broadcastToSession: vi.fn(),
 }));
 
-vi.mock("../../handlers/room-membership.handler.js", () => ({
-  handleRoomDeparture: vi.fn(),
+vi.mock("../../handlers/session-membership.handler.js", () => ({
+  handleSessionDeparture: vi.fn(),
 }));
 
 vi.mock("../../logger.js", () => ({
@@ -35,8 +35,8 @@ import {
   setSocketContext,
   getSocketContext,
 } from "../../lib/connection-store.js";
-import { broadcastToRoom } from "../../lib/messaging.js";
-import { handleRoomDeparture } from "../../handlers/room-membership.handler.js";
+import { broadcastToSession } from "../../lib/messaging.js";
+import { handleSessionDeparture } from "../../handlers/session-membership.handler.js";
 
 /**
  * @param {unknown} ws
@@ -102,12 +102,12 @@ describe("connection.handler", () => {
 
       const result = userConnect(asWebSocket(ws), asIncomingMessage(req));
 
-      expect(result).toEqual({ userId: "u1", userName: "alice", roomId: null });
+      expect(result).toEqual({ userId: "u1", userName: "alice", sessionId: null });
       expect(add).toHaveBeenCalledWith("u1", ws);
       expect(setSocketContext).toHaveBeenCalledWith(ws, {
         userId: "u1",
         userName: "alice",
-        roomId: null,
+        sessionId: null,
       });
       expect(ws.close).not.toHaveBeenCalled();
     });
@@ -124,30 +124,30 @@ describe("connection.handler", () => {
       expect(result).toEqual({
         userId: "u2",
         userName: "anonymous",
-        roomId: null,
+        sessionId: null,
       });
       expect(setSocketContext).toHaveBeenCalledWith(ws, {
         userId: "u2",
         userName: "anonymous",
-        roomId: null,
+        sessionId: null,
       });
     });
   });
 
   describe("userDisconnect", () => {
-    it("only removes user when socket is not in a room", () => {
+    it("only removes user when socket is not in a session", () => {
       const ws = {};
       vi.mocked(getSocketContext).mockReturnValue({
         userId: "u1",
         userName: "alice",
-        roomId: null,
+        sessionId: null,
       });
 
       userDisconnect(asWebSocket(ws), "u1", "alice");
 
       expect(remove).toHaveBeenCalledWith("u1", ws);
-      expect(broadcastToRoom).not.toHaveBeenCalled();
-      expect(handleRoomDeparture).not.toHaveBeenCalled();
+      expect(broadcastToSession).not.toHaveBeenCalled();
+      expect(handleSessionDeparture).not.toHaveBeenCalled();
     });
 
     it("does not broadcast offline when same user is still connected", () => {
@@ -155,7 +155,7 @@ describe("connection.handler", () => {
       vi.mocked(getSocketContext).mockReturnValue({
         userId: "u1",
         userName: "alice",
-        roomId: "room-1",
+        sessionId: "session-1",
       });
       vi.mocked(get).mockReturnValue(asWebSocket({}));
 
@@ -163,31 +163,31 @@ describe("connection.handler", () => {
 
       expect(remove).toHaveBeenCalledWith("u1", ws);
       expect(get).toHaveBeenCalledWith("u1");
-      expect(broadcastToRoom).not.toHaveBeenCalled();
-      expect(handleRoomDeparture).not.toHaveBeenCalled();
+      expect(broadcastToSession).not.toHaveBeenCalled();
+      expect(handleSessionDeparture).not.toHaveBeenCalled();
     });
 
-    it("broadcasts offline and handles room departure when user leaves room", () => {
+    it("broadcasts offline and handles session departure when user leaves session", () => {
       const ws = {};
       vi.mocked(getSocketContext).mockReturnValue({
         userId: "u1",
         userName: "alice",
-        roomId: "room-1",
+        sessionId: "session-1",
       });
       vi.mocked(get).mockReturnValue(null);
 
       userDisconnect(asWebSocket(ws), "u1", "alice");
 
       expect(remove).toHaveBeenCalledWith("u1", ws);
-      expect(broadcastToRoom).toHaveBeenCalledWith(
-        "room-1",
+      expect(broadcastToSession).toHaveBeenCalledWith(
+        "session-1",
         {
           type: messageType.USER_OFFLINE,
           payload: { userId: "u1", userName: "alice" },
         },
         "u1",
       );
-      expect(handleRoomDeparture).toHaveBeenCalledWith("room-1", "u1");
+      expect(handleSessionDeparture).toHaveBeenCalledWith("session-1", "u1");
     });
   });
 });
