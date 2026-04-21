@@ -4,7 +4,11 @@ import {
   createSessionEntity,
   createParticipantEntity,
 } from "./test-helpers.js";
-import { SessionStatus, ParticipantRoles } from "common-contracts";
+import {
+  SessionStatus,
+  ParticipantRoles,
+  SessionEventTypes,
+} from "common-contracts";
 import { call } from "common-axios";
 import { CryptoService } from "common-crypto";
 import { TokenService } from "common-auth";
@@ -181,7 +185,7 @@ describe("SessionService unit tests", () => {
         expect.any(Number),
       );
       expect(kafkaProducerMock.publish).toHaveBeenCalledWith(
-        "session-started",
+        SessionEventTypes.SESSION_STARTED,
         expect.objectContaining({ session_id: "s1" }),
       );
     });
@@ -252,7 +256,7 @@ describe("SessionService unit tests", () => {
         status: SessionStatus.FINISHED,
       });
       expect(kafkaProducerMock.publish).toHaveBeenCalledWith(
-        "session-ended",
+        SessionEventTypes.SESSION_ENDED,
         expect.objectContaining({ session_id: "s1" }),
       );
     });

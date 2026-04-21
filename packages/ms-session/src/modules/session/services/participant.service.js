@@ -82,11 +82,16 @@ export class ParticipantService extends BaseService {
     await this.participantRepository.create(participantEntity);
 
     if (this.kafkaProducer) {
-      await this.kafkaProducer.publish(SessionEventTypes.PARTICIPANT_JOINED, {
+      /** @type {import('common-contracts').ParticipantJoinedEventPayload} */
+      const payload = {
         session_id: session.id,
         participant_id: participantId,
         role: participantEntity.role,
-      });
+      };
+      await this.kafkaProducer.publish(
+        SessionEventTypes.PARTICIPANT_JOINED,
+        payload,
+      );
     }
     logger.info(
       {
@@ -123,11 +128,16 @@ export class ParticipantService extends BaseService {
       return;
     }
     if (this.kafkaProducer) {
-      await this.kafkaProducer.publish(SessionEventTypes.PARTICIPANT_LEFT, {
+      /** @type {import('common-contracts').ParticipantLeftEventPayload} */
+      const payload = {
         session_id: participant.sessionId,
         participant_id: participant.id,
         role: participant.role,
-      });
+      };
+      await this.kafkaProducer.publish(
+        SessionEventTypes.PARTICIPANT_LEFT,
+        payload,
+      );
     }
 
     if (participant.role === ParticipantRoles.HOST) {
@@ -262,33 +272,39 @@ export class ParticipantService extends BaseService {
       }
     }
     await Promise.all(
-      (choiceIds || []).map((choiceId) => {
+      (choiceIds || []).map(async (choiceId) => {
         if (!this.kafkaProducer) {
           return;
         }
-        this.kafkaProducer.publish(SessionEventTypes.QUIZ_RESPONSE_SUBMITTED, {
+        /** @type {import('common-contracts').QuizResponseSubmittedEventPayload} */
+        const payload = {
           sessionId,
           participantId,
           choiceId,
           submittedAt: new Date().toISOString(),
-        });
+        };
+        await this.kafkaProducer.publish(
+          SessionEventTypes.QUIZ_RESPONSE_SUBMITTED,
+          payload,
+        );
       }),
     );
 
     if (question.type === "buzzer" && (!choiceIds || choiceIds.length === 0)) {
-      if (!this.kafkaProducer) {
-        return;
-      }
-      await this.kafkaProducer.publish(
-        SessionEventTypes.QUIZ_RESPONSE_SUBMITTED,
-        {
+      if (this.kafkaProducer) {
+        /** @type {import('common-contracts').QuizResponseSubmittedEventPayload} */
+        const payload = {
           sessionId,
           participantId,
           choiceId: null,
           type: "buzzer",
           submittedAt: new Date().toISOString(),
-        },
-      );
+        };
+        await this.kafkaProducer.publish(
+          SessionEventTypes.QUIZ_RESPONSE_SUBMITTED,
+          payload,
+        );
+      }
     }
     logger.info(
       {

@@ -16,14 +16,14 @@ export class UserEventsConsumer {
       Topics.USER_EVENTS,
       async (message, _headers) => {
         await this.handleUserEvents(
-          /** @type {import('common-contracts').UserEventMessage} */ (message),
+          /** @type {import('common-contracts').KafkaEvent} */ (message),
         );
       },
     );
   }
 
   /**
-   * @param {import('common-contracts').UserEventMessage} message
+   * @param {import('common-contracts').KafkaEvent} message
    */
   async handleUserEvents(message) {
     if (!message?.eventId) {
@@ -46,7 +46,11 @@ export class UserEventsConsumer {
     }
 
     if (message?.eventType === UserEventTypes.USER_CREATED) {
-      await this.onUserCreated(message.payload);
+      await this.onUserCreated(
+        /** @type {import('common-contracts').UserCreatedEventPayload} */ (
+          message.payload
+        ),
+      );
     }
 
     await this.processedEventRepo.save({

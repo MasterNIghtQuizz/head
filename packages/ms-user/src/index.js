@@ -33,7 +33,9 @@ const fastify = Fastify({
 const metricsEnabled = /** @type {{ enabled: boolean }} */ (
   Config.get("metrics")
 ).enabled;
-await fastify.register(createMetricsPlugin({ serviceName: "ms-user", enabled: metricsEnabled }));
+await fastify.register(
+  createMetricsPlugin({ serviceName: "ms-user", enabled: metricsEnabled }),
+);
 
 fastify.addHook(
   "onRequest",
