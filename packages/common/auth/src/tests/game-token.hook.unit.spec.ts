@@ -46,6 +46,21 @@ describe("hookGameToken (Guard/Hook Unit Test)", () => {
     expect(error.message).toBe("Missing game-token header");
   });
 
+  it("should call done(error) if websocket handshake is missing game-token query parameter", async () => {
+    const { request, reply, done, fastify } = createExecutionContext();
+    request.url = "/ws/session";
+    request.headers = { upgrade: "websocket" };
+    request.query = {};
+    const loggerSpy = vi.spyOn(logger, "warn");
+
+    await hook.call(fastify, request, reply, done);
+
+    expect(loggerSpy).toHaveBeenCalled();
+    expect(done).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+    const error = (done as unknown as Mock).mock.calls[0][0];
+    expect(error.message).toBe("Missing game-token header");
+  });
+
   it("should call done(error) if game token is invalid or expired", async () => {
     const { request, reply, done, fastify } = createExecutionContext({
       "game-token": "invalid.token",
@@ -86,6 +101,31 @@ describe("hookGameToken (Guard/Hook Unit Test)", () => {
 
     expect(cryptoSpy).toHaveBeenCalledWith(
       "valid.token",
+      options.publicKeyPath,
+    );
+    expect(request.gameTokenPayload).toEqual(mockPayload);
+    expect(request.user).toEqual(mockPayload);
+    expect(done).toHaveBeenCalledWith();
+  });
+
+  it("should resolve websocket game-token from query and call done() if token is valid", async () => {
+    const { request, reply, done, fastify } = createExecutionContext();
+    request.url = "/ws/session?game-token=valid.ws.token";
+    request.headers = { upgrade: "websocket" };
+    request.query = { "game-token": "valid.ws.token" };
+    const mockPayload = {
+      sessionId: "session-321",
+      participantId: "part-321",
+      type: TokenType.GAME,
+    };
+    const cryptoSpy = vi
+      .spyOn(CryptoService, "verify")
+      .mockReturnValue(mockPayload);
+
+    await hook.call(fastify, request, reply, done);
+
+    expect(cryptoSpy).toHaveBeenCalledWith(
+      "valid.ws.token",
       options.publicKeyPath,
     );
     expect(request.gameTokenPayload).toEqual(mockPayload);

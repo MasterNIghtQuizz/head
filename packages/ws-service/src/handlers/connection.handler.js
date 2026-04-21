@@ -6,6 +6,7 @@ import {
   getSocketContext,
 } from "../lib/connection-store.js";
 import { broadcastToSession } from "../lib/messaging.js";
+import { UserRole } from "common-auth";
 import { messageType } from "common-websocket";
 import { handleSessionDeparture } from "./session-membership.handler.js";
 import logger from "../logger.js";
@@ -24,7 +25,7 @@ function userConnect(ws, req) {
     return null;
   }
   const forwardedUserId = req.headers["x-user-id"];
-  // const fowardedUserRole = req.headers["x-user-role"];
+  const forwardedUserRole = req.headers["x-user-role"];
 
   if (Array.isArray(forwardedUserId)) {
     logger.error("Header x-user-id invalide (array non supporte)");
@@ -46,6 +47,11 @@ function userConnect(ws, req) {
   }
 
   const userId = forwardedUserId;
+  const role =
+    typeof forwardedUserRole === "string" &&
+    Object.values(UserRole).includes(forwardedUserRole)
+      ? forwardedUserRole
+      : null;
   logger.info(`trying to connect user: ${userName} (ID: ${userId})`);
 
   add(userId, ws);
@@ -53,6 +59,7 @@ function userConnect(ws, req) {
     userId,
     userName,
     sessionId: null,
+    role,
   });
 
   return { userId, userName, sessionId: null };

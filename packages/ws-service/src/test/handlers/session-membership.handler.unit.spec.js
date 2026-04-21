@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { UserRole } from "common-auth";
 import { errorType, messageType, sessionState } from "common-websocket";
 
 vi.mock("../../lib/connection-store.js", () => ({
@@ -202,6 +203,7 @@ describe("session-membership.handler", () => {
         userId: "u1",
         userName: "alice",
         sessionId: null,
+        role: UserRole.MODERATOR,
       });
       vi.mocked(getSessionCapacity).mockReturnValue(8);
 
@@ -217,6 +219,7 @@ describe("session-membership.handler", () => {
         userId: "u1",
         userName: "alice",
         sessionId: "session-1",
+        role: UserRole.MODERATOR,
       });
       vi.mocked(getSessionCapacity).mockReturnValue(null);
 
@@ -226,12 +229,29 @@ describe("session-membership.handler", () => {
       expect(setSessionCapacity).not.toHaveBeenCalled();
     });
 
+    it("returns CREATE_SESSION_FAILED when user is not moderator", () => {
+      const ws = asWebSocket({});
+      vi.mocked(getSocketContext).mockReturnValue({
+        userId: "u1",
+        userName: "alice",
+        sessionId: null,
+        role: UserRole.USER,
+      });
+
+      const result = userCreateSession(ws, "session-1", 4);
+
+      expect(result).toEqual({ error: errorType.CREATE_SESSION_FAILED });
+      expect(getSessionCapacity).not.toHaveBeenCalled();
+      expect(setSessionCapacity).not.toHaveBeenCalled();
+    });
+
     it("creates session and joins it successfully", () => {
       const ws = asWebSocket({});
       vi.mocked(getSocketContext).mockReturnValue({
         userId: "u1",
         userName: "alice",
         sessionId: null,
+        role: UserRole.MODERATOR,
       });
       vi.mocked(getSessionCapacity)
         .mockReturnValueOnce(null)

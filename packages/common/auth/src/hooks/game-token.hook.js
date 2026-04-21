@@ -8,17 +8,20 @@ import { UnauthorizedError } from "common-errors";
  */
 export function hookGameToken(options) {
   return function gameTokenHook(request, _reply, done) {
+    const isWebSocketRequest =
+      request.url?.startsWith("/ws") && request.headers.upgrade === "websocket";
+
     if (request.routeOptions?.config?.isPublic) {
       done();
       return;
     }
 
-    const token = /** @type {string | undefined} */ (
-      request.headers["game-token"]
-    );
+    const token = isWebSocketRequest
+      ? /** @type {string | undefined} */ (request.query?.["game-token"])
+      : /** @type {string | undefined} */ (request.headers["game-token"]);
 
     if (!token) {
-      if (request.routeOptions?.config?.useGameToken) {
+      if (isWebSocketRequest || request.routeOptions?.config?.useGameToken) {
         logger.warn({ url: request.url }, "Missing game-token header");
         return done(new UnauthorizedError("Missing game-token header"));
       }

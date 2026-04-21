@@ -13,6 +13,7 @@ import {
   setSessionOwnerId,
   setSessionStarted,
 } from "../lib/session-capacity-store.js";
+import { UserRole } from "common-auth";
 import { errorType, messageType, sessionState } from "common-websocket";
 
 /**
@@ -96,6 +97,10 @@ function userCreateSession(ws, sessionId, maxUsers) {
   const context = getSocketContext(ws);
   if (!context) {
     return null;
+  }
+
+  if (context.role !== UserRole.MODERATOR) {
+    return { error: errorType.CREATE_SESSION_FAILED };
   }
 
   if (getSessionCapacity(sessionId) !== null) {

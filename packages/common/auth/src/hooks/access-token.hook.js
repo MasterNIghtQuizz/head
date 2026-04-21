@@ -22,15 +22,14 @@ export function hookAccessToken(options) {
       done();
       return;
     }
-    let token;
     if (isWebSocketRequest) {
-      // For webscoket connections, access token inside query parameters
-      token = /** @type {string | undefined} */ (request.query["access-token"]);
-    } else {
-      token = /** @type {string | undefined} */ (
-        request.headers["access-token"]
-      );
+      done();
+      return;
     }
+
+    const token = /** @type {string | undefined} */ (
+      request.headers["access-token"]
+    );
     if (request.routeOptions?.config?.useGameToken) {
       done();
       return;

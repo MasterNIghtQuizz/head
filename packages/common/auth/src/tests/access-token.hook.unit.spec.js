@@ -75,26 +75,20 @@ describe("hookAccessToken (Guard/Hook Unit Test)", () => {
     expect(error.message).toBe("Invalid or expired access token");
   });
 
-  it("should append user to request and call done() if token is valid, from query parameters, and websocket header upgrade present", async () => {
+  it("should skip access-token validation for websocket handshake requests", async () => {
     const { request, reply, done, fastify } = createExecutionContext({
-      "access-token": "valid.token",
+      "access-token": "ignored.token",
     });
-    request["url"] = "/ws/some-endpoint?access-token=valid.token";
-    request["query"] = { "access-token": "valid.token" };
+    request["url"] = "/ws/some-endpoint?game-token=valid.token";
+    request["query"] = { "game-token": "valid.token" };
     request["headers"] = { upgrade: "websocket" };
 
-    const mockPayload = { userId: "123", role: UserRole.ADMIN, type: "access" };
-    const cryptoSpy = vi
-      .spyOn(CryptoService, "verify")
-      .mockReturnValue(mockPayload);
+    const cryptoSpy = vi.spyOn(CryptoService, "verify");
 
     await hook.call(fastify, request, reply, done);
 
-    expect(cryptoSpy).toHaveBeenCalledWith(
-      "valid.token",
-      options.publicKeyPath,
-    );
-    expect(request.user).toEqual(mockPayload);
+    expect(cryptoSpy).not.toHaveBeenCalled();
+    expect(request.user).toBeUndefined();
     expect(done).toHaveBeenCalledWith();
     expect(reply.code).not.toHaveBeenCalled();
   });
