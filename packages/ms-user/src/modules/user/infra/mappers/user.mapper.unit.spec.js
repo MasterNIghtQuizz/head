@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
+import { UserRole } from "common-auth";
 import { UserMapper } from "./user.mapper.js";
 import {
   createUserEntityMock,
@@ -55,13 +56,13 @@ describe("UserMapper Unit Tests", () => {
     it("should transform entity to database model correctly", () => {
       const entity = createUserEntityMock({
         email: "test@example.com",
-        role: "ADMIN",
+        role: UserRole.ADMIN,
       });
 
       const persistence = UserMapper.toPersistence(entity, encryptionKey);
 
       expect(persistence.email).toBe("encrypted-test@example.com");
-      expect(persistence.role).toBe("ADMIN");
+      expect(persistence.role).toBe(UserRole.ADMIN);
       expect(persistence.emailHash).toBe(entity.emailHash);
     });
   });

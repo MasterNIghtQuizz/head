@@ -78,7 +78,7 @@ export class ValkeyService {
 
     return this.#client
       .connect()
-      .then(() => /** @type {Redis} */(this.#client));
+      .then(() => /** @type {Redis} */ (this.#client));
   }
 
   /**

@@ -168,11 +168,16 @@ export class SessionService extends BaseService {
       );
 
       if (this.kafkaProducer) {
-        await this.kafkaProducer.publish(SessionEventTypes.SESSION_CREATED, {
+        /** @type {import('common-contracts').SessionCreatedEventPayload} */
+        const payload = {
           session_id: session.id,
           participant_id: host.id,
           role: host.role,
-        });
+        };
+        await this.kafkaProducer.publish(
+          SessionEventTypes.SESSION_CREATED,
+          payload,
+        );
       }
 
       return new CreateSessionResponseDto({
@@ -338,15 +343,21 @@ export class SessionService extends BaseService {
       }
 
       if (this.kafkaProducer) {
-        await this.kafkaProducer.publish(SessionEventTypes.SESSION_STARTED, {
+        /** @type {import('common-contracts').SessionStartedEventPayload} */
+        const startedPayload = { session_id: session.id };
+        await this.kafkaProducer.publish(
+          SessionEventTypes.SESSION_STARTED,
+          startedPayload,
+        );
+
+        /** @type {import('common-contracts').SessionNextQuestionEventPayload} */
+        const nextQuestionPayload = {
           session_id: session.id,
-        });
+          question_id: questionId,
+        };
         await this.kafkaProducer.publish(
           SessionEventTypes.SESSION_NEXT_QUESTION,
-          {
-            session_id: session.id,
-            question_id: questionId,
-          },
+          nextQuestionPayload,
         );
       }
     } catch (error) {
@@ -468,12 +479,14 @@ export class SessionService extends BaseService {
       }
 
       if (this.kafkaProducer) {
+        /** @type {import('common-contracts').SessionNextQuestionEventPayload} */
+        const payload = {
+          session_id: session.id,
+          question_id: questionId,
+        };
         await this.kafkaProducer.publish(
           SessionEventTypes.SESSION_NEXT_QUESTION,
-          {
-            session_id: session.id,
-            question_id: questionId,
-          },
+          payload,
         );
       }
     } catch (error) {
@@ -501,9 +514,12 @@ export class SessionService extends BaseService {
       logger.info({ sessionId: session.id }, "Session finished successfully");
 
       if (this.kafkaProducer) {
-        await this.kafkaProducer.publish(SessionEventTypes.SESSION_ENDED, {
-          session_id: session.id,
-        });
+        /** @type {import('common-contracts').SessionEndedEventPayload} */
+        const payload = { session_id: session.id };
+        await this.kafkaProducer.publish(
+          SessionEventTypes.SESSION_ENDED,
+          payload,
+        );
       }
     } catch (error) {
       const err = /** @type {import('common-errors').BaseError} */ (error);
@@ -544,9 +560,12 @@ export class SessionService extends BaseService {
       );
 
       if (this.kafkaProducer) {
-        await this.kafkaProducer.publish(SessionEventTypes.SESSION_DELETED, {
-          session_id: sessionId,
-        });
+        /** @type {import('common-contracts').SessionDeletedEventPayload} */
+        const payload = { session_id: sessionId };
+        await this.kafkaProducer.publish(
+          SessionEventTypes.SESSION_DELETED,
+          payload,
+        );
       }
     } catch (error) {
       const err = /** @type {import('common-errors').BaseError} */ (error);
