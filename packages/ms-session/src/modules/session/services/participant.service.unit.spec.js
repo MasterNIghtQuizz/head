@@ -360,7 +360,7 @@ describe("ParticipantService unit tests", () => {
     });
 
     describe("submitResponse (Buzzer)", () => {
-      it("should successfully submit a buzzer response without choiceIds", async () => {
+      it("should successfully delegate to _handleBuzzerSubmit when question type is buzzer", async () => {
         vi.mocked(sessionRepositoryMock.find).mockResolvedValue(session);
         vi.mocked(valkeyRepositoryMock.get).mockImplementation(async (key) => {
           if (key.includes("validation")) {
@@ -371,18 +371,17 @@ describe("ParticipantService unit tests", () => {
           }
           return null;
         });
+        vi.mocked(buzzerRepositoryMock.hasBuzzed).mockResolvedValue(false);
 
-        await service._handleBuzzerSubmit(session, participantId);
+        await service.submitResponse({ sessionId, participantId, choiceIds: [] });
 
-        expect(kafkaProducerMock.publish).toHaveBeenCalledWith(
-          SessionEventTypes.QUIZ_RESPONSE_SUBMITTED,
+        expect(buzzerRepositoryMock.push).toHaveBeenCalledWith(
+          sessionId,
           expect.objectContaining({
             sessionId,
             participantId,
-            choiceId: null,
-            type: "buzzer",
-            submittedAt: expect.any(String),
-          }),
+            type: QuestionType.BUZZER,
+          })
         );
       });
     });
@@ -403,7 +402,7 @@ describe("ParticipantService unit tests", () => {
             sessionId,
             participantId,
             choiceId: null,
-            type: "buzzer",
+            type: QuestionType.BUZZER,
           }),
         );
         expect(kafkaProducerMock.publish).not.toHaveBeenCalled();
@@ -430,7 +429,7 @@ describe("ParticipantService unit tests", () => {
             sessionId,
             participantId,
             choiceId: null,
-            type: "buzzer",
+            type: QuestionType.BUZZER,
           }),
         );
       });
