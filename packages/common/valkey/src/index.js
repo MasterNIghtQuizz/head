@@ -86,7 +86,8 @@ export class ValkeyService {
    */
   async disconnect() {
     if (this.#client) {
-      await this.#client.quit();
+      // Use disconnect() instead of quit() to avoid sending commands to a broken stream
+      this.#client.disconnect();
       this.#client = null;
       logger.info("Valkey client disconnected");
     }

@@ -13,6 +13,7 @@ import {
   ParticipantRoles,
   SessionStatus,
   SessionEventTypes,
+  Topics,
 } from "common-contracts";
 import { TokenService, TokenType, UserRole } from "common-auth";
 import { config } from "../../../config.js";
@@ -88,10 +89,12 @@ export class ParticipantService extends BaseService {
         participant_id: participantId,
         role: participantEntity.role,
       };
-      await this.kafkaProducer.publish(
-        SessionEventTypes.PARTICIPANT_JOINED,
+      await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
+        eventId: randomUUID(),
+        timestamp: Date.now(),
+        eventType: SessionEventTypes.PARTICIPANT_JOINED,
         payload,
-      );
+      });
     }
     logger.info(
       {
@@ -134,10 +137,12 @@ export class ParticipantService extends BaseService {
         participant_id: participant.id,
         role: participant.role,
       };
-      await this.kafkaProducer.publish(
-        SessionEventTypes.PARTICIPANT_LEFT,
+      await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
+        eventId: randomUUID(),
+        timestamp: Date.now(),
+        eventType: SessionEventTypes.PARTICIPANT_LEFT,
         payload,
-      );
+      });
     }
 
     if (participant.role === ParticipantRoles.HOST) {
@@ -283,10 +288,12 @@ export class ParticipantService extends BaseService {
           choiceId,
           submittedAt: new Date().toISOString(),
         };
-        await this.kafkaProducer.publish(
-          SessionEventTypes.QUIZ_RESPONSE_SUBMITTED,
+        await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
+          eventId: randomUUID(),
+          timestamp: Date.now(),
+          eventType: SessionEventTypes.QUIZ_RESPONSE_SUBMITTED,
           payload,
-        );
+        });
       }),
     );
 
@@ -300,10 +307,12 @@ export class ParticipantService extends BaseService {
           type: "buzzer",
           submittedAt: new Date().toISOString(),
         };
-        await this.kafkaProducer.publish(
-          SessionEventTypes.QUIZ_RESPONSE_SUBMITTED,
+        await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
+          eventId: randomUUID(),
+          timestamp: Date.now(),
+          eventType: SessionEventTypes.QUIZ_RESPONSE_SUBMITTED,
           payload,
-        );
+        });
       }
     }
     logger.info(

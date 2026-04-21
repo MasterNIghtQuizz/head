@@ -7,7 +7,7 @@ echo "--- Initializing Kafka Infrastructure ---"
 
 # Execute the setup script
 export KAFKA_BROKERS=$KAFKA_BROKERS
-node ./setup-kafka.js
+node "$(dirname "$0")/setup-kafka.js"
 
 if [ $? -eq 0 ]; then
     echo "--- Kafka Infrastructure Ready ---"

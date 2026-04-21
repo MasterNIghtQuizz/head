@@ -56,3 +56,5 @@ export interface QuizIdsResponse {
     }[];
   }[];
 }
+
+export type Quizz = FullQuizResponse;

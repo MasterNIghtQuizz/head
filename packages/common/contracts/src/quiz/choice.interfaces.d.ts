@@ -14,3 +14,5 @@ export interface ChoiceResponse {
   text: string;
   is_correct: boolean;
 }
+
+export type Choice = ChoiceResponse;

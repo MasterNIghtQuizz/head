@@ -1,0 +1,35 @@
+{
+  "name": "@monorepo/ms-response",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "migrations:run": "node src/run-migrations.js",
+    "lint": "yarn run -T eslint .",
+    "lint:fix": "yarn run -T eslint . --fix",
+    "test": "yarn run -T vitest run",
+    "test:unit": "yarn run -T vitest run --config vitest.config.js packages/ms-response",
+    "test:int": "yarn run -T vitest run --config vitest.config.int.js packages/ms-response",
+    "test:all": "yarn run test:unit && yarn run test:int"
+  },
+  "dependencies": {
+    "common-auth": "workspace:*",
+    "common-config": "workspace:*",
+    "common-contracts": "workspace:*",
+    "common-core": "workspace:*",
+    "common-crypto": "workspace:*",
+    "common-database": "workspace:*",
+    "common-errors": "workspace:*",
+    "common-kafka": "workspace:*",
+    "common-logger": "workspace:*",
+    "common-monitoring": "workspace:*",
+    "common-swagger": "workspace:*",
+    "common-valkey": "workspace:*",
+    "fastify": "^5.6.2",
+    "joi": "^18.0.2",
+    "pg": "^8.13.3",
+    "reflect-metadata": "^0.2.2",
+    "typeorm": "^0.3.20"
+  }
+}
