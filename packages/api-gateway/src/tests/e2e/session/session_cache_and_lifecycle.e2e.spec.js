@@ -60,10 +60,10 @@ describe("Session E2E - Cache & Lifecycle Monitoring", () => {
       method: "POST",
       url: "/choices/",
       headers: { "access-token": hostToken },
-      payload: { 
-        text: "Correct Choice", 
+      payload: {
+        text: "Correct Choice",
         is_correct: true,
-        question_id: questionId 
+        question_id: questionId,
       },
     });
   });

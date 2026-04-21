@@ -4,7 +4,7 @@ import {
   createSessionEntity,
   createParticipantEntity,
 } from "./test-helpers.js";
-import { SessionStatus } from "common-contracts";
+import { SessionStatus, SessionEventTypes } from "common-contracts";
 import { TokenService } from "common-auth";
 import { call } from "common-axios";
 import {
@@ -177,7 +177,7 @@ describe("ParticipantService unit tests", () => {
       await service.submitResponse(defaultParams);
 
       expect(kafkaProducerMock.publish).toHaveBeenCalledWith(
-        "quiz.response.submitted",
+        SessionEventTypes.QUIZ_RESPONSE_SUBMITTED,
         expect.objectContaining({
           sessionId: "s1",
           participantId: "p1",
@@ -263,7 +263,7 @@ describe("ParticipantService unit tests", () => {
 
       expect(call).toHaveBeenCalledTimes(2);
       expect(kafkaProducerMock.publish).toHaveBeenCalledWith(
-        "quiz.response.submitted",
+        SessionEventTypes.QUIZ_RESPONSE_SUBMITTED,
         expect.any(Object),
       );
     });

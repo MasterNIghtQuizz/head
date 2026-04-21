@@ -1,5 +1,6 @@
 import { UserModel } from "../../modules/user/infra/models/user.model.js";
 import { UserEntity } from "../../modules/user/core/entities/user.entity.js";
+import { UserRole } from "common-auth";
 
 /**
  * @param {Partial<import('../../modules/user/infra/models/user.model.js').UserModel>} overrides
@@ -11,7 +12,7 @@ export const createUserModelMock = (overrides = {}) => {
   model.email = "encrypted-email";
   model.emailHash = "hashed-email";
   model.password = "hashed-password";
-  model.role = "USER";
+  model.role = UserRole.USER;
   model.createdAt = new Date();
   model.updatedAt = new Date();
 
@@ -29,7 +30,7 @@ export const createUserEntityMock = (overrides = {}) => {
     email: "test@example.com",
     emailHash: "hashed-email",
     password: "hashed-password",
-    role: "USER",
+    role: UserRole.USER,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,

@@ -6,3 +6,4 @@ export * from "./events.js";
 export * from "./user/user.interfaces.js";
 export * from "./session/session.interfaces.d.ts";
 export * from "./session/session.constants.js";
+export * from "./events.interfaces.js";

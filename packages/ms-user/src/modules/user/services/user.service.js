@@ -11,6 +11,7 @@ import {
   USER_CONFLICT,
   DATABASE_ERROR,
 } from "../errors/user.errors.js";
+import { UserEventTypes } from "common-contracts";
 
 export class UserService extends BaseService {
   /**
@@ -62,14 +63,17 @@ export class UserService extends BaseService {
       throw DATABASE_ERROR(/** @type {Error} */ (error));
     }
 
-    if (this.kafkaProducer) {
-      await this.kafkaProducer.publish(
-        "user-registered",
-        UserMapper.toDto(createdEntity),
-      );
-    }
-
     const userDto = UserMapper.toDto(createdEntity);
+
+    if (this.kafkaProducer) {
+      /** @type {import('common-contracts').UserCreatedEventPayload} */
+      const payload = {
+        userId: userDto.id,
+        email: userDto.email,
+        role: userDto.role,
+      };
+      await this.kafkaProducer.publish(UserEventTypes.USER_CREATED, payload);
+    }
     const accessToken = CryptoService.sign(
       { userId: userDto.id, role: userDto.role, type: TokenType.ACCESS },
       config.auth.access.privateKeyPath,
@@ -307,7 +311,9 @@ export class UserService extends BaseService {
       }
 
       if (this.kafkaProducer) {
-        await this.kafkaProducer.publish("user-deleted", { userId });
+        /** @type {import('common-contracts').UserDeletedEventPayload} */
+        const payload = { userId };
+        await this.kafkaProducer.publish(UserEventTypes.USER_DELETED, payload);
       }
     } catch (error) {
       throw DATABASE_ERROR(/** @type {Error} */ (error));
@@ -361,7 +367,13 @@ export class UserService extends BaseService {
       const updatedUserDto = await this.findById(userId);
 
       if (this.kafkaProducer) {
-        await this.kafkaProducer.publish("user-updated", updatedUserDto);
+        /** @type {import('common-contracts').UserUpdatedEventPayload} */
+        const payload = {
+          userId: updatedUserDto.id,
+          email: updatedUserDto.email,
+          role: updatedUserDto.role,
+        };
+        await this.kafkaProducer.publish(UserEventTypes.USER_UPDATED, payload);
       }
 
       return updatedUserDto;

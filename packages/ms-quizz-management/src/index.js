@@ -55,7 +55,12 @@ export async function createServer() {
   const metricsEnabled = /** @type {{ enabled: boolean }} */ (
     Config.get("metrics")
   ).enabled;
-  await fastify.register(createMetricsPlugin({ serviceName: "ms-quizz-management", enabled: metricsEnabled }));
+  await fastify.register(
+    createMetricsPlugin({
+      serviceName: "ms-quizz-management",
+      enabled: metricsEnabled,
+    }),
+  );
 
   fastify.addHook(
     "onRequest",
