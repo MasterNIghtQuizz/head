@@ -9,12 +9,12 @@ The system consists of an API Gateway and multiple internal microservices commun
 
 - **`api-gateway`**: The single public-facing entry point, acting as a reverse proxy, aggregator, and global authenticator.
 - **`ms-user`**: A microservice that manages user profiles, registration, and user-centric data.
-- **`ms-quizz-management`**: A microservice dedicated to managing quizzes, questions, and choices. Features CRUD operations, bulk question retrieval, and quiz-specific filtering.
+- **`ms-quiz-management`**: A microservice dedicated to managing quizzes, questions, and choices. Features CRUD operations, bulk question retrieval, and quiz-specific filtering.
 - **`common/*`**: Shared libraries standardizing core behaviors like logging, authentication, database access, messaging, and error handling across all services.
 
 ## 🧱 Service Features (MS Quizz Management)
 
-The `ms-quizz-management` service provides:
+The `ms-quiz-management` service provides:
 
 - **Full CRUD** for Quizzes, Questions, and Choices.
 - **Bonus Operations**:
@@ -56,7 +56,7 @@ For instance, when a new user registers in `ms-user`, it triggers a producer to 
 
 ### 🎧 2. Consumers & Exactly-Once Processing
 
-Subscribing microservices (e.g., `ms-quizz-management`) act as **Consumers** that react to these domain topics. Due to the nature of distributed systems, at-least-once delivery is the standard. This means a consumer might receive the same message multiple times.
+Subscribing microservices (e.g., `ms-quiz-management`) act as **Consumers** that react to these domain topics. Due to the nature of distributed systems, at-least-once delivery is the standard. This means a consumer might receive the same message multiple times.
 
 To protect against this, we implemented robust **Consumer-Side Idempotency**:
 
@@ -170,7 +170,7 @@ Or individually:
 ```bash
 yarn workspace @monorepo/api-gateway start
 yarn workspace @monorepo/ms-user start
-yarn workspace @monorepo/ms-quizz-management start
+yarn workspace @monorepo/ms-quiz-management start
 ```
 
 ## 🧪 Testing & Quality Assurance

@@ -12,8 +12,8 @@ import { ParticipantEntity } from "../core/entities/participant.entity.js";
 import {
   ParticipantRoles,
   SessionStatus,
-  SessionEventTypes,
 } from "common-contracts";
+import {SessionEventTypes} from "common-contracts/src/events.js"
 import logger from "../../../logger.js";
 import { SessionMapper } from "../infra/mappers/session.mapper.js";
 import { ParticipantMapper } from "../infra/mappers/participant.mapper.js";
@@ -171,9 +171,11 @@ export class SessionService extends BaseService {
         /** @type {import('common-contracts').SessionCreatedEventPayload} */
         const payload = {
           session_id: session.id,
+          quizz_id: session.quizzId,
           participant_id: host.id,
           role: host.role,
         };
+        logger.error("emmitting SESSION CREATE");
         await this.kafkaProducer.publish(
           SessionEventTypes.SESSION_CREATED,
           payload,

@@ -16,6 +16,13 @@ x-ms-quizz-db: &ms-quizz-db
   POSTGRES_USER: postgres
   POSTGRES_PASSWORD: postgres_password
 
+x-ms-session-db: &ms-session-db
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: 5432
+  POSTGRES_DB: ms_session_db
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: postgres_password
+
 x-ms-response-db: &ms-response-db
   POSTGRES_HOST: postgres
   POSTGRES_PORT: 5432
@@ -347,6 +354,7 @@ services:
       NODE_ENV: production
       PORT: 4003
       LOG_PRETTY: false
+      <<: *ms-session-db
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       POSTGRES_DB: ms_session_db
@@ -378,10 +386,10 @@ services:
       context: .
       dockerfile: docker/Dockerfile.ms-quizz-management
     ports:
-      - "4003:4003"
+      - "4004:4004"
     environment:
       NODE_ENV: production
-      PORT: 4003
+      PORT: 4004
       LOG_PRETTY: false
       <<: *ms-response-db
       KAFKA_BROKERS: '["kafka:29092"]'

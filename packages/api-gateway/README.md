@@ -4,7 +4,7 @@ The **API Gateway** serves as the central orchestration point and secure entry p
 
 ## 🎯 Primary Responsibilities
 
-1. **Routing & Proxy Layering**: Analyzes route maps and proxies valid RESTful streams directly to `ms-user`, `ms-quizz-management`, and other internal services using fast underlying HTTP bindings.
+1. **Routing & Proxy Layering**: Analyzes route maps and proxies valid RESTful streams directly to `ms-user`, `ms-quiz-management`, and other internal services using fast underlying HTTP bindings.
 2. **Global Authentication Enforcement**: Re-evaluates Access and Refresh Tokens provided in HTTP headers (using the asymmetric public keys mechanism provided by `common-auth` and `common-crypto`).
 3. **Internal Zero-Trust Orchestration**: Valid requests are immediately re-signed. The Gateway issues an `Internal Token` encapsulating User context, which internal microservices inherently trust over any external payload.
 
@@ -22,7 +22,7 @@ Our authentication architecture strictly isolates public verifiability from inte
 
 ### 2️⃣ Internal Token Exchange (`InternalTokenInterceptor`)
 - Assuming the Access Token proves valid, the Gateway attaches the parsed metadata to the `request.user` attribute.
-- Before proxying this request down to standard backend services (like `ms-user` or `ms-quizz-management`), the Gateway executes the `InternalTokenInterceptor()`.
+- Before proxying this request down to standard backend services (like `ms-user` or `ms-quiz-management`), the Gateway executes the `InternalTokenInterceptor()`.
 - This interceptor constructs a completely new, short-lived **Internal JWT Token**, signed exclusively with the Gateway's **Private Key**. Its payload inherits the validated `userId`, `role`, and origin source.
 - This internal token is transmitted inside an `internal-token` header natively handled by the Axios configurations (`common-axios`).
 

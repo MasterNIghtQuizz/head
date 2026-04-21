@@ -1,6 +1,6 @@
 {
   "app": {
-    "port": 4003,
+    "port": 4004,
     "env": "development"
   },
   "logger": {

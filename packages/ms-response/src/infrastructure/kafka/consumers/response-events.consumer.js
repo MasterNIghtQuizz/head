@@ -20,11 +20,13 @@ export class ResponseEventsConsumer {
   }
 
   async handleEvent(message) {
+    logger.info("New Event received : kjhsabdsajkdsajdbks skijdbsjk ds dj sdsd s dkj sds");
     if (!message?.eventId) {
       logger.warn("No eventId, skipping");
       return;
     }
 
+    logger.info("New Event received : " + message.eventType);
     const existing = await this.processedEventRepo.findOne({
       where: { id: message.eventId },
     });
@@ -44,7 +46,7 @@ export class ResponseEventsConsumer {
           await this.onSessionEnded(message.payload);
           break;
 
-        case SessionEventTypes.SESSION_STARTED:
+        case SessionEventTypes.SESSION_CREATED:
           await this.onSessionStarted(message.payload);
           break;
 
@@ -80,19 +82,16 @@ export class ResponseEventsConsumer {
 
   async onSessionEnded(payload) {
     logger.info(payload + "Clearing session");
-
     await this.responseService.clearSession(payload.sessionId);
   }
 
   async onSessionStarted(payload) {
     logger.info(payload + "creating session");
-
-    await this.responseService.startNewSession(payload.sessionId, payload.hostId, {});
+    await this.responseService.startNewSession(payload.sessionId, payload.hostId, payload.quizId, {});
   }
 
   async onNextQuestion(payload) {
     logger.info(payload + "Next question");
-
     await this.responseService.gotoNextQuestion(payload.sessionId, payload.questionId);
   }
 }
