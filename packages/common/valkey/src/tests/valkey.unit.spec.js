@@ -6,6 +6,7 @@ vi.mock("ioredis", () => {
   const client = {
     connect: vi.fn().mockResolvedValue(true),
     quit: vi.fn().mockResolvedValue(true),
+    disconnect: vi.fn(),
     on: vi.fn().mockReturnThis(),
   };
   const Redis = vi.fn(function () {
@@ -23,7 +24,7 @@ vi.mock("common-logger", () => ({
 }));
 
 describe("ValkeyService (Unit Test)", () => {
-  const config = { host: "localhost", port: 6379 };
+  const config = { host: "localhost", port: 6379, enabled: true };
   /** @type {ValkeyService} */
   let valkeyService;
 
@@ -63,7 +64,7 @@ describe("ValkeyService (Unit Test)", () => {
     const client = await valkeyService.connect();
     await valkeyService.disconnect();
 
-    expect(client.quit).toHaveBeenCalled();
+    expect(client.disconnect).toHaveBeenCalled();
   });
 
   it("should throw error if client is accessed before connection", () => {

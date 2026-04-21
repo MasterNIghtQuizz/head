@@ -1,5 +1,26 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { ResponseService } from "./response.service.js";
+import {
+  createResponseEntity,
+  createAnswerEvent,
+  createQuizPayload,
+} from "../tests/factories/response.factory.js";
+import { ResponseError } from "../response.constants.js";
+
+vi.mock("common-crypto", () => ({
+  CryptoService: {
+    sign: vi.fn().mockReturnValue("mocked-jwt-token"),
+  },
+}));
+
+vi.mock("../../../logger.js", () => ({
+  default: {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  },
+}));
 
 /**
  * @typedef {import('vitest').Mock} Mock
@@ -9,47 +30,50 @@ describe("ResponseService Unit Tests", () => {
   /** @type {ResponseService} */
   let service;
 
-  /** @type {{
-   * findByParticipantAndQuestion: Mock,
-   * create: Mock,
-   * findByParticipantAndSession: Mock,
-   * findByQuestionAndSession: Mock,
-   * findBySession: Mock,
-   * deleteBySessionId: Mock,
-   * valkeyRepository: any
-   * }}
-   */
+  /** @type {{ create: Mock, update: Mock, findByParticipantAndQuestion: Mock, findByParticipantAndSession: Mock, findByQuestionAndSession: Mock, findBySession: Mock, findByParticipant: Mock, deleteBySessionId: Mock, valkeyRepository: Record<string, Mock> }} */
   let responseRepositoryMock;
 
-  /** @type {{ getChoice: Mock }} */
-  let quizClientMock;
-
-  /** @type {{ get: Mock, set: Mock }} */
+  /** @type {{ get: Mock, set: Mock, del: Mock, delByPattern: Mock }} */
   let valkeyRepositoryMock;
+
+  /** @type {{ getQuiz: Mock, getChoice: Mock }} */
+  let quizClientMock;
 
   beforeEach(() => {
     valkeyRepositoryMock = {
       get: vi.fn(),
       set: vi.fn(),
+      del: vi.fn(),
+      delByPattern: vi.fn(),
     };
 
     responseRepositoryMock = {
-      findByParticipantAndQuestion: vi.fn(),
       create: vi.fn(),
+      update: vi.fn(),
+      findByParticipantAndQuestion: vi.fn(),
       findByParticipantAndSession: vi.fn(),
       findByQuestionAndSession: vi.fn(),
       findBySession: vi.fn(),
+      findByParticipant: vi.fn(),
       deleteBySessionId: vi.fn(),
       valkeyRepository: valkeyRepositoryMock,
     };
 
     quizClientMock = {
+      getQuiz: vi.fn(),
       getChoice: vi.fn(),
     };
 
     service = new ResponseService(
-      responseRepositoryMock,
-      quizClientMock,
+      /** @type {import('../core/ports/response.repository.js').ResponseRepository} */ (
+        /** @type {unknown} */ (responseRepositoryMock)
+      ),
+      /** @type {import('common-valkey').ValkeyRepository} */ (
+        /** @type {unknown} */ (valkeyRepositoryMock)
+      ),
+      /** @type {import('../../../infrastructure/clients/quiz.client.js').QuizClient} */ (
+        /** @type {unknown} */ (quizClientMock)
+      ),
     );
   });
 
@@ -58,183 +82,426 @@ describe("ResponseService Unit Tests", () => {
   });
 
   describe("handleAnswer", () => {
-    it("should create QCM response if not already answered", async () => {
-      responseRepositoryMock.findByParticipantAndQuestion.mockResolvedValue(null);
-      responseRepositoryMock.create.mockResolvedValue({ id: "resp-1" });
+    it("should create a response for a valid MCQ answer", async () => {
+      const event = createAnswerEvent();
+      const questionId = "69c16aed-ec7c-8328-baf4-4edc49890473";
 
-      const result = await service.handleAnswer({
-        participantId: "p1",
-        questionId: "q1",
-        sessionId: "s1",
-        choice_id: "c1",
-      });
+      valkeyRepositoryMock.get.mockResolvedValue(questionId);
 
-      expect(responseRepositoryMock.create).toHaveBeenCalled();
-      expect(result.id).toBe("resp-1");
-    });
+      responseRepositoryMock.findByParticipantAndQuestion.mockResolvedValue(
+        null,
+      );
 
-    it("should throw if participant already answered QCM", async () => {
-      responseRepositoryMock.findByParticipantAndQuestion.mockResolvedValue({
-        id: "existing",
-      });
+      const spyIsCorrect = vi
+        .spyOn(service, "getIsCorrectFromCache")
+        .mockResolvedValue(true);
 
-      await expect(
-        service.handleAnswer({
-          participantId: "p1",
-          questionId: "q1",
-          sessionId: "s1",
-          choice_id: "c1",
-        }),
-      ).rejects.toThrow("ALREADY_ANSWERED");
-    });
+      const created = createResponseEntity({ isCorrect: true });
+      responseRepositoryMock.create.mockResolvedValue(created);
 
-    it("should create buzzer response without duplicate check", async () => {
-      responseRepositoryMock.create.mockResolvedValue({ id: "resp-1" });
-
-      const result = await service.handleAnswer({
-        participantId: "p1",
-        questionId: "q1",
-        sessionId: "s1",
-        is_correct: true,
-      });
+      const result = await service.handleAnswer(event);
 
       expect(
         responseRepositoryMock.findByParticipantAndQuestion,
-      ).not.toHaveBeenCalled();
-
-      expect(result.id).toBe("resp-1");
+      ).toHaveBeenCalledWith(event.participantId, questionId);
+      expect(spyIsCorrect).toHaveBeenCalled();
+      expect(responseRepositoryMock.create).toHaveBeenCalled();
+      expect(result.id).toBe(created.id);
     });
 
-    it("should throw if repository create fails", async () => {
-      responseRepositoryMock.findByParticipantAndQuestion.mockResolvedValue(null);
-      responseRepositoryMock.create.mockRejectedValue(new Error("DB FAIL"));
+    it("should create a response for a buzzer answer (is_correct defined)", async () => {
+      const event = createAnswerEvent({ isCorrect: true, choiceId: null });
+      const questionId = "69c16aed-ec7c-8328-baf4-4edc49890473";
 
-      await expect(
-        service.handleAnswer({
-          participantId: "p1",
-          questionId: "q1",
-          sessionId: "s1",
-          choice_id: "c1",
-        }),
-      ).rejects.toThrow();
+      valkeyRepositoryMock.get.mockResolvedValue(questionId);
+
+      const created = createResponseEntity({ isCorrect: true });
+      responseRepositoryMock.create.mockResolvedValue(created);
+
+      const spyIsCorrect = vi.spyOn(service, "getIsCorrectFromCache");
+
+      const result = await service.handleAnswer(event);
+
+      expect(spyIsCorrect).not.toHaveBeenCalled();
+      expect(
+        responseRepositoryMock.findByParticipantAndQuestion,
+      ).not.toHaveBeenCalled();
+      expect(responseRepositoryMock.create).toHaveBeenCalled();
+      expect(result.isCorrect).toBe(true);
+    });
+
+    it("should throw ALREADY_ANSWERED if participant already answered", async () => {
+      const event = createAnswerEvent();
+      const questionId = "69c16aed-ec7c-8328-baf4-4edc49890473";
+
+      valkeyRepositoryMock.get.mockResolvedValue(questionId);
+
+      responseRepositoryMock.findByParticipantAndQuestion.mockResolvedValue(
+        createResponseEntity(),
+      );
+
+      await expect(service.handleAnswer(event)).rejects.toThrow(
+        ResponseError.ALREADY_ANSWERED,
+      );
+    });
+
+    it("should throw QUIZ_NOT_FOUND if no questionId in cache and handleQuizNotFound returns null", async () => {
+      const event = createAnswerEvent();
+
+      valkeyRepositoryMock.get.mockResolvedValue(null);
+      const handleSpy = vi
+        .spyOn(service, "handleQuizNotFound")
+        .mockResolvedValue(null);
+
+      await expect(service.handleAnswer(event)).rejects.toThrow(
+        ResponseError.QUIZ_NOT_FOUND,
+      );
+      expect(handleSpy).toHaveBeenCalledWith(event.sessionId);
+    });
+
+    it("should throw QUIZ_SERVICE_ERROR when getIsCorrectFromCache fails for MCQ", async () => {
+      const event = createAnswerEvent();
+      const questionId = "69c16aed-ec7c-8328-baf4-4edc49890473";
+
+      valkeyRepositoryMock.get.mockResolvedValue(questionId);
+
+      responseRepositoryMock.findByParticipantAndQuestion.mockResolvedValue(
+        null,
+      );
+
+      vi.spyOn(service, "getIsCorrectFromCache").mockRejectedValue(
+        new Error("cache failure"),
+      );
+
+      await expect(service.handleAnswer(event)).rejects.toThrow(
+        ResponseError.QUIZ_SERVICE_ERROR,
+      );
+    });
+
+    it("should throw DATABASE_ERROR when repository.create fails", async () => {
+      const event = createAnswerEvent({ isCorrect: true });
+      const questionId = "69c16aed-ec7c-8328-baf4-4edc49890473";
+
+      valkeyRepositoryMock.get.mockResolvedValue(questionId);
+
+      responseRepositoryMock.create.mockRejectedValue(
+        new Error("DB connection lost"),
+      );
+
+      await expect(service.handleAnswer(event)).rejects.toThrow(
+        /Database operation failed/,
+      );
     });
   });
 
   describe("getResponsesByParticipant", () => {
-    it("should return participant responses", async () => {
-      responseRepositoryMock.findByParticipantAndSession.mockResolvedValue([
-        { id: "r1" },
-      ]);
+    it("should delegate to repository.findByParticipantAndSession", async () => {
+      const entities = [createResponseEntity()];
+      responseRepositoryMock.findByParticipantAndSession.mockResolvedValue(
+        entities,
+      );
 
-      const result = await service.getResponsesByParticipant("p1", "s1");
+      const result = await service.getResponsesByParticipant(
+        "participant-1",
+        "session-1",
+      );
 
       expect(
         responseRepositoryMock.findByParticipantAndSession,
-      ).toHaveBeenCalledWith("p1", "s1");
+      ).toHaveBeenCalledWith("participant-1", "session-1");
+      expect(result).toEqual(entities);
+    });
 
-      expect(result).toHaveLength(1);
+    it("should return empty array when no responses found", async () => {
+      responseRepositoryMock.findByParticipantAndSession.mockResolvedValue([]);
+
+      const result = await service.getResponsesByParticipant(
+        "participant-1",
+        "session-1",
+      );
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe("getResponsesByQuestion", () => {
+    it("should delegate to repository.findByQuestionAndSession", async () => {
+      const entities = [createResponseEntity()];
+      responseRepositoryMock.findByQuestionAndSession.mockResolvedValue(
+        entities,
+      );
+
+      const result = await service.getResponsesByQuestion(
+        "question-1",
+        "session-1",
+      );
+
+      expect(
+        responseRepositoryMock.findByQuestionAndSession,
+      ).toHaveBeenCalledWith("question-1", "session-1");
+      expect(result).toEqual(entities);
+    });
+  });
+
+  describe("getAllSessionResponses", () => {
+    it("should delegate to repository.findBySession", async () => {
+      const entities = [createResponseEntity(), createResponseEntity()];
+      responseRepositoryMock.findBySession.mockResolvedValue(entities);
+
+      const result = await service.getAllSessionResponses("session-1");
+
+      expect(responseRepositoryMock.findBySession).toHaveBeenCalledWith(
+        "session-1",
+      );
+      expect(result).toHaveLength(2);
     });
   });
 
   describe("clearSession", () => {
-    it("should delete all responses for session", async () => {
-      await service.clearSession("s1");
+    it("should delegate to repository.deleteBySessionId", async () => {
+      responseRepositoryMock.deleteBySessionId.mockResolvedValue(undefined);
 
-      expect(
-        responseRepositoryMock.deleteBySessionId,
-      ).toHaveBeenCalledWith("s1");
+      await service.clearSession("session-1");
+
+      expect(responseRepositoryMock.deleteBySessionId).toHaveBeenCalledWith(
+        "session-1",
+      );
+    });
+  });
+
+  describe("startNewSession", () => {
+    it("should cache quizId and first question", async () => {
+      const quizPayload = createQuizPayload();
+
+      const fetchSpy = vi
+        .spyOn(service, "fetchQuizz")
+        .mockResolvedValue(quizPayload);
+
+      await service.startNewSession("session-1", "host-1", "quiz-1");
+
+      expect(valkeyRepositoryMock.set).toHaveBeenCalledWith(
+        "sessionQuizId:session-1",
+        "quiz-1",
+        3600,
+      );
+      expect(valkeyRepositoryMock.set).toHaveBeenCalledWith(
+        "currentSessionQuestion:session-1",
+        quizPayload.questions[0].id,
+        3600,
+      );
+      expect(fetchSpy).toHaveBeenCalledWith("quiz-1", "host-1", {});
+    });
+  });
+
+  describe("fetchQuizz", () => {
+    it("should return cached quiz if available", async () => {
+      const quizPayload = createQuizPayload();
+      valkeyRepositoryMock.get.mockResolvedValue(quizPayload);
+
+      const result = await service.fetchQuizz("quiz-1", "host-1");
+
+      expect(valkeyRepositoryMock.get).toHaveBeenCalledWith("quiz:quiz-1");
+      expect(quizClientMock.getQuiz).not.toHaveBeenCalled();
+      expect(result).toEqual(quizPayload);
+    });
+
+    it("should fetch from client and cache when not in cache", async () => {
+      valkeyRepositoryMock.get.mockResolvedValue(null);
+
+      const quizPayload = createQuizPayload();
+      quizClientMock.getQuiz.mockResolvedValue(quizPayload);
+
+      const tokenSpy = vi
+        .spyOn(service, "getToken")
+        .mockReturnValue("mock-internal-token");
+
+      const result = await service.fetchQuizz("quiz-1", "host-1", {
+        host: "test",
+      });
+
+      expect(tokenSpy).toHaveBeenCalledWith("host-1");
+      expect(quizClientMock.getQuiz).toHaveBeenCalledWith("quiz-1", {
+        host: "test",
+        "internal-token": "mock-internal-token",
+      });
+      expect(valkeyRepositoryMock.set).toHaveBeenCalledWith(
+        "quiz:quiz-1",
+        quizPayload,
+        3600,
+      );
+      expect(result).toEqual(quizPayload);
+    });
+
+    it("should throw QUIZ_NOT_FOUND when client returns null", async () => {
+      valkeyRepositoryMock.get.mockResolvedValue(null);
+      quizClientMock.getQuiz.mockResolvedValue(null);
+
+      vi.spyOn(service, "getToken").mockReturnValue("mock-internal-token");
+
+      await expect(service.fetchQuizz("quiz-1", "host-1")).rejects.toThrow(
+        ResponseError.QUIZ_NOT_FOUND,
+      );
+    });
+
+    it("should still return quiz even if cache set fails", async () => {
+      valkeyRepositoryMock.get.mockResolvedValue(null);
+
+      const quizPayload = createQuizPayload();
+      quizClientMock.getQuiz.mockResolvedValue(quizPayload);
+      valkeyRepositoryMock.set.mockRejectedValue(new Error("Valkey down"));
+
+      vi.spyOn(service, "getToken").mockReturnValue("mock-internal-token");
+
+      const result = await service.fetchQuizz("quiz-1", "host-1");
+
+      expect(result).toEqual(quizPayload);
+    });
+  });
+
+  describe("gotoNextQuestion", () => {
+    it("should update currentSessionQuestion in cache", async () => {
+      valkeyRepositoryMock.set.mockResolvedValue(undefined);
+
+      await service.gotoNextQuestion("session-1", "question-2");
+
+      expect(valkeyRepositoryMock.set).toHaveBeenCalledWith(
+        "currentSessionQuestion:session-1",
+        "question-2",
+        3600,
+      );
     });
   });
 
   describe("getIsCorrectFromCache", () => {
-    it("should return is_correct from cached quiz", async () => {
-      valkeyRepositoryMock.get.mockResolvedValue(
-        JSON.stringify({
-          questions: [
-            {
-              id: "q1",
-              choices: [
-                { id: "c1", is_correct: true },
-              ],
-            },
-          ],
-        }),
+    it("should return true for a correct choice", async () => {
+      const quizPayload = createQuizPayload();
+
+      valkeyRepositoryMock.get.mockImplementation(
+        /** @param {string} key */ (key) => {
+          if (key.startsWith("sessionQuizId:")) {
+            return Promise.resolve("quiz-1");
+          }
+          if (key.startsWith("quiz:")) {
+            return Promise.resolve(quizPayload);
+          }
+          return Promise.resolve(null);
+        },
       );
 
       const result = await service.getIsCorrectFromCache(
-        "quiz1",
-        "q1",
-        "c1",
+        "session-1",
+        quizPayload.questions[0].id,
+        quizPayload.questions[0].choices[0].id,
       );
 
       expect(result).toBe(true);
     });
 
-    it("should throw if question not found", async () => {
-      valkeyRepositoryMock.get.mockResolvedValue(
-        JSON.stringify({
-          questions: [],
-        }),
+    it("should return false for an incorrect choice", async () => {
+      const quizPayload = createQuizPayload();
+
+      valkeyRepositoryMock.get.mockImplementation(
+        /** @param {string} key */ (key) => {
+          if (key.startsWith("sessionQuizId:")) {
+            return Promise.resolve("quiz-1");
+          }
+          if (key.startsWith("quiz:")) {
+            return Promise.resolve(quizPayload);
+          }
+          return Promise.resolve(null);
+        },
       );
 
-      await expect(
-        service.getIsCorrectFromCache("quiz1", "q1", "c1"),
-      ).rejects.toThrow("QUESTION_NOT_FOUND");
+      const result = await service.getIsCorrectFromCache(
+        "session-1",
+        quizPayload.questions[0].id,
+        "wrong-choice-id",
+      );
+
+      expect(result).toBe(false);
     });
 
-    it("should throw if choice not found", async () => {
-      valkeyRepositoryMock.get.mockResolvedValue(
-        JSON.stringify({
-          questions: [
-            {
-              id: "q1",
-              choices: [],
-            },
-          ],
-        }),
+    it("should throw QUIZ_NOT_FOUND when quizId is not cached", async () => {
+      valkeyRepositoryMock.get.mockResolvedValue(null);
+      vi.spyOn(service, "handleQuizNotFound").mockResolvedValue(null);
+
+      await expect(
+        service.getIsCorrectFromCache("session-1", "q1", "c1"),
+      ).rejects.toThrow(ResponseError.QUIZ_NOT_FOUND);
+    });
+
+    it("should throw QUESTION_NOT_FOUND when question does not exist in quiz", async () => {
+      const quizPayload = createQuizPayload();
+
+      valkeyRepositoryMock.get.mockImplementation(
+        /** @param {string} key */ (key) => {
+          if (key.startsWith("sessionQuizId:")) {
+            return Promise.resolve("quiz-1");
+          }
+          if (key.startsWith("quiz:")) {
+            return Promise.resolve(quizPayload);
+          }
+          return Promise.resolve(null);
+        },
       );
 
       await expect(
-        service.getIsCorrectFromCache("quiz1", "q1", "c1"),
-      ).rejects.toThrow("CHOICE_NOT_FOUND");
+        service.getIsCorrectFromCache("session-1", "unknown-question", "c1"),
+      ).rejects.toThrow(ResponseError.QUESTION_NOT_FOUND);
+    });
+
+    it("should throw CHOICE_NOT_FOUND when choice does not exist in question", async () => {
+      const quizPayload = createQuizPayload();
+
+      valkeyRepositoryMock.get.mockImplementation(
+        /** @param {string} key */ (key) => {
+          if (key.startsWith("sessionQuizId:")) {
+            return Promise.resolve("quiz-1");
+          }
+          if (key.startsWith("quiz:")) {
+            return Promise.resolve(quizPayload);
+          }
+          return Promise.resolve(null);
+        },
+      );
+
+      await expect(
+        service.getIsCorrectFromCache(
+          "session-1",
+          quizPayload.questions[0].id,
+          "unknown-choice",
+        ),
+      ).rejects.toThrow(ResponseError.CHOICE_NOT_FOUND);
     });
   });
 
-  describe("fetchQuizz", () => {
-    it("should cache fetched quiz", async () => {
-      const mockQuiz = { id: "quiz1" };
-
-      vi.spyOn(service, "getToken").mockReturnValue("token");
-
-      const callMock = vi.spyOn(await import("common-axios"), "call");
-      callMock.mockResolvedValue(mockQuiz);
-
-      const request = { headers: {} };
-
-      const result = await service.fetchQuizz(
-        "quiz1",
-        "host1",
-        request,
-      );
-
-      expect(result).toEqual(mockQuiz);
-
-      expect(valkeyRepositoryMock.set).toHaveBeenCalled();
+  describe("handleQuizNotFound", () => {
+    it("should return null (TODO stub)", async () => {
+      const result = await service.handleQuizNotFound("session-1");
+      expect(result).toBeNull();
     });
+  });
 
-    it("should throw if quiz not found", async () => {
-      vi.spyOn(service, "getToken").mockReturnValue("token");
+  describe("getToken", () => {
+    it("should generate an internal token with correct payload", async () => {
+      const { CryptoService } = await import("common-crypto");
 
-      const callMock = vi.spyOn(await import("common-axios"), "call");
-      callMock.mockResolvedValue(null);
+      const keySpy = vi
+        .spyOn(service, "getKey")
+        .mockReturnValue("/fake/key/path");
 
-      await expect(
-        service.fetchQuizz(
-          "quiz1",
-          "host1",
-          { headers: {} },
-        ),
-      ).rejects.toThrow("QUIZ_NOT_FOUND");
+      const result = service.getToken("host-123");
+
+      expect(keySpy).toHaveBeenCalled();
+      expect(CryptoService.sign).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: "host-123",
+          source: "api-gateway",
+        }),
+        "/fake/key/path",
+        expect.objectContaining({ expiresIn: "30s" }),
+      );
+      expect(result).toBe("mocked-jwt-token");
     });
   });
 });

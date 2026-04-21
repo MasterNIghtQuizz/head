@@ -49,6 +49,14 @@ const schema = Joi.object({
     node: Joi.string().uri().required(),
     index: Joi.string().required(),
   }).optional(),
+  services: Joi.object({
+    session: Joi.object({
+      baseUrl: Joi.string().required(),
+    }).required(),
+    quizzManagement: Joi.object({
+      baseUrl: Joi.string().required(),
+    }).required(),
+  }).required(),
 });
 
 Config.init({ directory: configDirectory, schema });
@@ -59,16 +67,27 @@ const resolveKeyPath = (/** @type {string} */ keyPath) =>
   path.isAbsolute(keyPath) ? keyPath : path.resolve(projectRoot, keyPath);
 
 const rawAuth =
-  /** @type {{ internal: { privateKeyPath: string; publicKeyPath: string; } }} */ (
+  /** @type {{ internal: { privateKeyPath: string; publicKeyPath: string } }} */ (
     Config.get("auth")
   );
 
-/** @type {typeof import('./config.d.ts').config} */
+const rawLogger = /** @type {{ level: string; pretty: boolean }} */ (
+  Config.get("logger")
+);
+
+const rawPostgres =
+  /** @type {{ host: string; port: number; database: string; user: string; password: string }} */ (
+    Config.get("postgres")
+  );
+
+/**
+ * @type {typeof import('./config.d.ts').config}
+ */
 export const config = {
   env: /** @type {string} */ (Config.get("app.env")),
   port: /** @type {number} */ (Config.get("app.port")),
-  logger: /** @type {Record<string, unknown>} */ (Config.get("logger")),
-  postgres: /** @type {Record<string, any>} */ (Config.get("postgres")),
+  logger: rawLogger,
+  postgres: rawPostgres,
   kafka: /** @type {{ brokers: string[], enabled: boolean }} */ (
     Config.get("kafka")
   ),
@@ -79,13 +98,24 @@ export const config = {
     },
   },
   valkey:
-    /** @type {import('common-valkey').ValkeyConfig & { ttl: number }} */ (
+    /** @type {import('common-valkey').ValkeyConfig & { ttl?: number }} */ (
       Config.get("valkey")
     ),
-  otel: /** @type {{ enabled: boolean; exporterUrl: string }} */ (
+  otel: /** @type {{ enabled: boolean; exporterUrl: string } | undefined} */ (
     Config.get("otel")
   ),
-  opensearch: /** @type {{ enabled: boolean; node: string; index: string }} */ (
-    Config.get("opensearch")
-  ),
+  opensearch:
+    /** @type {{ enabled: boolean; node: string; index: string } | undefined} */ (
+      Config.get("opensearch")
+    ),
+  services: {
+    session: {
+      baseUrl: /** @type {string} */ (Config.get("services.session.baseUrl")),
+    },
+    quizzManagement: {
+      baseUrl: /** @type {string} */ (
+        Config.get("services.quizzManagement.baseUrl")
+      ),
+    },
+  },
 };

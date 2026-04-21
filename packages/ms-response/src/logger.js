@@ -7,9 +7,9 @@ const logger = createLogger({
   pretty: /** @type {boolean} */ (config.logger.pretty),
   opensearch: config.opensearch?.enabled
     ? {
-      node: config.opensearch.node,
-      index: config.opensearch.index,
-    }
+        node: config.opensearch.node,
+        index: config.opensearch.index,
+      }
     : undefined,
 });
 

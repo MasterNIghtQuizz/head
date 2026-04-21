@@ -84,9 +84,11 @@ export class TypeORMStrategy extends DatabaseStrategy {
    * @returns {Promise<void>}
    */
   async disconnect() {
-    if (this.#dataSource?.isInitialized) {
+    if (this.#dataSource && this.#dataSource.isInitialized) {
+      const dbName = this.#dataSource.options.database;
       await this.#dataSource.destroy();
-      logger.info("TypeORM Strategy disconnected");
+      this.#dataSource = null;
+      logger.info(`TypeORM Strategy disconnected from: ${dbName}`);
     }
   }
 

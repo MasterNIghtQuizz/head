@@ -1,9 +1,34 @@
 import logger from "../../../logger.js";
 import { Topics } from "common-contracts";
-import {SessionEventTypes} from "common-contracts/src/events.js";
-import {CreateResponseRequestDto} from "../../../modules/response/contracts/response.dto.js";
+import { SessionEventTypes } from "common-contracts/src/events.js";
+import { CreateResponseRequestDto } from "../../../modules/response/contracts/response.dto.js";
+
+/**
+ * @typedef {{ eventId: string, eventType: string }} LogContext
+ */
+
+/**
+ * @typedef {Object} ProcessedEvent
+ * @property {string} id
+ * @property {string} topic
+ * @property {Date} [processedAt]
+ */
 
 export class ResponseEventsConsumer {
+  /** @type {import('common-kafka').KafkaConsumer} */
+  kafkaConsumer;
+
+  /** @type {import('typeorm').Repository<ProcessedEvent>} */
+  processedEventRepo;
+
+  /** @type {import('../../../modules/response/services/response.service.js').ResponseService} */
+  responseService;
+
+  /**
+   * @param {import('common-kafka').KafkaConsumer} kafkaConsumer
+   * @param {import('typeorm').Repository<ProcessedEvent>} processedEventRepo
+   * @param {import('../../../modules/response/services/response.service.js').ResponseService} responseService
+   */
   constructor(kafkaConsumer, processedEventRepo, responseService) {
     this.kafkaConsumer = kafkaConsumer;
     this.processedEventRepo = processedEventRepo;
@@ -11,87 +36,172 @@ export class ResponseEventsConsumer {
   }
 
   register() {
-    this.kafkaConsumer.addHandler(
-      Topics.QUIZZ_EVENTS,
-      async (message) => {
-        await this.handleEvent(message);
-      },
-    );
+    this.kafkaConsumer.addHandler(Topics.QUIZZ_EVENTS, async (message) => {
+      await this.handleEvent(
+        /** @type {import('common-contracts').KafkaEvent} */ (message),
+      );
+    });
   }
 
+  /**
+   * @param {import('common-contracts').KafkaEvent} message
+   * @returns {Promise<void>}
+   */
   async handleEvent(message) {
-    logger.info("New Event received : kjhsabdsajkdsajdbks skijdbsjk ds dj sdsd s dkj sds");
-    if (!message?.eventId) {
-      logger.warn("No eventId, skipping");
+    const { eventId, eventType, payload } = message;
+
+    if (!eventId) {
+      logger.warn({ eventType }, "Message received without eventId, skipping");
       return;
     }
 
-    logger.info("New Event received : " + message.eventType);
+    /** @type {LogContext} */
+    const logCtx = { eventId, eventType };
+
     const existing = await this.processedEventRepo.findOne({
-      where: { id: message.eventId },
+      where: { id: eventId },
     });
 
     if (existing) {
-      logger.info("Already processed");
+      logger.info(logCtx, "Event already processed, skipping (idempotency)");
       return;
     }
 
     try {
-      switch (message.eventType) {
+      logger.info(logCtx, "Processing new event");
+
+      switch (eventType) {
         case SessionEventTypes.QUIZ_RESPONSE_SUBMITTED:
-          await this.onAnswerSubmitted(message.payload);
+          await this.onAnswerSubmitted(
+            /** @type {import('common-contracts').QuizResponseSubmittedEventPayload} */ (
+              payload
+            ),
+            logCtx,
+          );
           break;
 
         case SessionEventTypes.SESSION_ENDED:
-          await this.onSessionEnded(message.payload);
+          await this.onSessionEnded(
+            /** @type {import('common-contracts').SessionEndedEventPayload} */ (
+              payload
+            ),
+            logCtx,
+          );
           break;
 
         case SessionEventTypes.SESSION_CREATED:
-          await this.onSessionStarted(message.payload);
+          await this.onSessionStarted(
+            /** @type {import('common-contracts').SessionCreatedEventPayload} */ (
+              payload
+            ),
+            logCtx,
+          );
           break;
 
         case SessionEventTypes.SESSION_NEXT_QUESTION:
-          await this.onNextQuestion(message.payload);
+          await this.onNextQuestion(
+            /** @type {import('common-contracts').SessionNextQuestionEventPayload} */ (
+              payload
+            ),
+            logCtx,
+          );
           break;
 
         default:
-          logger.warn("Unknown event");
+          logger.warn(logCtx, "Unknown event type encountered");
       }
 
       await this.processedEventRepo.save({
-        id: message.eventId,
+        id: eventId,
         topic: Topics.QUIZZ_EVENTS,
       });
+
+      logger.info(logCtx, "Event successfully processed and recorded");
     } catch (err) {
-      logger.error(err + "Error processing event");
-      throw err;
+      const error = /** @type {Error} */ (err);
+      logger.error(
+        { ...logCtx, error: error.message },
+        "Critical error during event processing",
+      );
+      throw error;
     }
   }
 
-  async onAnswerSubmitted(payload) {
-    logger.info(payload + "Processing answer");
+  /**
+   * @param {import('common-contracts').QuizResponseSubmittedEventPayload} payload
+   * @param {LogContext} logCtx
+   * @returns {Promise<void>}
+   */
+  async onAnswerSubmitted(payload, logCtx) {
+    logger.debug({ ...logCtx, payload }, "Executing onAnswerSubmitted");
 
     const { error, value } = CreateResponseRequestDto.validate(payload);
     if (error) {
-      logger.warn(error + "Invalid event");
-      throw new Error("INVALID_EVENT");
+      logger.warn(
+        { ...logCtx, error: error.message },
+        "Invalid QuizResponseSubmitted payload",
+      );
+      throw new Error("INVALID_EVENT_PAYLOAD");
     }
 
-    await this.responseService.handleAnswer(value);
+    await this.responseService.handleAnswer(
+      /** @type {import('common-contracts').AnswerEvent} */ (value),
+    );
   }
 
-  async onSessionEnded(payload) {
-    logger.info(payload + "Clearing session");
-    await this.responseService.clearSession(payload.sessionId);
+  /**
+   * @param {import('common-contracts').SessionEndedEventPayload} payload
+   * @param {LogContext} logCtx
+   * @returns {Promise<void>}
+   */
+  async onSessionEnded(payload, logCtx) {
+    logger.info(
+      { ...logCtx, sessionId: payload.session_id },
+      "Executing onSessionEnded",
+    );
+    await this.responseService.clearSession(payload.session_id);
   }
 
-  async onSessionStarted(payload) {
-    logger.info(payload + "creating session");
-    await this.responseService.startNewSession(payload.sessionId, payload.hostId, payload.quizId, {});
+  /**
+   * @param {import('common-contracts').SessionCreatedEventPayload} payload
+   * @param {LogContext} logCtx
+   * @returns {Promise<void>}
+   */
+  async onSessionStarted(payload, logCtx) {
+    logger.info(
+      {
+        ...logCtx,
+        sessionId: payload.session_id,
+        quizId: payload.quiz_id,
+      },
+      "Executing onSessionStarted",
+    );
+
+    await this.responseService.startNewSession(
+      payload.session_id,
+      payload.participant_id,
+      payload.quiz_id,
+    );
   }
 
-  async onNextQuestion(payload) {
-    logger.info(payload + "Next question");
-    await this.responseService.gotoNextQuestion(payload.sessionId, payload.questionId);
+  /**
+   * @param {import('common-contracts').SessionNextQuestionEventPayload} payload
+   * @param {LogContext} logCtx
+   * @returns {Promise<void>}
+   */
+  async onNextQuestion(payload, logCtx) {
+    logger.info(
+      {
+        ...logCtx,
+        sessionId: payload.session_id,
+        questionId: payload.question_id,
+      },
+      "Executing onNextQuestion",
+    );
+
+    await this.responseService.gotoNextQuestion(
+      payload.session_id,
+      payload.question_id,
+    );
   }
 }

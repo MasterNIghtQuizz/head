@@ -1,27 +1,65 @@
-import {call} from "common-axios";
-import {BaseService} from "common-core";
-import {TokenType} from "common-auth";
-import {CryptoService} from "common-crypto";
-import {config} from "../../../config.js";
+import { BaseService } from "common-core";
+import { TokenType } from "common-auth";
+import { CryptoService } from "common-crypto";
+import { config } from "../../../config.js";
 import logger from "../../../logger.js";
-import {DATABASE_ERROR} from "../errors/internal.errors.js";
+import { DATABASE_ERROR } from "../errors/internal.errors.js";
+import { ResponseError } from "../response.constants.js";
+import { ResponseEntity } from "../core/entities/response.entity.js";
 
-export class ResponseService extends BaseService{
-  constructor(responseRepository) {
+export class ResponseService extends BaseService {
+  /** @type {import('../core/ports/response.repository.js').ResponseRepository} */
+  responseRepository;
+
+  /** @type {import('common-valkey').ValkeyRepository} */
+  valkeyRepository;
+
+  /** @type {import('../../../infrastructure/clients/quiz.client.js').QuizClient} */
+  quizClient;
+
+  /**
+   * @param {import('../core/ports/response.repository.js').ResponseRepository} responseRepository
+   * @param {import('common-valkey').ValkeyRepository} valkeyRepository
+   * @param {import('../../../infrastructure/clients/quiz.client.js').QuizClient} quizClient
+   */
+  constructor(responseRepository, valkeyRepository, quizClient) {
     super();
     this.responseRepository = responseRepository;
-    this.valkeyRepository = responseRepository.valkeyRepository;
+    this.valkeyRepository = valkeyRepository;
+    this.quizClient = quizClient;
   }
 
+  /**
+   * @param {import('common-contracts').AnswerEvent} event
+   * @returns {Promise<import('../core/entities/response.entity.js').ResponseEntity>}
+   */
   async handleAnswer(event) {
-    const isBuzzer = event.is_correct !== undefined;
+    const isBuzzer = event.isCorrect !== undefined;
 
-    let questionId = await this.valkeyRepository.get(`currentSessionQuestion:${event.sessionId}`);
+    logger.debug(
+      {
+        participantId: event.participantId,
+        sessionId: event.sessionId,
+        isBuzzer,
+      },
+      "Processing answer submission",
+    );
+
+    let questionId = await this.valkeyRepository.get(
+      `currentSessionQuestion:${event.sessionId}`,
+    );
+
     if (!questionId) {
       await this.handleQuizNotFound(event.sessionId);
-      questionId = await this.valkeyRepository.get(`currentSessionQuestion:${event.sessionId}`);
+      questionId = await this.valkeyRepository.get(
+        `currentSessionQuestion:${event.sessionId}`,
+      );
       if (!questionId) {
-        throw new Error("QUIZ_NOT_FOUND");
+        logger.warn(
+          { sessionId: event.sessionId },
+          "No current question found in cache after recovery attempt",
+        );
+        throw new Error(ResponseError.QUIZ_NOT_FOUND);
       }
     }
 
@@ -32,147 +70,224 @@ export class ResponseService extends BaseService{
           questionId,
         );
       if (existing) {
-        throw new Error("ALREADY_ANSWERED");
+        logger.warn(
+          { participantId: event.participantId, questionId },
+          "Duplicate answer attempt rejected",
+        );
+        throw new Error(ResponseError.ALREADY_ANSWERED);
       }
     }
 
-    const response = {
+    const responseEntity = new ResponseEntity({
+      id: "",
       participantId: event.participantId,
       questionId: questionId,
       sessionId: event.sessionId,
-      choiceId: event.choice_id ?? null,
-      isCorrect: isBuzzer ? event.is_correct : null,
+      choiceId: event.choiceId ?? null,
+      isCorrect: isBuzzer ? (event.isCorrect ?? null) : null,
       submittedAt: new Date(),
-    };
+    });
 
-    if (response.isCorrect == null) {
+    if (responseEntity.isCorrect === null) {
       try {
-        response.isCorrect = await this.getIsCorrectFromCache(
-          response.sessionId,
-          response.questionId,
-          response.choice_id,
+        const isCorrect = await this.getIsCorrectFromCache(
+          responseEntity.sessionId,
+          responseEntity.questionId,
+          responseEntity.choiceId,
         );
-      }
-      catch {
-        throw new Error("QUIZ_SERVICE_ERROR");
+        responseEntity.update({ isCorrect });
+      } catch {
+        logger.error(
+          { sessionId: event.sessionId, questionId, choiceId: event.choiceId },
+          "Failed to resolve answer correctness from cache",
+        );
+        throw new Error(ResponseError.QUIZ_SERVICE_ERROR);
       }
     }
 
-    let saved;
-
     try {
-      saved = await this.responseRepository.create(response);
+      const saved = await this.responseRepository.create(responseEntity);
+      logger.info(
+        {
+          responseId: saved.id,
+          participantId: saved.participantId,
+          sessionId: saved.sessionId,
+          isCorrect: saved.isCorrect,
+        },
+        "Answer recorded successfully",
+      );
+      return saved;
     } catch (error) {
       throw DATABASE_ERROR(/** @type {Error} */ (error));
     }
-    return saved;
   }
 
-  getToken(hostId)
-  {
-    logger.info("generating internal token");
-    const payload =  {
+  /**
+   * @param {string} hostId
+   * @returns {string}
+   */
+  getToken(hostId) {
+    const payload = {
       userId: hostId,
       type: TokenType.INTERNAL,
       source: "api-gateway",
     };
-    const expiresIn = "30s"
 
-    logger.info("gekey test: " + this.getKey());
-    logger.info("signing");
-    const internalToken = CryptoService.sign(payload, this.getKey(), {
-      expiresIn:
-      /** @type {import('jsonwebtoken').SignOptions['expiresIn']} */ (
-        expiresIn
-      ),
-    });
-    logger.info("returning internal token");
-    return internalToken;
+    return CryptoService.sign(payload, this.getKey(), { expiresIn: "30s" });
   }
 
-  getKey(){return  config.auth.internal.privateKeyPath}
+  /**
+   * @returns {string}
+   */
+  getKey() {
+    return config.auth.internal.privateKeyPath;
+  }
 
-
+  /**
+   * @param {string} participantId
+   * @param {string} sessionId
+   * @returns {Promise<import('../core/entities/response.entity.js').ResponseEntity[]>}
+   */
   async getResponsesByParticipant(participantId, sessionId) {
-    return this.responseRepository.findByParticipantAndSession(participantId, sessionId);
+    const results = await this.responseRepository.findByParticipantAndSession(
+      participantId,
+      sessionId,
+    );
+    logger.debug(
+      { participantId, sessionId, count: results.length },
+      "Fetched participant responses",
+    );
+    return results;
   }
 
+  /**
+   * @param {string} questionId
+   * @param {string} sessionId
+   * @returns {Promise<import('../core/entities/response.entity.js').ResponseEntity[]>}
+   */
   async getResponsesByQuestion(questionId, sessionId) {
-    return this.responseRepository.findByQuestionAndSession(questionId, sessionId);
+    const results = await this.responseRepository.findByQuestionAndSession(
+      questionId,
+      sessionId,
+    );
+    logger.debug(
+      { questionId, sessionId, count: results.length },
+      "Fetched question responses",
+    );
+    return results;
   }
 
+  /**
+   * @param {string} sessionId
+   * @returns {Promise<import('../core/entities/response.entity.js').ResponseEntity[]>}
+   */
   async getAllSessionResponses(sessionId) {
-    return this.responseRepository.findBySession(sessionId);
+    const results = await this.responseRepository.findBySession(sessionId);
+    logger.debug(
+      { sessionId, count: results.length },
+      "Fetched all session responses",
+    );
+    return results;
   }
 
-
+  /**
+   * @param {string} sessionId
+   * @returns {Promise<void>}
+   */
   async clearSession(sessionId) {
     await this.responseRepository.deleteBySessionId(sessionId);
+    logger.info({ sessionId }, "Session responses cleared");
   }
 
-  async startNewSession(sessionId, hostId, quizId, request) {
-    await this.valkeyRepository.set(
-      `sessionQuizId:${sessionId}`,
-      quizId,
-      3600,
-    );
+  /**
+   * @param {string} sessionId
+   * @param {string} hostId
+   * @param {string} quizId
+   * @param {import('node:http').IncomingHttpHeaders} [headers]
+   * @returns {Promise<void>}
+   */
+  async startNewSession(sessionId, hostId, quizId, headers = {}) {
+    await this.valkeyRepository.set(`sessionQuizId:${sessionId}`, quizId, 3600);
 
-    const quiz = (await this.fetchQuizz(sessionId, quizId, hostId, request));
+    const quiz = await this.fetchQuizz(quizId, hostId, headers);
     const cacheKey = `currentSessionQuestion:${sessionId}`;
 
-    await this.valkeyRepository.set(
-      cacheKey,
-      JSON.stringify(quiz.questions[0].id),
-      3600,
+    if (!quiz?.questions?.length) {
+      logger.warn({ quizId }, "Quiz found but contains no questions");
+      throw new Error(ResponseError.QUIZ_NOT_FOUND);
+    }
+
+    await this.valkeyRepository.set(cacheKey, quiz.questions[0].id, 3600);
+
+    logger.info(
+      { sessionId, quizId, firstQuestionId: quiz.questions[0].id },
+      "Session context initialized",
     );
   }
 
-  async fetchQuizz(sessionId, quizID, hostId, request) {
+  /**
+   * @param {string} quizID
+   * @param {string} hostId
+   * @param {import('node:http').IncomingHttpHeaders} [headers]
+   * @returns {Promise<import('common-contracts').Quizz>}
+   */
+  async fetchQuizz(quizID, hostId, headers = {}) {
     const cached = await this.valkeyRepository.get(`quiz:${quizID}`);
-    if (cached) {
-      return JSON.parse(cached);
+    if (cached && cached.questions) {
+      logger.debug({ quizID }, "Quiz data served from cache");
+      return cached;
     }
 
     const internalToken = this.getToken(hostId);
-    logger.info("-fetchQuizz()- internal token : " + {internalToken});
 
-    request.headers["internal-token"] = internalToken;
-    request.internalToken = internalToken;
-
-    const quiz = await call({
-      url: `${config.services.quizz}/${quizID}`,
-      method: "GET",
-      headers: request.headers,
+    const quiz = await this.quizClient.getQuiz(quizID, {
+      ...headers,
+      "internal-token": internalToken,
     });
 
     if (!quiz) {
-      throw new Error("Error fetching quiz: " + quizID);
+      logger.warn({ quizID }, "Quiz not found from management service");
+      throw new Error(ResponseError.QUIZ_NOT_FOUND);
     }
 
     try {
-      await this.valkeyRepository.set(
-        `quiz:${quizID}`,
-        JSON.stringify(quiz),
-        3600,
-      );
-    } catch (e) {
-      console.warn("Valkey set failed", e);
+      await this.valkeyRepository.set(`quiz:${quizID}`, quiz, 3600);
+    } catch {
+      logger.warn({ quizID }, "Failed to cache quiz data in Valkey");
     }
 
     return quiz;
   }
 
-  async gotoNextQuestion(sessionId, questionId){
-    await this.valkeyRepository.set(`currentSessionQuestion:${sessionId}`, questionId, 3600);
+  /**
+   * @param {string} sessionId
+   * @param {string} questionId
+   * @returns {Promise<void>}
+   */
+  async gotoNextQuestion(sessionId, questionId) {
+    await this.valkeyRepository.set(
+      `currentSessionQuestion:${sessionId}`,
+      questionId,
+      3600,
+    );
+    logger.info({ sessionId, questionId }, "Current question advanced");
   }
 
+  /**
+   * @param {string} sessionId
+   * @param {string} questionId
+   * @param {string | null} choiceId
+   * @returns {Promise<boolean>}
+   */
   async getIsCorrectFromCache(sessionId, questionId, choiceId) {
     let quizId = await this.valkeyRepository.get(`sessionQuizId:${sessionId}`);
     if (!quizId) {
-      await this.handleQuizNotFound(sessionId);
-      quizId = await this.valkeyRepository.get(`sessionQuizId:${sessionId}`);
+      const cached = await this.handleQuizNotFound(sessionId);
+      quizId = cached
+        ? /** @type {string} */ (cached)
+        : await this.valkeyRepository.get(`sessionQuizId:${sessionId}`);
       if (!quizId) {
-        throw new Error("QUIZ_NOT_FOUND");
+        throw new Error(ResponseError.QUIZ_NOT_FOUND);
       }
     }
 
@@ -181,38 +296,32 @@ export class ResponseService extends BaseService{
     if (!cached) {
       cached = await this.handleQuizNotFound(sessionId);
       if (!cached) {
-        throw new Error("QUIZ_NOT_FOUND");
+        throw new Error(ResponseError.QUIZ_NOT_FOUND);
       }
     }
 
-    const quiz = JSON.parse(cached);
+    const quiz = /** @type {import('common-contracts').Quizz} */ (cached);
 
-    const question = quiz.questions?.find(
-      (q) => q.id === questionId,
-    );
+    const question = quiz.questions?.find((q) => q.id === questionId);
 
     if (!question) {
-      throw new Error("QUESTION_NOT_FOUND");
+      throw new Error(ResponseError.QUESTION_NOT_FOUND);
     }
 
-    const choice = question.choices?.find(
-      (c) => c.id === choiceId,
-    );
+    const choice = question.choices?.find((c) => c.id === choiceId);
 
     if (!choice) {
-      throw new Error("CHOICE_NOT_FOUND");
+      throw new Error(ResponseError.CHOICE_NOT_FOUND);
     }
 
     return choice.is_correct;
   }
 
-  async handleQuizNotFound(sessionId) {
-    /*TODO:
-    1 - Call Get Session from session-ms
-    2 - Store  `sessionQuizId:${sessionId}`
-    3 - Call Get Quiz from quizz-ms
-    4 - Store `quiz:${quizID}`
-    5 - Store `currentSessionQuestion:${sessionId}`
-     */
+  /**
+   * @param {string} _sessionId
+   * @returns {Promise<string | null>}
+   */
+  async handleQuizNotFound(_sessionId) {
+    return null;
   }
 }

@@ -1,33 +1,69 @@
 export class ResponseRepository {
-  create(response) {
+  /**
+   * @param {import('../entities/response.entity.js').ResponseEntity} _response
+   * @returns {Promise<import('../entities/response.entity.js').ResponseEntity>}
+   */
+  create(_response) {
     throw new Error("Not implemented");
   }
 
-  update(id, data) {
+  /**
+   * @param {string} _id
+   * @param {import('../entities/response.entity.js').ResponseEntity} _data
+   * @returns {Promise<void>}
+   */
+  update(_id, _data) {
     throw new Error("Not implemented");
   }
 
-  findByParticipantAndQuestion(participantId, questionId) {
+  /**
+   * @param {string} _participantId
+   * @param {string} _questionId
+   * @returns {Promise<import('../entities/response.entity.js').ResponseEntity|null>}
+   */
+  findByParticipantAndQuestion(_participantId, _questionId) {
     throw new Error("Not implemented");
   }
 
-  findByParticipantAndSession(participantId, sessionId) {
+  /**
+   * @param {string} _participantId
+   * @param {string} _sessionId
+   * @returns {Promise<import('../entities/response.entity.js').ResponseEntity[]>}
+   */
+  findByParticipantAndSession(_participantId, _sessionId) {
     throw new Error("Not implemented");
   }
 
-  findByQuestionAndSession(questionId, sessionId) {
+  /**
+   * @param {string} _questionId
+   * @param {string} _sessionId
+   * @returns {Promise<import('../entities/response.entity.js').ResponseEntity[]>}
+   */
+  findByQuestionAndSession(_questionId, _sessionId) {
     throw new Error("Not implemented");
   }
 
-  findBySession(sessionId) {
+  /**
+   * @param {string} _sessionId
+   * @returns {Promise<import('../entities/response.entity.js').ResponseEntity[]>}
+   */
+  findBySession(_sessionId) {
     throw new Error("Not implemented");
   }
 
-  findByParticipant(participantId) {
+  /**
+   * @param {string} _participantId
+   * @returns {Promise<import('../entities/response.entity.js').ResponseEntity[]>}
+   */
+  findByParticipant(_participantId) {
     throw new Error("Not implemented");
   }
 
-  deleteBySessionId(sessionId) {
+  /**
+   * @param {string} _sessionId
+   * @returns {Promise<void>}
+   */
+  deleteBySessionId(_sessionId) {
     throw new Error("Not implemented");
   }
 }

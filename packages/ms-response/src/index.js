@@ -7,13 +7,15 @@ import { initDatabase, db } from "./database.js";
 
 import { TypeOrmResponseRepository } from "./modules/response/infra/persistence/typeorm-response.repository.js";
 import { ResponseService } from "./modules/response/services/response.service.js";
+import { ResponseController } from "./modules/response/controllers/response.controller.js";
 import { QuizClient } from "./infrastructure/clients/quiz.client.js";
 
 import { createKafkaClient, KafkaConsumer } from "common-kafka";
 import { ProcessedEventEntity } from "common-database";
+import { ControllerFactory } from "common-core";
 
 import { ResponseEventsConsumer } from "./infrastructure/kafka/consumers/response-events.consumer.js";
-import {ValkeyRepository, ValkeyService} from "common-valkey";
+import { ValkeyRepository, ValkeyService } from "common-valkey";
 
 export async function createServer() {
   const fastify = Fastify({
@@ -23,13 +25,10 @@ export async function createServer() {
 
   await initDatabase();
 
-  // -------------------------
-  // REPOSITORY + SERVICE
-  // -------------------------
-
   const valkeyService = new ValkeyService(config.valkey);
   if (config.valkey.enabled) {
     await valkeyService.connect();
+    logger.info("Valkey connection established");
   }
 
   const valkeyRepository = new ValkeyRepository(valkeyService);
@@ -40,15 +39,15 @@ export async function createServer() {
   );
 
   const quizClient = new QuizClient();
-
   const responseService = new ResponseService(
     responseRepo,
+    valkeyRepository,
     quizClient,
   );
 
-  // -------------------------
-  // KAFKA SETUP
-  // -------------------------
+  ControllerFactory.register(fastify, ResponseController, [responseService]);
+
+  /** @type {KafkaConsumer | null} */
   let kafkaConsumer = null;
 
   if (config.kafka.enabled) {
@@ -70,30 +69,74 @@ export async function createServer() {
     ).register();
 
     await kafkaConsumer.start();
+    logger.info({ groupId: "ms-response-group" }, "Kafka consumer started");
   }
 
-  // -------------------------
-  // HEALTH CHECK
-  // -------------------------
   fastify.get("/health", async () => {
     return { status: "ok", service: "ms-response" };
   });
 
-  return { fastify, kafkaConsumer };
+  return { fastify, kafkaConsumer, valkeyService };
 }
 
-// -------------------------
-// START
-// -------------------------
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const { fastify } = await createServer();
+  const { fastify, kafkaConsumer, valkeyService } = await createServer();
 
-  logger.info(config+ "MS Response starting...");
+  logger.info(
+    { port: config.port, env: config.env },
+    "MS Response starting...",
+  );
 
   await fastify.listen({
     host: "0.0.0.0",
     port: config.port,
   });
 
-  console.log(`Server running on port ${config.port}`);
+  logger.info({ port: config.port }, "Server listening");
+
+  let shuttingDown = false;
+  const shutdown = async (/** @type {string} */ signal) => {
+    if (shuttingDown) {
+      return;
+    }
+    shuttingDown = true;
+
+    logger.info({ signal }, "Starting graceful shutdown...");
+
+    try {
+      await fastify.close();
+      logger.info("HTTP server closed");
+    } catch (err) {
+      logger.error({ err }, "Error closing HTTP server");
+    }
+
+    if (kafkaConsumer) {
+      try {
+        await kafkaConsumer.stop();
+        logger.info("Kafka consumer stopped");
+      } catch (err) {
+        logger.error({ err }, "Error stopping Kafka consumer");
+      }
+    }
+
+    try {
+      await valkeyService.disconnect();
+      logger.info("Valkey disconnected");
+    } catch (err) {
+      logger.error({ err }, "Error disconnecting Valkey");
+    }
+
+    try {
+      await db.disconnect();
+      logger.info("Database connection closed");
+    } catch (err) {
+      logger.error({ err }, "Error closing database connection");
+    }
+
+    logger.info("Shutdown complete. Exiting.");
+    process.exit(0);
+  };
+
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => shutdown("SIGINT"));
 }

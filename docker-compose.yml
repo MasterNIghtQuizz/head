@@ -384,7 +384,7 @@ services:
     profiles: [app]
     build:
       context: .
-      dockerfile: docker/Dockerfile.ms-quizz-management
+      dockerfile: docker/Dockerfile.ms-response
     ports:
       - "4004:4004"
     environment:
@@ -401,8 +401,8 @@ services:
       OPENSEARCH_NODE: "http://opensearch:9200"
       OPENSEARCH_INDEX: "logs-ms-response"
     command: >
-      sh -c "yarn workspace @monorepo/ms-quizz-management run migrations:run &&
-             yarn workspace @monorepo/ms-quizz-management run start"
+      sh -c "yarn workspace @monorepo/ms-response run migrations:run &&
+             yarn workspace @monorepo/ms-response run start"
     depends_on:
       postgres:
         condition: service_healthy
@@ -598,12 +598,27 @@ services:
     volumes:
       - valkeydata-test:/data
 
+  valkey-test-response:
+    image: valkey/valkey:8
+    profiles: [test]
+    container_name: valkey-test-response
+    ports:
+      - "6381:6379"
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    volumes:
+      - valkeydata-test-response:/data
+
 volumes:
   pgdata:
   pgdata-test:
   kafkadata:
   valkeydata:
   valkeydata-test:
+  valkeydata-test-response:
   opensearchdata:
   prometheusdata:
   grafanadata:

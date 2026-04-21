@@ -6,9 +6,12 @@
   "scripts": {
     "start": "node src/index.js",
     "migrations:run": "node src/run-migrations.js",
-    "lint": "yarn run -T eslint src",
-    "lint:fix": "yarn run -T eslint src --fix",
-    "test": "yarn run -T vitest run"
+    "lint": "yarn run -T eslint .",
+    "lint:fix": "yarn run -T eslint . --fix",
+    "test": "yarn run -T vitest run",
+    "test:unit": "yarn run -T vitest run --config vitest.config.js packages/ms-response",
+    "test:int": "yarn run -T vitest run --config vitest.config.int.js packages/ms-response",
+    "test:all": "yarn run test:unit && yarn run test:int"
   },
   "dependencies": {
     "common-auth": "workspace:*",

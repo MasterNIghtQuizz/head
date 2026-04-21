@@ -11,7 +11,8 @@ import {
   USER_CONFLICT,
   DATABASE_ERROR,
 } from "../errors/user.errors.js";
-import { UserEventTypes } from "common-contracts";
+import { UserEventTypes, Topics } from "common-contracts";
+import crypto from "node:crypto";
 
 export class UserService extends BaseService {
   /**
@@ -72,7 +73,12 @@ export class UserService extends BaseService {
         email: userDto.email,
         role: userDto.role,
       };
-      await this.kafkaProducer.publish(UserEventTypes.USER_CREATED, payload);
+      await this.kafkaProducer.publish(Topics.USER_EVENTS, {
+        eventId: crypto.randomUUID(),
+        timestamp: Date.now(),
+        eventType: UserEventTypes.USER_CREATED,
+        payload,
+      });
     }
     const accessToken = CryptoService.sign(
       { userId: userDto.id, role: userDto.role, type: TokenType.ACCESS },
@@ -313,7 +319,12 @@ export class UserService extends BaseService {
       if (this.kafkaProducer) {
         /** @type {import('common-contracts').UserDeletedEventPayload} */
         const payload = { userId };
-        await this.kafkaProducer.publish(UserEventTypes.USER_DELETED, payload);
+        await this.kafkaProducer.publish(Topics.USER_EVENTS, {
+          eventId: crypto.randomUUID(),
+          timestamp: Date.now(),
+          eventType: UserEventTypes.USER_DELETED,
+          payload,
+        });
       }
     } catch (error) {
       throw DATABASE_ERROR(/** @type {Error} */ (error));
@@ -373,7 +384,12 @@ export class UserService extends BaseService {
           email: updatedUserDto.email,
           role: updatedUserDto.role,
         };
-        await this.kafkaProducer.publish(UserEventTypes.USER_UPDATED, payload);
+        await this.kafkaProducer.publish(Topics.USER_EVENTS, {
+          eventId: crypto.randomUUID(),
+          timestamp: Date.now(),
+          eventType: UserEventTypes.USER_UPDATED,
+          payload,
+        });
       }
 
       return updatedUserDto;

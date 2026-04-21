@@ -54,5 +54,13 @@
     },
     "node": "OPENSEARCH_NODE",
     "index": "OPENSEARCH_INDEX"
+  },
+  "services": {
+    "session": {
+      "baseUrl": "SESSION_SERVICE_BASE_URL"
+    },
+    "quizzManagement": {
+      "baseUrl": "QUIZZ_MANAGEMENT_SERVICE_BASE_URL"
+    }
   }
 }

@@ -10,10 +10,13 @@
   },
   "scripts": {
     "start": "concurrently -k -p \"[{name}]\" -n \"GATEWAY,USER,QUIZZ,SESSION,RESPONSE\" -c \"cyan,green,yellow,magenta,red\" \"yarn workspace @monorepo/api-gateway start\" \"yarn workspace @monorepo/ms-user start\" \"yarn workspace @monorepo/ms-quizz-management start\" \"yarn workspace @monorepo/ms-session start\" \"yarn workspace @monorepo/ms-response start\"",
-    "lint": "yarn eslint .",
-    "test": "vitest",
-    "test:unit": "vitest run --project unit",
-    "test:int": "vitest run --project integration",
+    "eslint": "npx eslint",
+    "lint": "npx eslint . --fix",
+    "format": "npx prettier --write .",
+    "vitest": "npx vitest",
+    "test": "npx vitest",
+    "test:unit": "npx vitest run --config vitest.config.js",
+    "test:int": "npx vitest run --config vitest.config.int.js",
     "test:e2e": "bash scripts/run-e2e.sh"
   },
   "devDependencies": {

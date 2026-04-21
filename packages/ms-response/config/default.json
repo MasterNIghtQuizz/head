@@ -39,5 +39,13 @@
     "enabled": false,
     "node": "http://localhost:9200",
     "index": "logs-ms-response"
+  },
+  "services": {
+    "session": {
+      "baseUrl": "http://localhost:4003"
+    },
+    "quizzManagement": {
+      "baseUrl": "http://localhost:4002"
+    }
   }
 }

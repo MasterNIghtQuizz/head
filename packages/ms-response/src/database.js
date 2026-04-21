@@ -19,12 +19,7 @@ export const initDatabase = async () => {
     password: config.postgres.password,
     database: config.postgres.database,
     env: config.env,
-    entities: [
-      ResponseEntity,
-      ProcessedEventEntity,
-    ],
-    migrations: [
-      CreateResponseTable,
-    ],
+    entities: [ResponseEntity, ProcessedEventEntity],
+    migrations: [CreateResponseTable],
   });
 };
