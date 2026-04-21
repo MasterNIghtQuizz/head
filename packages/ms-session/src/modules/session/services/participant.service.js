@@ -40,6 +40,7 @@ export class ParticipantService extends BaseService {
    * @param {import('../core/ports/participant.repository.js').IParticipantRepository} participantRepository
    * @param {import("common-valkey").ValkeyRepository} valkeyRepository
    * @param {import('./session.service.js').SessionService} sessionService
+   * @param {import('../infra/repositories/buzzer.repository.js').BuzzerRepository} buzzerRepository
    */
   constructor(
     kafkaProducer,
@@ -47,6 +48,7 @@ export class ParticipantService extends BaseService {
     participantRepository,
     valkeyRepository,
     sessionService,
+    buzzerRepository,
   ) {
     super();
     this.sessionRepository = sessionRepository;
@@ -54,6 +56,7 @@ export class ParticipantService extends BaseService {
     this.participantRepository = participantRepository;
     this.valkeyRepository = valkeyRepository;
     this.sessionService = sessionService;
+    this.buzzerRepository = buzzerRepository;
   }
 
   /**
@@ -260,7 +263,12 @@ export class ParticipantService extends BaseService {
     }
 
     if (question.type === QuestionType.BUZZER) {
-      logger.info({ sessionId, participantId }, "Buzzer question submitted");
+      logger.info(
+        { sessionId, participantId },
+        "Handling buzzer submit for question",
+      );
+      await this._handleBuzzerSubmit(session, participantId);
+      return;
     } else {
       const validChoiceIds = question.choiceIds || [];
 
@@ -297,14 +305,17 @@ export class ParticipantService extends BaseService {
       }),
     );
 
-    if (question.type === "buzzer" && (!choiceIds || choiceIds.length === 0)) {
+    if (
+      question.type === QuestionType.BUZZER &&
+      (!choiceIds || choiceIds.length === 0)
+    ) {
       if (this.kafkaProducer) {
         /** @type {import('common-contracts').QuizResponseSubmittedEventPayload} */
         const payload = {
           sessionId,
           participantId,
           choiceId: null,
-          type: "buzzer",
+          type: QuestionType.BUZZER,
           submittedAt: new Date().toISOString(),
         };
         await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
@@ -324,5 +335,52 @@ export class ParticipantService extends BaseService {
       },
       "Response submitted and published to Kafka",
     );
+  }
+
+  /**
+   * @param {import('../core/entities/session.entity.js').SessionEntity} session
+   * @param {string} participantId
+   * @returns {Promise<void>}
+   */
+  async _handleBuzzerSubmit(session, participantId) {
+    /**@type {import('common-contracts').QuizResponseSubmittedEventPayload} */
+    const payload = {
+      sessionId: session.id,
+      participantId,
+      choiceId: null,
+      type: QuestionType.BUZZER,
+      submittedAt: new Date().toISOString(),
+    };
+
+    try {
+      const hasBuzzed = await this.buzzerRepository.hasBuzzed(
+        session.id,
+        participantId,
+      );
+      if (hasBuzzed) {
+        logger.info(
+          { sessionId: session.id, participantId },
+          "Participant has already buzzed, ignoring",
+        );
+        return;
+      }
+      logger.info(
+        { sessionId: session.id, participantId },
+        "Pushing buzzer submit to repository",
+      );
+      await this.buzzerRepository.push(session.id, payload);
+    } catch (err) {
+      logger.error(
+        { err, sessionId: session.id, participantId },
+        "Error handling buzzer submit",
+      );
+
+      if (this.kafkaProducer) {
+        await this.kafkaProducer.publish(
+          SessionEventTypes.QUIZ_RESPONSE_SUBMITTED,
+          payload,
+        );
+      }
+    }
   }
 }
