@@ -29,6 +29,7 @@ export class SessionEventsConsumer {
   }
 
   register() {
+    logger.info("Registering SessionEventsConsumer handlers");
     this.kafkaConsumer.addHandler(
       SessionEventTypes.SESSION_CREATED,
       /** @param {import("common-contracts").SessionCreatedEventPayload} payload */
@@ -81,6 +82,7 @@ export class SessionEventsConsumer {
       SessionEventTypes.PARTICIPANT_JOINED,
       /** @param {import("common-contracts").ParticipantJoinedEventPayload} payload */
       async (payload) => {
+        logger.info({ payload }, "Received PARTICIPANT_JOINED event");
         this.notifyParticipants(payload, messageType.USER_ONLINE);
       },
     );
