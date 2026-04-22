@@ -9,7 +9,7 @@
     "node": ">=24.0.0"
   },
   "scripts": {
-    "start": "concurrently -k -p \"[{name}]\" -n \"GATEWAY,USER,QUIZZ,SESSION\" -c \"cyan,green,yellow,magenta\" \"yarn workspace @monorepo/api-gateway start\" \"yarn workspace @monorepo/ms-user start\" \"yarn workspace @monorepo/ms-quizz-management start\" \"yarn workspace @monorepo/ms-session start\"",
+    "start": "concurrently -k -p \"[{name}]\" -n \"GATEWAY,USER,QUIZZ,SESSION,WEBSOCKET\" -c \"cyan,green,yellow,magenta,blue\" \"yarn workspace @monorepo/api-gateway start\" \"yarn workspace @monorepo/ms-user start\" \"yarn workspace @monorepo/ms-quizz-management start\" \"yarn workspace @monorepo/ms-session start\" \"yarn workspace @monorepo/ws-service start\"",
     "lint": "yarn eslint .",
     "test": "vitest",
     "test:unit": "vitest run --project unit",

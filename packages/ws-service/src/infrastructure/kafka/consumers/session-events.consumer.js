@@ -11,7 +11,11 @@ const sessionLifecycleMessageType = {
 };
 
 /**
- * @param {any} payload
+ * @typedef {import("common-contracts").SessionCreatedEventPayload | import("common-contracts").SessionStartedEventPayload | import("common-contracts").SessionNextQuestionEventPayload | import("common-contracts").SessionEndedEventPayload | import("common-contracts").SessionDeletedEventPayload | import("common-contracts").ParticipantJoinedEventPayload | import("common-contracts").ParticipantLeftEventPayload | import("common-contracts").QuizResponseSubmittedEventPayload} SessionKafkaPayload
+ */
+
+/**
+ * @param {SessionKafkaPayload} payload
  * @returns {string | null}
  */
 function resolveSessionId(payload) {
@@ -19,7 +23,7 @@ function resolveSessionId(payload) {
 }
 
 /**
- * @param {any} payload
+ * @param {import("common-contracts").ParticipantJoinedEventPayload | import("common-contracts").ParticipantLeftEventPayload} payload
  * @returns {string | null}
  */
 function resolveParticipantId(payload) {
@@ -37,6 +41,7 @@ export class SessionEventsConsumer {
   register() {
     this.kafkaConsumer.addHandler(
       SessionEventTypes.SESSION_CREATED,
+      /** @param {import("common-contracts").SessionCreatedEventPayload} payload */
       async (payload) => {
         const sessionId = resolveSessionId(payload);
         logger.info(
@@ -48,29 +53,47 @@ export class SessionEventsConsumer {
 
     this.kafkaConsumer.addHandler(
       SessionEventTypes.SESSION_NEXT_QUESTION,
+      /** @param {import("common-contracts").SessionNextQuestionEventPayload} _payload */
       async (_payload) => {
         // Intentionally left empty for now.
       },
     );
 
-    this.kafkaConsumer.addHandler(SessionEventTypes.SESSION_ENDED, async (payload) => {
-      await this.destroySessionAndKickParticipants(payload, "ended");
-    });
+    this.kafkaConsumer.addHandler(
+      SessionEventTypes.SESSION_ENDED,
+      /** @param {import("common-contracts").SessionEndedEventPayload} payload */
+      async (payload) => {
+        await this.destroySessionAndKickParticipants(payload, "ended");
+      },
+    );
 
-    this.kafkaConsumer.addHandler(SessionEventTypes.SESSION_DELETED, async (payload) => {
-      await this.destroySessionAndKickParticipants(payload, "deleted");
-    });
+    this.kafkaConsumer.addHandler(
+      SessionEventTypes.SESSION_DELETED,
+      /** @param {import("common-contracts").SessionDeletedEventPayload} payload */
+      async (payload) => {
+        await this.destroySessionAndKickParticipants(payload, "deleted");
+      },
+    );
 
-    this.kafkaConsumer.addHandler(SessionEventTypes.PARTICIPANT_JOINED, async (payload) => {
-      this.notifyParticipants(payload, messageType.USER_ONLINE);
-    });
+    this.kafkaConsumer.addHandler(
+      SessionEventTypes.PARTICIPANT_JOINED,
+      /** @param {import("common-contracts").ParticipantJoinedEventPayload} payload */
+      async (payload) => {
+        this.notifyParticipants(payload, messageType.USER_ONLINE);
+      },
+    );
 
-    this.kafkaConsumer.addHandler(SessionEventTypes.PARTICIPANT_LEFT, async (payload) => {
-      this.notifyParticipants(payload, messageType.USER_OFFLINE);
-    });
+    this.kafkaConsumer.addHandler(
+      SessionEventTypes.PARTICIPANT_LEFT,
+      /** @param {import("common-contracts").ParticipantLeftEventPayload} payload */
+      async (payload) => {
+        this.notifyParticipants(payload, messageType.USER_OFFLINE);
+      },
+    );
 
     this.kafkaConsumer.addHandler(
       SessionEventTypes.QUIZ_RESPONSE_SUBMITTED,
+      /** @param {import("common-contracts").QuizResponseSubmittedEventPayload} _payload */
       async (_payload) => {
         // Intentionally left empty for now.
       },
@@ -78,7 +101,7 @@ export class SessionEventsConsumer {
   }
 
   /**
-   * @param {any} payload
+   * @param {import("common-contracts").ParticipantJoinedEventPayload | import("common-contracts").ParticipantLeftEventPayload} payload
    * @param {typeof messageType.USER_ONLINE | typeof messageType.USER_OFFLINE} eventType
    * @returns {void}
    */
@@ -103,7 +126,7 @@ export class SessionEventsConsumer {
   }
 
   /**
-   * @param {any} payload
+    * @param {import("common-contracts").SessionEndedEventPayload | import("common-contracts").SessionDeletedEventPayload} payload
    * @param {"ended" | "deleted"} reason
    * @returns {Promise<void>}
    */

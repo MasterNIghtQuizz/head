@@ -788,6 +788,9 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@monorepo/ws-service@workspace:packages/ws-service"
   dependencies:
+    common-auth: "workspace:*"
+    common-contracts: "workspace:*"
+    common-kafka: "workspace:*"
     common-logger: "workspace:*"
     common-websocket: "workspace:*"
     ws: "npm:^8.19.0"

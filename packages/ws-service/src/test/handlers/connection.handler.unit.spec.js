@@ -21,6 +21,7 @@ vi.mock("../../logger.js", () => ({
   default: {
     info: vi.fn(),
     error: vi.fn(),
+    debug: vi.fn(),
   },
 }));
 
@@ -88,7 +89,7 @@ describe("connection.handler", () => {
       const result = userConnect(asWebSocket(ws), asIncomingMessage(req));
 
       expect(result).toBeNull();
-      expect(ws.close).toHaveBeenCalledWith(1002, "ID utilisateur manquant");
+      expect(ws.close).toHaveBeenCalledWith(1002, "Header x-user-id manquant");
       expect(add).not.toHaveBeenCalled();
       expect(setSocketContext).not.toHaveBeenCalled();
     });
@@ -97,7 +98,7 @@ describe("connection.handler", () => {
       const ws = createWsMock();
       const req = {
         url: "/?userId=u1&userName=alice",
-        headers: { host: "localhost:8080" },
+        headers: { host: "localhost:8080", "x-user-id": "u1" },
       };
 
       const result = userConnect(asWebSocket(ws), asIncomingMessage(req));
@@ -108,6 +109,7 @@ describe("connection.handler", () => {
         userId: "u1",
         userName: "alice",
         sessionId: null,
+        role: null,
       });
       expect(ws.close).not.toHaveBeenCalled();
     });
@@ -115,8 +117,8 @@ describe("connection.handler", () => {
     it("defaults userName to anonymous when not provided", () => {
       const ws = createWsMock();
       const req = {
-        url: "/?userId=u2",
-        headers: { host: "localhost:8080" },
+        url: "/",
+        headers: { host: "localhost:8080", "x-user-id": "u2" },
       };
 
       const result = userConnect(asWebSocket(ws), asIncomingMessage(req));
@@ -130,6 +132,7 @@ describe("connection.handler", () => {
         userId: "u2",
         userName: "anonymous",
         sessionId: null,
+        role: null,
       });
     });
   });
@@ -141,6 +144,7 @@ describe("connection.handler", () => {
         userId: "u1",
         userName: "alice",
         sessionId: null,
+        role: null,
       });
 
       userDisconnect(asWebSocket(ws), "u1", "alice");

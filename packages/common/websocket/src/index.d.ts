@@ -1,21 +1,21 @@
 export interface SocketContext {
   userId: string;
   userName: string;
-  roomId: string | null;
+  sessionId: string | null;
 }
 
 export declare const messageType: {
-  CREATE_ROOM: "create_room";
-  START_ROOM: "start_room";
-  JOIN_ROOM: "join_room";
-  LEAVE_ROOM: "leave_room";
+  CREATE_SESSION: "create_session";
+  START_SESSION: "start_session";
+  JOIN_SESSION: "join_session";
+  LEAVE_SESSION: "leave_session";
   CHAT_MESSAGE: "chat_message";
   USER_ONLINE: "user_online";
   USER_OFFLINE: "user_offline";
-  ROOM_CREATED: "room_created";
-  ROOM_STARTED: "room_started";
-  ROOM_OWNER_CHANGED: "room_owner_changed";
-  JOINED_ROOM: "joined_room";
+  SESSION_CREATED: "session_created";
+  SESSION_STARTED: "session_started";
+  SESSION_OWNER_CHANGED: "session_owner_changed";
+  JOINED_SESSION: "joined_session";
   MESSAGE_DELIVERED: "message_delivered";
   MESSAGE_NOT_DELIVERED: "message_not_delivered";
   ERROR: "error";
@@ -23,45 +23,45 @@ export declare const messageType: {
 
 export type MessageType = (typeof messageType)[keyof typeof messageType];
 
-export declare const roomState: {
+export declare const sessionState: {
   NOT_FULL: "not_full";
   FULL: "full";
   STARTED: "started";
 };
 
-export type RoomState = (typeof roomState)[keyof typeof roomState];
+export type SessionState = (typeof sessionState)[keyof typeof sessionState];
 
 export declare const errorType: {
   INVALID_JSON: "invalid_json";
   INVALID_PAYLOAD: "invalid_payload";
-  MISSING_ROOM_ID: "missing_room_id";
+  MISSING_SESSION_ID: "missing_session_id";
   MISSING_RECEIVER_ID: "missing_receiver_id";
   MISSING_OR_INVALID_MAX_USERS: "missing_or_invalid_max_users";
-  ROOM_NOT_FOUND: "room_not_found";
-  ROOM_FULL: "room_full";
-  ROOM_ALREADY_EXISTS: "room_already_exists";
-  ROOM_STARTED: "room_started";
-  ROOM_ALREADY_STARTED: "room_already_started";
-  NOT_ROOM_OWNER: "not_room_owner";
-  CREATE_ROOM_FAILED: "create_room_failed";
-  START_ROOM_FAILED: "start_room_failed";
-  JOIN_ROOM_FAILED: "join_room_failed";
+  SESSION_NOT_FOUND: "session_not_found";
+  SESSION_FULL: "session_full";
+  SESSION_ALREADY_EXISTS: "session_already_exists";
+  SESSION_STARTED: "session_started";
+  SESSION_ALREADY_STARTED: "session_already_started";
+  NOT_SESSION_OWNER: "not_session_owner";
+  CREATE_SESSION_FAILED: "create_session_failed";
+  START_SESSION_FAILED: "start_session_failed";
+  JOIN_SESSION_FAILED: "join_session_failed";
   UNSUPPORTED_MESSAGE_TYPE: "unsupported_message_type";
 };
 
 export type ErrorType = (typeof errorType)[keyof typeof errorType];
 
-export interface CreateRoomPayload {
-  roomId: string;
+export interface CreateSessionPayload {
+  sessionId: string;
   max_users: number;
 }
 
-export interface JoinRoomPayload {
-  roomId: string;
+export interface JoinSessionPayload {
+  sessionId: string;
 }
 
-export interface StartRoomPayload {
-  roomId: string;
+export interface StartSessionPayload {
+  sessionId: string;
 }
 
 export interface ChatMessagePayload {
@@ -71,28 +71,28 @@ export interface ChatMessagePayload {
   [key: string]: unknown;
 }
 
-export interface RoomPresencePayload {
+export interface SessionPresencePayload {
   userId: string;
   userName: string;
 }
 
-export interface RoomCreatedPayload {
-  roomId: string;
+export interface SessionCreatedPayload {
+  sessionId: string;
   max_users: number;
 }
 
-export interface RoomStartedPayload {
-  roomId: string;
+export interface SessionStartedPayload {
+  sessionId: string;
   ownerId: string;
 }
 
-export interface RoomOwnerChangedPayload {
-  roomId: string;
+export interface SessionOwnerChangedPayload {
+  sessionId: string;
   ownerId: string;
 }
 
-export interface JoinedRoomPayload {
-  roomId: string;
+export interface JoinedSessionPayload {
+  sessionId: string;
 }
 
 export interface DeliveryPayload {
@@ -105,21 +105,21 @@ export interface ErrorPayload {
 }
 
 export type ClientToServerMessage =
-  | { type: typeof messageType.CREATE_ROOM; payload: CreateRoomPayload }
-  | { type: typeof messageType.START_ROOM; payload: StartRoomPayload }
-  | { type: typeof messageType.JOIN_ROOM; payload: JoinRoomPayload }
+  | { type: typeof messageType.CREATE_SESSION; payload: CreateSessionPayload }
+  | { type: typeof messageType.START_SESSION; payload: StartSessionPayload }
+  | { type: typeof messageType.JOIN_SESSION; payload: JoinSessionPayload }
   | { type: typeof messageType.CHAT_MESSAGE; payload: ChatMessagePayload };
 
 export type ServerToClientMessage =
-  | { type: typeof messageType.ROOM_CREATED; payload: RoomCreatedPayload }
-  | { type: typeof messageType.ROOM_STARTED; payload: RoomStartedPayload }
+  | { type: typeof messageType.SESSION_CREATED; payload: SessionCreatedPayload }
+  | { type: typeof messageType.SESSION_STARTED; payload: SessionStartedPayload }
   | {
-      type: typeof messageType.ROOM_OWNER_CHANGED;
-      payload: RoomOwnerChangedPayload;
+      type: typeof messageType.SESSION_OWNER_CHANGED;
+      payload: SessionOwnerChangedPayload;
     }
-  | { type: typeof messageType.JOINED_ROOM; payload: JoinedRoomPayload }
-  | { type: typeof messageType.USER_ONLINE; payload: RoomPresencePayload }
-  | { type: typeof messageType.USER_OFFLINE; payload: RoomPresencePayload }
+  | { type: typeof messageType.JOINED_SESSION; payload: JoinedSessionPayload }
+  | { type: typeof messageType.USER_ONLINE; payload: SessionPresencePayload }
+  | { type: typeof messageType.USER_OFFLINE; payload: SessionPresencePayload }
   | { type: typeof messageType.CHAT_MESSAGE; payload: ChatMessagePayload }
   | { type: typeof messageType.MESSAGE_DELIVERED; payload: DeliveryPayload }
   | {
