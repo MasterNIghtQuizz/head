@@ -17,6 +17,9 @@ export class ResponseService extends BaseService {
   /** @type {import('../../../infrastructure/clients/quiz.client.js').QuizClient} */
   quizClient;
 
+  /** @type {import('../../../infrastructure/clients/session.client.js').SessionClient} */
+  sessionClient;
+
   /**
    * @param {import('../core/ports/response.repository.js').ResponseRepository} responseRepository
    * @param {import('common-valkey').ValkeyRepository} valkeyRepository
@@ -207,6 +210,7 @@ export class ResponseService extends BaseService {
    * @returns {Promise<void>}
    */
   async startNewSession(sessionId, hostId, quizId, headers = {}) {
+    logger.info("entering startNewSession()");
     await this.valkeyRepository.set(`sessionQuizId:${sessionId}`, quizId, 3600);
 
     const quiz = await this.fetchQuizz(quizId, hostId, headers);
@@ -232,28 +236,33 @@ export class ResponseService extends BaseService {
    * @returns {Promise<import('common-contracts').Quizz>}
    */
   async fetchQuizz(quizID, hostId, headers = {}) {
+    logger.info("entering fetchQuizz");
     const cached = await this.valkeyRepository.get(`quiz:${quizID}`);
     if (cached && cached.questions) {
-      logger.debug({ quizID }, "Quiz data served from cache");
+      logger.info({ quizID } + "Quiz data served from cache");
+      logger.info({cached});
       return cached;
     }
 
+    logger.info("getting token");
     const internalToken = this.getToken(hostId);
 
+    logger.info("fetching quiz service");
     const quiz = await this.quizClient.getQuiz(quizID, {
       ...headers,
       "internal-token": internalToken,
     });
 
     if (!quiz) {
-      logger.warn({ quizID }, "Quiz not found from management service");
+      logger.warn({ quizID } + "Quiz not found from management service");
       throw new Error(ResponseError.QUIZ_NOT_FOUND);
     }
-
+    logger.info("storing quiz in Valkey");
     try {
       await this.valkeyRepository.set(`quiz:${quizID}`, quiz, 3600);
+      logger.info("quiz data cached in Valkey for 1 hour")
     } catch {
-      logger.warn({ quizID }, "Failed to cache quiz data in Valkey");
+      logger.warn({ quizID } + "Failed to cache quiz data in Valkey");
     }
 
     return quiz;
@@ -265,6 +274,7 @@ export class ResponseService extends BaseService {
    * @returns {Promise<void>}
    */
   async gotoNextQuestion(sessionId, questionId) {
+    logger.info("entering gotoNextQuestion()");
     await this.valkeyRepository.set(
       `currentSessionQuestion:${sessionId}`,
       questionId,
@@ -280,8 +290,10 @@ export class ResponseService extends BaseService {
    * @returns {Promise<boolean>}
    */
   async getIsCorrectFromCache(sessionId, questionId, choiceId) {
+    logger.info("entering getIsCorrectFromCache() and getting quizId from cache");
     let quizId = await this.valkeyRepository.get(`sessionQuizId:${sessionId}`);
     if (!quizId) {
+      logger.info("getIsCorrectFromCache : quizId not found in cache, trying to recover from handleQuizNotFound()");
       const cached = await this.handleQuizNotFound(sessionId);
       quizId = cached
         ? /** @type {string} */ (cached)
@@ -294,6 +306,7 @@ export class ResponseService extends BaseService {
     let cached = await this.valkeyRepository.get(`quiz:${quizId}`);
 
     if (!cached) {
+      logger.warn("getIsCorrectFromCache: quizz not found, trying to recover from handleQuizNotFound()")
       cached = await this.handleQuizNotFound(sessionId);
       if (!cached) {
         throw new Error(ResponseError.QUIZ_NOT_FOUND);
@@ -305,12 +318,14 @@ export class ResponseService extends BaseService {
     const question = quiz.questions?.find((q) => q.id === questionId);
 
     if (!question) {
+      logger.error("getIsCorrectFromCache: question = null");
       throw new Error(ResponseError.QUESTION_NOT_FOUND);
     }
 
     const choice = question.choices?.find((c) => c.id === choiceId);
 
     if (!choice) {
+      logger.error("getIsCorrectFromCache: choice = null")
       throw new Error(ResponseError.CHOICE_NOT_FOUND);
     }
 

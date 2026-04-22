@@ -172,11 +172,12 @@ export class ResponseEventsConsumer {
       {
         ...logCtx,
         sessionId: payload.session_id,
+        hostid :  payload.participant_id,
         quizId: payload.quiz_id,
       },
       "Executing onSessionStarted",
     );
-
+    logger.info("calling startNewSession()");
     await this.responseService.startNewSession(
       payload.session_id,
       payload.participant_id,

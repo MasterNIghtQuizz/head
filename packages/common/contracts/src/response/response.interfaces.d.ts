@@ -4,7 +4,8 @@ export interface CreateResponseRequest {
   sessionId: string;
   choiceId?: string | null;
   isCorrect?: boolean | null;
-  latencyMs: number;
+  latencyMs: number | null;
+  submittedAt?: Date;
 }
 
 export interface AnswerEvent {
