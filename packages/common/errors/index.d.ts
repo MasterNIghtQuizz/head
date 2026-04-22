@@ -32,3 +32,7 @@ export declare class ConflictError extends BaseError {
 export declare class InternalServerError extends BaseError {
   constructor(message?: string, metadata?: Record<string, unknown>);
 }
+
+export declare class RateLimitError extends BaseError {
+  constructor(message?: string, metadata?: Record<string, unknown>);
+}

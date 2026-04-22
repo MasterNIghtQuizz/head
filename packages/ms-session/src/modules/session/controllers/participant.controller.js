@@ -119,40 +119,37 @@ export class ParticipantController extends BaseController {
   }
 
   /**
-   * @param {import('fastify').FastifyRequest} request
+   * @param {import('fastify').FastifyRequest<{ Body: { participantId: string, isCorrect: boolean } }>} request
    * @param {import('fastify').FastifyReply} reply
    * @returns {Promise<void>}
    */
-  async validateBuzzer(request, reply) {
-    const { sessionId } = this._getInternalPayload(request);
-    if (!sessionId) {
-      throw new UnauthorizedError("Missing session id");
+  async answerBuzzer(request, reply) {
+    const { sessionId, participantId: hostId } =
+      this._getInternalPayload(request);
+    const { participantId, isCorrect } = request.body;
+
+    if (!sessionId || !hostId) {
+      throw new UnauthorizedError("Missing session id or host id");
     }
+
     try {
-      await this.participantService.validateBuzzerResponse(sessionId);
+      await this.participantService.answerBuzzer({
+        sessionId,
+        hostId,
+        participantId,
+        isCorrect,
+      });
       return reply.code(200).send();
     } catch (error) {
       if (error instanceof BadRequestError) {
         return reply.code(400).send({ message: error.message });
       } else if (error instanceof NotFoundError) {
         return reply.code(404).send({ message: error.message });
+      } else if (error instanceof ConflictError) {
+        return reply.code(409).send({ message: error.message });
       }
       throw error;
     }
-  }
-
-  /**
-   * @param {import('fastify').FastifyRequest} request
-   * @param {import('fastify').FastifyReply} reply
-   * @returns {Promise<void>}
-   */
-  async rejectBuzzer(request, reply) {
-    const { sessionId } = this._getInternalPayload(request);
-    if (!sessionId) {
-      throw new UnauthorizedError("Missing session id");
-    }
-    await this.participantService.rejectBuzzerResponse(sessionId);
-    return reply.code(200).send();
   }
 }
 
@@ -226,34 +223,30 @@ ApplyMethodDecorators(ParticipantController, "submitResponse", [
   Post("/submit/"),
 ]);
 
-ApplyMethodDecorators(ParticipantController, "validateBuzzer", [
+ApplyMethodDecorators(ParticipantController, "answerBuzzer", [
   Schema({
-    description: "Validate the current buzzer response (Host only).",
+    description:
+      "Submit a decision (correct/incorrect) for the current buzzer (Host only).",
     tags: ["Participant", "Session", "Buzzer"],
     security: [{ internalToken: [] }],
+    body: {
+      type: "object",
+      required: ["participantId", "isCorrect"],
+      properties: {
+        participantId: { type: "string" },
+        isCorrect: { type: "boolean" },
+      },
+    },
     response: {
-      200: { description: "Buzzer response validated successfully." },
+      200: { description: "Buzzer decision processed successfully." },
       400: { type: "object", properties: { message: { type: "string" } } },
       401: { type: "object", properties: { message: { type: "string" } } },
       404: { type: "object", properties: { message: { type: "string" } } },
+      409: { type: "object", properties: { message: { type: "string" } } },
       500: { type: "object", properties: { message: { type: "string" } } },
     },
   }),
-  Post("/buzzer/validate/"),
-]);
-
-ApplyMethodDecorators(ParticipantController, "rejectBuzzer", [
-  Schema({
-    description: "Reject the current buzzer response and move to next (Host only).",
-    tags: ["Participant", "Session", "Buzzer"],
-    security: [{ internalToken: [] }],
-    response: {
-      200: { description: "Buzzer response rejected successfully." },
-      401: { type: "object", properties: { message: { type: "string" } } },
-      500: { type: "object", properties: { message: { type: "string" } } },
-    },
-  }),
-  Post("/buzzer/reject/"),
+  Post("/buzzer/answer/"),
 ]);
 
 Controller("/sessions")(ParticipantController);

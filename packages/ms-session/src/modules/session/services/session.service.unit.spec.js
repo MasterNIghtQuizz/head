@@ -8,6 +8,7 @@ import {
   SessionStatus,
   ParticipantRoles,
   SessionEventTypes,
+  QuestionType,
 } from "common-contracts";
 import { call } from "common-axios";
 import { CryptoService } from "common-crypto";
@@ -76,6 +77,7 @@ describe("SessionService unit tests", () => {
     // @ts-ignore
     buzzerRepositoryMock = /** @type {BuzzerRepositoryMock} */ ({
       clear: vi.fn(),
+      peek: vi.fn(),
     });
 
     service = new SessionService(
@@ -305,6 +307,87 @@ describe("SessionService unit tests", () => {
 
       expect(sessionRepositoryMock.update).toHaveBeenCalled();
       expect(kafkaProducerMock.publish).toHaveBeenCalled();
+    });
+  });
+
+  describe("getCurrentQuestion", () => {
+    it("should return question with current buzzer for buzzer question", async () => {
+      const session = createSessionEntity({
+        id: "s1",
+        currentQuestionId: "q1",
+      });
+      const cachedQuestion = {
+        id: "q1",
+        type: QuestionType.BUZZER,
+        label: "Buzz",
+        timer_seconds: 10,
+        choices: [],
+      };
+      const buzzer = {
+        sessionId: "s1",
+        participantId: "p1",
+        username: "nick",
+        questionId: "q1",
+        pressedAt: "now",
+      };
+      vi.mocked(sessionRepositoryMock.find).mockResolvedValue(session);
+      vi.mocked(valkeyRepositoryMock.get).mockResolvedValue(cachedQuestion);
+      vi.mocked(buzzerRepositoryMock.peek).mockResolvedValue(buzzer);
+
+      const result = await service.getCurrentQuestion("s1", {});
+
+      expect(result).toEqual(
+        expect.objectContaining({ currentBuzzer: buzzer }),
+      );
+      expect(buzzerRepositoryMock.peek).toHaveBeenCalledWith("s1");
+    });
+
+    it("should publish PING_HOST_FOR_QUEUE when buzzer queue is unavailable", async () => {
+      const session = createSessionEntity({
+        id: "s1",
+        currentQuestionId: "q1",
+      });
+      const cachedQuestion = {
+        id: "q1",
+        type: QuestionType.BUZZER,
+        label: "Buzz",
+        timer_seconds: 10,
+        choices: [],
+      };
+      vi.mocked(sessionRepositoryMock.find).mockResolvedValue(session);
+      vi.mocked(valkeyRepositoryMock.get).mockResolvedValue(cachedQuestion);
+      vi.mocked(buzzerRepositoryMock.peek).mockRejectedValue(
+        new Error("Valkey Down"),
+      );
+
+      const result = await service.getCurrentQuestion("s1", {});
+
+      expect(result).toEqual(expect.objectContaining({ id: "q1" }));
+      expect(kafkaProducerMock.publish).toHaveBeenCalledWith(
+        SessionEventTypes.PING_HOST_FOR_QUEUE,
+        { sessionId: "s1" },
+      );
+    });
+
+    it("should not call peek for non buzzer question", async () => {
+      const session = createSessionEntity({
+        id: "s1",
+        currentQuestionId: "q1",
+      });
+      const cachedQuestion = {
+        id: "q1",
+        type: QuestionType.MULTIPLE,
+        label: "Question",
+        timer_seconds: 10,
+        choices: [],
+      };
+      vi.mocked(sessionRepositoryMock.find).mockResolvedValue(session);
+      vi.mocked(valkeyRepositoryMock.get).mockResolvedValue(cachedQuestion);
+
+      const result = await service.getCurrentQuestion("s1", {});
+
+      expect(result).toEqual(expect.objectContaining({ id: "q1" }));
+      expect(buzzerRepositoryMock.peek).not.toHaveBeenCalled();
     });
   });
 });

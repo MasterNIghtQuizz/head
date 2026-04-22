@@ -9,7 +9,11 @@ import {
   SESSION_NOT_FOUND,
 } from "../errors/session.errors.js";
 import { ParticipantEntity } from "../core/entities/participant.entity.js";
-import { ParticipantRoles, SessionStatus } from "common-contracts";
+import {
+  ParticipantRoles,
+  SessionStatus,
+  QuestionType,
+} from "common-contracts";
 import { SessionEventTypes } from "common-contracts/src/events.js";
 import logger from "../../../logger.js";
 import { SessionMapper } from "../infra/mappers/session.mapper.js";
@@ -622,7 +626,30 @@ export class SessionService extends BaseService {
           { sessionId, questionId: session.currentQuestionId },
           "Current question retrieved from cache",
         );
-        return new Question(cachedFullQuestion);
+        const question = new Question(cachedFullQuestion);
+        if (question.type !== QuestionType.BUZZER) {
+          return question;
+        }
+        try {
+          const currentBuzzer = await this.buzzerRepository.peek(sessionId);
+          const enrichedQuestion = { ...question, currentBuzzer };
+          // @ts-ignore
+          return enrichedQuestion;
+        } catch {
+          logger.warn(
+            { sessionId },
+            "Valkey down during getCurrentQuestion, pinging host/WS for queue recovery",
+          );
+          if (this.kafkaProducer) {
+            /** @type {import('common-contracts').PingHostForQueueEventPayload} */
+            const payload = { sessionId };
+            await this.kafkaProducer.publish(
+              SessionEventTypes.PING_HOST_FOR_QUEUE,
+              payload,
+            );
+          }
+          return question;
+        }
       }
       logger.info(
         { sessionId, questionId: session.currentQuestionId },
@@ -657,6 +684,7 @@ export class SessionService extends BaseService {
           3600,
         );
 
+        /** @type {Question | null} */
         let targetQuestion = null;
         await Promise.all(
           questions.map(
@@ -698,7 +726,34 @@ export class SessionService extends BaseService {
           ),
         );
 
-        return targetQuestion;
+        if (!targetQuestion) {
+          return null;
+        }
+        // @ts-ignore
+        if (targetQuestion.type !== QuestionType.BUZZER) {
+          return targetQuestion;
+        }
+        try {
+          const currentBuzzer = await this.buzzerRepository.peek(sessionId);
+          // @ts-ignore
+          const enrichedQuestion = { ...targetQuestion, currentBuzzer };
+          // @ts-ignore
+          return enrichedQuestion;
+        } catch {
+          logger.warn(
+            { sessionId },
+            "Valkey down during getCurrentQuestion, pinging host/WS for queue recovery",
+          );
+          if (this.kafkaProducer) {
+            /** @type {import('common-contracts').PingHostForQueueEventPayload} */
+            const payload = { sessionId };
+            await this.kafkaProducer.publish(
+              SessionEventTypes.PING_HOST_FOR_QUEUE,
+              payload,
+            );
+          }
+          return targetQuestion;
+        }
       }
 
       return null;
