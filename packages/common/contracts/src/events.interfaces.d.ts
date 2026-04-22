@@ -42,12 +42,14 @@ export interface SessionDeletedEventPayload {
 export interface ParticipantJoinedEventPayload {
   session_id: string;
   participant_id: string;
+  nickname: string;
   role: string;
 }
 
 export interface ParticipantLeftEventPayload {
   session_id: string;
   participant_id: string;
+  nickname: string;
   role: string;
 }
 

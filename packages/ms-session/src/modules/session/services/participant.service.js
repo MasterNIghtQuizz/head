@@ -86,6 +86,7 @@ export class ParticipantService extends BaseService {
       const payload = {
         session_id: session.id,
         participant_id: participantId,
+        nickname: participantEntity.nickname,
         role: participantEntity.role,
       };
       await this.kafkaProducer.publish(
@@ -132,6 +133,7 @@ export class ParticipantService extends BaseService {
       const payload = {
         session_id: participant.sessionId,
         participant_id: participant.id,
+        nickname: participant.nickname,
         role: participant.role,
       };
       await this.kafkaProducer.publish(

@@ -107,8 +107,11 @@ export class SessionEventsConsumer {
    */
   notifyParticipants(payload, eventType) {
     const sessionId = resolveSessionId(payload);
-    if (!sessionId) {
-      logger.warn({ payload }, "Missing session id in participant event payload");
+    const participantId = resolveParticipantId(payload);
+    const nickname = payload?.nickname;
+
+    if (!sessionId || !participantId || !nickname) {
+      logger.warn({ payload }, "Missing required fields in participant event payload");
       return;
     }
 
@@ -117,8 +120,9 @@ export class SessionEventsConsumer {
       {
         type: eventType,
         payload: {
-          participantId: resolveParticipantId(payload),
-          role: payload?.role ?? null,
+          userId: participantId,
+          userName: nickname,
+          role: payload.role,
         },
       },
       null,
