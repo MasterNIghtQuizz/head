@@ -33,27 +33,10 @@ export async function createServer() {
   const fastify = Fastify({
     loggerInstance: logger,
     disableRequestLogging: true,
-    ignoreTrailingSlash: true,
-  });
-
-  fastify.addContentTypeParser(
-    "application/json",
-    { parseAs: "string" },
-    (req, body, done) => {
-      if (!body || body.toString().trim() === "") {
-        done(null, {});
-        return;
-      }
-      try {
-        const json = JSON.parse(body.toString());
-        done(null, json);
-      } catch (err) {
-        const error = /** @type {import('common-errors').BaseError} */ (err);
-        error.statusCode = 400;
-        done(error);
-      }
+    routerOptions: {
+      ignoreTrailingSlash: true,
     },
-  );
+  });
 
   fastify.addHook("onRequest", async (request) => {
     if (
@@ -115,7 +98,7 @@ export async function createServer() {
   await fastify.register(proxy, {
     upstream: config.services.websocket,
     prefix: "/ws",
-    proxyPayloads: false,
+    proxyPayloads: true,
     websocket: true,
     preHandler: async (request, _reply) => {
       const url = new URL(request.url, `http://${request.hostname}`);
@@ -124,14 +107,53 @@ export async function createServer() {
     },
     wsClientOptions: {
       rewriteRequestHeaders: (headers, request) => {
-        return {
-          ...headers,
-          "x-user-id": request.user?.userId,
-          "x-user-role": request.user?.role,
-        };
+        logger.info(
+          {
+            method: request.method,
+            url: request.url,
+            hasUser: !!request.user,
+            userId: request.user?.userId,
+            role: request.user?.role,
+            isFastifyRequest: !!request.log,
+          },
+          "Proxying WebSocket request with user context",
+        );
+
+        const newHeaders = { ...headers };
+        const userId = request.user?.participantId; 
+
+        if (userId) { // Check if either userId or participantId is present
+          newHeaders["x-user-id"] = userId;
+        }
+        if (request.user?.role) {
+          newHeaders["x-user-role"] = request.user.role;
+        }
+
+        return newHeaders;
       },
     },
   });
+
+  if (!fastify.hasContentTypeParser("application/json")) {
+    fastify.addContentTypeParser(
+      "application/json",
+      { parseAs: "string" },
+      (req, body, done) => {
+        if (!body || body.toString().trim() === "") {
+          done(null, {});
+          return;
+        }
+        try {
+          const json = JSON.parse(body.toString());
+          done(null, json);
+        } catch (err) {
+          const error = /** @type {import('common-errors').BaseError} */ (err);
+          error.statusCode = 400;
+          done(error);
+        }
+      },
+    );
+  }
   const metricsEnabled = /** @type {{ enabled: boolean }} */ (
     Config.get("metrics")
   ).enabled;

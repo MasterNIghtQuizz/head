@@ -33,8 +33,8 @@ export class SessionEventsConsumer {
       SessionEventTypes.SESSION_CREATED,
       /** @param {import("common-contracts").SessionCreatedEventPayload} payload */
       async (payload) => {
-        const sessionId = resolveSessionId(payload);
-        const participantId = resolveParticipantId(payload);
+        const sessionId = payload?.session_id;
+        const participantId = payload?.participant_id;
         const nickname = payload?.nickname;
 
         if (!sessionId || !participantId || !nickname) {
@@ -108,9 +108,14 @@ export class SessionEventsConsumer {
    * @returns {void}
    */
   notifyParticipants(payload, eventType) {
-    const sessionId = payload?.sessionId;
-    const participantId = payload?.participantId;
+    const sessionId = payload?.session_id;
+    const participantId = payload?.participant_id;
     const nickname = payload?.nickname;
+
+    logger.info(
+      { sessionId, participantId, nickname, eventType },
+      "Processing participant event for broadcast",
+    );
 
     if (!sessionId || !participantId || !nickname) {
       logger.warn(
@@ -120,6 +125,10 @@ export class SessionEventsConsumer {
       return;
     }
 
+    logger.info(
+      { sessionId, participantId, nickname },
+      "Broadcasting participant event",
+    );
     broadcastToSession(
       sessionId,
       {
@@ -140,7 +149,7 @@ export class SessionEventsConsumer {
    * @returns {Promise<void>}
    */
   async destroySessionAndKickParticipants(payload, reason) {
-    const sessionId = payload?.sessionId;
+    const sessionId = payload?.session_id;
     if (!sessionId) {
       logger.warn({ payload }, "Missing session id in lifecycle event payload");
       return;

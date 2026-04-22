@@ -22,20 +22,28 @@ export function hookAccessToken(options) {
       done();
       return;
     }
-    if (isWebSocketRequest) {
-      done();
-      return;
+
+    const token = isWebSocketRequest
+      ? /** @type {string | undefined} */ (request.query?.["access-token"])
+      : /** @type {string | undefined} */ (request.headers["access-token"]);
+
+    if (isWebSocketRequest && token) {
+      logger.info(
+        { url: request.url, hasToken: !!token },
+        "Authenticating WebSocket request via query parameter",
+      );
     }
 
-    const token = /** @type {string | undefined} */ (
-      request.headers["access-token"]
-    );
     if (request.routeOptions?.config?.useGameToken) {
       done();
       return;
     }
 
     if (!token) {
+      if (isWebSocketRequest) {
+        done();
+        return;
+      }
       logger.warn({ url: request.url }, "Missing access-token header");
       return done(new UnauthorizedError("Missing access-token header"));
     }

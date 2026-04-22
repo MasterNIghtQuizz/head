@@ -99,7 +99,7 @@ wss.on(
       (code, reason) /** @param {number} code @param {Buffer} reason */ => {
         userDisconnect(ws, connectedUser.userId, connectedUser.userName);
         logger.info(
-          `Client disconnected with code ${code} and reason: ${reason.toString()}`,
+          `Client ${connectedUser.userName} ${connectedUser.userId} disconnected with code ${code} and reason: ${reason.toString()}`,
         );
       },
     );
