@@ -31,3 +31,7 @@ export const MISSING_CHOICE_IDS = () =>
 /** @param {string[]} ids */
 export const INVALID_CHOICE_IDS = (ids) =>
   new BadRequestError(`Invalid choiceIds submitted: ${ids.join(", ")}`);
+
+/** @param {string} sessionId */
+export const NO_BUZZER_FOUND = (sessionId) =>
+  new BadRequestError(`No participant found in buzzer queue for session ${sessionId}`);
