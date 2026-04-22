@@ -172,6 +172,7 @@ export class SessionService extends BaseService {
         const payload = {
           session_id: session.id,
           participant_id: host.id,
+          nickname: host.nickname,
           role: host.role,
         };
         await this.kafkaProducer.publish(

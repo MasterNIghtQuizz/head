@@ -103,7 +103,11 @@ describe("connection.handler", () => {
 
       const result = userConnect(asWebSocket(ws), asIncomingMessage(req));
 
-      expect(result).toEqual({ userId: "u1", userName: "alice", sessionId: null });
+      expect(result).toEqual({
+        userId: "u1",
+        userName: "alice",
+        sessionId: null,
+      });
       expect(add).toHaveBeenCalledWith("u1", ws);
       expect(setSocketContext).toHaveBeenCalledWith(ws, {
         userId: "u1",

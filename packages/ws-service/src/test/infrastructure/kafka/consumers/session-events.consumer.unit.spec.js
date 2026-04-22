@@ -16,7 +16,10 @@ vi.mock("../../../../lib/session-capacity-store.js", () => ({
 }));
 
 import { SessionEventsConsumer } from "../../../../infrastructure/kafka/consumers/session-events.consumer.js";
-import { getSessionSockets, getSocketContext } from "../../../../lib/connection-store.js";
+import {
+  getSessionSockets,
+  getSocketContext,
+} from "../../../../lib/connection-store.js";
 import { broadcastToSession } from "../../../../lib/messaging.js";
 import { deleteSessionCapacity } from "../../../../lib/session-capacity-store.js";
 
@@ -113,6 +116,7 @@ describe("SessionEventsConsumer", () => {
     await handlers.get(SessionEventTypes.PARTICIPANT_JOINED)({
       session_id: "session-1",
       participant_id: "p1",
+      nickname: "alice",
       role: "player",
     });
 
@@ -120,7 +124,7 @@ describe("SessionEventsConsumer", () => {
       "session-1",
       {
         type: messageType.USER_ONLINE,
-        payload: { participantId: "p1", role: "player" },
+        payload: { userId: "p1", userName: "alice", role: "player" },
       },
       null,
     );
@@ -128,6 +132,7 @@ describe("SessionEventsConsumer", () => {
     await handlers.get(SessionEventTypes.PARTICIPANT_LEFT)({
       session_id: "session-1",
       participant_id: "p2",
+      nickname: "bob",
       role: "player",
     });
 
@@ -135,7 +140,7 @@ describe("SessionEventsConsumer", () => {
       "session-1",
       {
         type: messageType.USER_OFFLINE,
-        payload: { participantId: "p2", role: "player" },
+        payload: { userId: "p2", userName: "bob", role: "player" },
       },
       null,
     );

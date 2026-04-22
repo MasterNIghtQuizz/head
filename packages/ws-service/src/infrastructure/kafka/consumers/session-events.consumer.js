@@ -1,8 +1,14 @@
 import { SessionEventTypes } from "common-contracts";
 import { messageType } from "common-websocket";
-import { getSessionSockets, getSocketContext } from "../../../lib/connection-store.js";
+import {
+  getSessionSockets,
+  getSocketContext,
+} from "../../../lib/connection-store.js";
 import { broadcastToSession } from "../../../lib/messaging.js";
-import { deleteSessionCapacity } from "../../../lib/session-capacity-store.js";
+import {
+  deleteSessionCapacity,
+  setSessionCapacity,
+} from "../../../lib/session-capacity-store.js";
 import logger from "../../../logger.js";
 
 const sessionLifecycleMessageType = {
@@ -13,22 +19,6 @@ const sessionLifecycleMessageType = {
 /**
  * @typedef {import("common-contracts").SessionCreatedEventPayload | import("common-contracts").SessionStartedEventPayload | import("common-contracts").SessionNextQuestionEventPayload | import("common-contracts").SessionEndedEventPayload | import("common-contracts").SessionDeletedEventPayload | import("common-contracts").ParticipantJoinedEventPayload | import("common-contracts").ParticipantLeftEventPayload | import("common-contracts").QuizResponseSubmittedEventPayload} SessionKafkaPayload
  */
-
-/**
- * @param {SessionKafkaPayload} payload
- * @returns {string | null}
- */
-function resolveSessionId(payload) {
-  return payload?.session_id ?? payload?.sessionId ?? null;
-}
-
-/**
- * @param {import("common-contracts").ParticipantJoinedEventPayload | import("common-contracts").ParticipantLeftEventPayload} payload
- * @returns {string | null}
- */
-function resolveParticipantId(payload) {
-  return payload?.participant_id ?? payload?.participantId ?? null;
-}
 
 export class SessionEventsConsumer {
   /**
@@ -44,9 +34,21 @@ export class SessionEventsConsumer {
       /** @param {import("common-contracts").SessionCreatedEventPayload} payload */
       async (payload) => {
         const sessionId = resolveSessionId(payload);
+        const participantId = resolveParticipantId(payload);
+        const nickname = payload?.nickname;
+
+        if (!sessionId || !participantId || !nickname) {
+          logger.warn(
+            { payload },
+            "Missing required fields in session-created event payload",
+          );
+          return;
+        }
+
+        setSessionCapacity(sessionId, 10, false, participantId);
         logger.info(
-          { sessionId, payload },
-          "Kafka session-created event received",
+          { sessionId, ownerId: participantId, nickname },
+          "Session state initialized from Kafka session-created event",
         );
       },
     );
@@ -106,12 +108,15 @@ export class SessionEventsConsumer {
    * @returns {void}
    */
   notifyParticipants(payload, eventType) {
-    const sessionId = resolveSessionId(payload);
-    const participantId = resolveParticipantId(payload);
+    const sessionId = payload?.sessionId;
+    const participantId = payload?.participantId;
     const nickname = payload?.nickname;
 
     if (!sessionId || !participantId || !nickname) {
-      logger.warn({ payload }, "Missing required fields in participant event payload");
+      logger.warn(
+        { payload },
+        "Missing required fields in participant event payload",
+      );
       return;
     }
 
@@ -130,12 +135,12 @@ export class SessionEventsConsumer {
   }
 
   /**
-    * @param {import("common-contracts").SessionEndedEventPayload | import("common-contracts").SessionDeletedEventPayload} payload
+   * @param {import("common-contracts").SessionEndedEventPayload | import("common-contracts").SessionDeletedEventPayload} payload
    * @param {"ended" | "deleted"} reason
    * @returns {Promise<void>}
    */
   async destroySessionAndKickParticipants(payload, reason) {
-    const sessionId = resolveSessionId(payload);
+    const sessionId = payload?.sessionId;
     if (!sessionId) {
       logger.warn({ payload }, "Missing session id in lifecycle event payload");
       return;
@@ -168,6 +173,9 @@ export class SessionEventsConsumer {
     }
 
     deleteSessionCapacity(sessionId);
-    logger.info({ sessionId, reason }, "Session destroyed and participants kicked");
+    logger.info(
+      { sessionId, reason },
+      "Session destroyed and participants kicked",
+    );
   }
 }

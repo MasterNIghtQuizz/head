@@ -266,7 +266,12 @@ describe("session-membership.handler", () => {
 
       const result = userCreateSession(ws, "session-1", 4);
 
-      expect(setSessionCapacity).toHaveBeenCalledWith("session-1", 4, false, "u1");
+      expect(setSessionCapacity).toHaveBeenCalledWith(
+        "session-1",
+        4,
+        false,
+        "u1",
+      );
       expect(result).toEqual({
         userId: "u1",
         userName: "alice",

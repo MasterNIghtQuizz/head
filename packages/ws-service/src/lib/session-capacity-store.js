@@ -17,7 +17,12 @@ function getSessionCapacity(sessionId) {
  * @param {string | null} [ownerId=null]
  * @returns {void}
  */
-function setSessionCapacity(sessionId, maxUsers, started = false, ownerId = null) {
+function setSessionCapacity(
+  sessionId,
+  maxUsers,
+  started = false,
+  ownerId = null,
+) {
   sessionMetadata.set(sessionId, { maxUsers, started, ownerId });
 }
 

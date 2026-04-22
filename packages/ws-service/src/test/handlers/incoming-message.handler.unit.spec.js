@@ -176,7 +176,9 @@ describe("incoming-message.handler", () => {
 
     it("sends explicit join error returned by session handler", () => {
       const ws = createWsMock();
-      vi.mocked(userJoinSession).mockReturnValue({ error: errorType.SESSION_FULL });
+      vi.mocked(userJoinSession).mockReturnValue({
+        error: errorType.SESSION_FULL,
+      });
 
       handleJoinSessionMessage(asWebSocket(ws), { sessionId: "session-1" });
 
@@ -230,7 +232,10 @@ describe("incoming-message.handler", () => {
     it("sends MISSING_SESSION_ID when sessionId is missing", () => {
       const ws = createWsMock();
 
-      handleCreateSessionMessage(asWebSocket(ws), { sessionId: " ", max_users: 2 });
+      handleCreateSessionMessage(asWebSocket(ws), {
+        sessionId: " ",
+        max_users: 2,
+      });
 
       expect(lastSentMessage(ws)).toEqual({
         type: messageType.ERROR,
