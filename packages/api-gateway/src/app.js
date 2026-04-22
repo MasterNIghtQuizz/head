@@ -115,7 +115,7 @@ export async function createServer() {
   await fastify.register(proxy, {
     upstream: config.services.websocket,
     prefix: "/ws",
-    wevsocket: true,
+    websocket: true,
     proxyPayloads: false,
     preHandler: async (request, _reply) => {
       const url = new URL(request.url, `http://${request.hostname}`);
