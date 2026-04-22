@@ -2,12 +2,13 @@ import { BaseService } from "common-core";
 import { JoinSessionResponseDto } from "../contracts/session.dto.js";
 import { ParticipantEntity } from "../core/entities/participant.entity.js";
 import {
-  SESSION_INVALID_STATUS,
   SESSION_NOT_FOUND,
+  SESSION_INVALID_STATUS,
   QUESTION_TIMED_OUT,
   MISSING_CHOICE_IDS,
   INVALID_CHOICE_IDS,
   ALREADY_RESPONDED,
+  NO_BUZZER_FOUND,
 } from "../errors/session.errors.js";
 import {
   QuestionType,
@@ -408,18 +409,122 @@ export class ParticipantService extends BaseService {
   }
 
   /**
+   * @param {string} sessionId
+   * @returns {Promise<void>}
+   */
+  async rejectBuzzerResponse(sessionId) {
+    await this.buzzerRepository.pop(sessionId);
+    const nextBuzzer = await this.buzzerRepository.peek(sessionId);
+
+    if (this.kafkaProducer) {
+      /** @type {import('common-contracts').BuzzerNextPlayerEventPayload} */
+      const payload = {
+        sessionId,
+        participantId: nextBuzzer ? nextBuzzer.participantId : null,
+        username: nextBuzzer ? nextBuzzer.username : null,
+        questionId: nextBuzzer ? nextBuzzer.questionId : "",
+        pressedAt: nextBuzzer ? nextBuzzer.pressedAt : null,
+      };
+
+      await this.kafkaProducer.publish(
+        SessionEventTypes.BUZZER_NEXT_PLAYER,
+        payload,
+      );
+    }
+
+    logger.info(
+      {
+        sessionId,
+        nextParticipantId: nextBuzzer ? nextBuzzer.participantId : null,
+      },
+      "Buzzer response rejected, moving to next player",
+    );
+  }
+
+  /**
+   * @param {string} sessionId
+   * @returns {Promise<void>}
+   */
+  async validateBuzzerResponse(sessionId) {
+    const currentBuzzer = await this.buzzerRepository.peek(sessionId);
+    if (!currentBuzzer) {
+      throw NO_BUZZER_FOUND(sessionId);
+    }
+
+    const session = await this.sessionRepository.find(sessionId);
+    if (!session) {
+      throw SESSION_NOT_FOUND(sessionId);
+    }
+
+    const now = new Date().toISOString();
+
+    if (this.kafkaProducer) {
+      /** @type {import('common-contracts').BuzzerResponseValidatedEventPayload} */
+      const validatedPayload = {
+        sessionId,
+        participantId: currentBuzzer.participantId,
+        username: currentBuzzer.username,
+        questionId: session.currentQuestionId ?? "",
+        validatedAt: now,
+      };
+
+      await this.kafkaProducer.publish(
+        SessionEventTypes.BUZZER_RESPONSE_VALIDATED,
+        validatedPayload,
+      );
+    }
+
+    await this.buzzerRepository.clear(sessionId);
+
+    logger.info(
+      {
+        sessionId,
+        participantId: currentBuzzer.participantId,
+        questionId: session.currentQuestionId,
+      },
+      "Buzzer response validated and question resolved",
+    );
+  }
+
+  /**
+   * @param {string} sessionId
+   * @returns {Promise<import('common-contracts').UserPressedBuzzerEventPayload | null>}
+   */
+  async getCurrentBuzzer(sessionId) {
+    return await this.buzzerRepository.peek(sessionId);
+  }
+
+  /**
+   * @param {string} sessionId
+   * @returns {Promise<void>}
+   */
+  async resetBuzzerQueue(sessionId) {
+    await this.buzzerRepository.clear(sessionId);
+    logger.info({ sessionId }, "Buzzer queue reset");
+  }
+
+  /**
    * @param {import('../core/entities/session.entity.js').SessionEntity} session
    * @param {string} participantId
    * @returns {Promise<void>}
    */
   async _handleBuzzerSubmit(session, participantId) {
-    /**@type {import('common-contracts').QuizResponseSubmittedEventPayload} */
+    const participant = await this.participantRepository.find(participantId);
+    if (!participant) {
+      logger.warn(
+        { sessionId: session.id, participantId },
+        "Participant not found in buzzer submit",
+      );
+      return;
+    }
+
+    /**@type {import('common-contracts').UserPressedBuzzerEventPayload} */
     const payload = {
       sessionId: session.id,
       participantId,
-      choiceId: null,
-      type: QuestionType.BUZZER,
-      submittedAt: new Date().toISOString(),
+      username: participant.nickname,
+      questionId: session.currentQuestionId ?? "",
+      pressedAt: new Date().toISOString(),
     };
 
     try {
@@ -447,7 +552,7 @@ export class ParticipantService extends BaseService {
 
       if (this.kafkaProducer) {
         await this.kafkaProducer.publish(
-          SessionEventTypes.QUIZ_RESPONSE_SUBMITTED,
+          SessionEventTypes.USER_PRESSED_BUZZER,
           payload,
         );
       }

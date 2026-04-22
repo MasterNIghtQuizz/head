@@ -31,6 +31,7 @@ vi.mock("common-auth");
  * @typedef {import('vitest').Mocked<import('../core/ports/participant.repository.js').IParticipantRepository>} ParticipantRepositoryMock
  * @typedef {import('vitest').Mocked<import('common-valkey').ValkeyRepository>} ValkeyRepositoryMock
  * @typedef {import('vitest').Mocked<import('common-kafka').KafkaProducer>} KafkaProducerMock
+ * @typedef {import('vitest').Mocked<import('../infra/repositories/buzzer.repository.js').BuzzerRepository>} BuzzerRepositoryMock
  */
 
 describe("SessionService unit tests", () => {
@@ -44,6 +45,8 @@ describe("SessionService unit tests", () => {
   let valkeyRepositoryMock;
   /** @type {KafkaProducerMock} */
   let kafkaProducerMock;
+  /** @type {BuzzerRepositoryMock} */
+  let buzzerRepositoryMock;
 
   beforeEach(() => {
     // @ts-ignore
@@ -72,12 +75,17 @@ describe("SessionService unit tests", () => {
       publish: vi.fn(),
       connect: vi.fn(),
     });
+    // @ts-ignore
+    buzzerRepositoryMock = /** @type {BuzzerRepositoryMock} */ ({
+      clear: vi.fn(),
+    });
 
     service = new SessionService(
       kafkaProducerMock,
       sessionRepositoryMock,
       participantRepositoryMock,
       valkeyRepositoryMock,
+      buzzerRepositoryMock,
     );
   });
 
@@ -184,6 +192,7 @@ describe("SessionService unit tests", () => {
         status: SessionStatus.QUESTION_ACTIVE,
         currentQuestionId: "qu1",
       });
+      expect(buzzerRepositoryMock.clear).toHaveBeenCalledWith("s1");
       expect(valkeyRepositoryMock.set).toHaveBeenCalledWith(
         `session:s1:question_activated_at`,
         expect.any(Number),
@@ -227,6 +236,7 @@ describe("SessionService unit tests", () => {
         status: SessionStatus.QUESTION_ACTIVE,
         currentQuestionId: "qu2",
       });
+      expect(buzzerRepositoryMock.clear).toHaveBeenCalledWith("s1");
       expect(valkeyRepositoryMock.set).toHaveBeenCalledWith(
         `session:s1:question_activated_at`,
         expect.any(Number),

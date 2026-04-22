@@ -38,3 +38,7 @@ export const ALREADY_RESPONDED = (participantId, questionId) =>
   new ConflictError(
     `Participant ${participantId} already responded to question ${questionId}`,
   );
+
+/** @param {string} sessionId */
+export const NO_BUZZER_FOUND = (sessionId) =>
+  new BadRequestError(`No participant found in buzzer queue for session ${sessionId}`);

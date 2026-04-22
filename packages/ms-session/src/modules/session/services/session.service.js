@@ -30,24 +30,29 @@ export class SessionService extends BaseService {
   participantRepository;
   /** @type {import("common-valkey").ValkeyRepository} */
   valkeyRepository;
+  /** @type {import('../infra/repositories/buzzer.repository.js').BuzzerRepository} */
+  buzzerRepository;
 
   /**
    * @param {import('common-kafka').KafkaProducer | null} kafkaProducer
    * @param {import('../core/ports/session.repository.js').ISessionRepository} sessionRepository
    * @param {import('../core/ports/participant.repository.js').IParticipantRepository} participantRepository
    * @param {import("common-valkey").ValkeyRepository} valkeyRepository
+   * @param {import('../infra/repositories/buzzer.repository.js').BuzzerRepository} buzzerRepository
    */
   constructor(
     kafkaProducer,
     sessionRepository,
     participantRepository,
     valkeyRepository,
+    buzzerRepository,
   ) {
     super();
     this.sessionRepository = sessionRepository;
     this.kafkaProducer = kafkaProducer;
     this.participantRepository = participantRepository;
     this.valkeyRepository = valkeyRepository;
+    this.buzzerRepository = buzzerRepository;
   }
 
   /**
@@ -350,10 +355,13 @@ export class SessionService extends BaseService {
         );
       }
 
-      await this.sessionRepository.update(session.id, {
-        status: SessionStatus.QUESTION_ACTIVE,
-        currentQuestionId: questionId,
-      });
+      await Promise.all([
+        this.sessionRepository.update(session.id, {
+          status: SessionStatus.QUESTION_ACTIVE,
+          currentQuestionId: questionId,
+        }),
+        this.buzzerRepository.clear(session.id),
+      ]);
 
       logger.info(
         { sessionId: session.id, questionId },
@@ -490,10 +498,13 @@ export class SessionService extends BaseService {
 
       const questionId = questionIds[currentIndex + 1];
 
-      await this.sessionRepository.update(session.id, {
-        status: SessionStatus.QUESTION_ACTIVE,
-        currentQuestionId: questionId,
-      });
+      await Promise.all([
+        this.sessionRepository.update(session.id, {
+          status: SessionStatus.QUESTION_ACTIVE,
+          currentQuestionId: questionId,
+        }),
+        this.buzzerRepository.clear(session.id),
+      ]);
 
       logger.info(
         { sessionId: session.id, questionId },

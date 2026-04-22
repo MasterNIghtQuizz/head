@@ -114,15 +114,16 @@ export async function createServer() {
     valkeyRepository,
   );
 
+  const buzzerRepository = new BuzzerRepository(valkey);
+
   const sessionService = new SessionService(
     kafkaProducer,
     sessionRepository,
     participantRepository,
     valkeyRepository,
+    buzzerRepository,
   );
   ControllerFactory.register(fastify, SessionController, [sessionService]);
-
-  const buzzerRepository = new BuzzerRepository(valkey);
 
   const participantService = new ParticipantService(
     kafkaProducer,

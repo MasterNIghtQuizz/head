@@ -9,7 +9,7 @@ export class BuzzerRepository {
 
   /**
    * @param {string} sessionId
-   * @param {import('common-contracts').QuizResponseSubmittedEventPayload} entry
+   * @param {import('common-contracts').UserPressedBuzzerEventPayload} entry
    * @returns {Promise<number>}
    */
   async push(sessionId, entry) {
@@ -20,7 +20,7 @@ export class BuzzerRepository {
 
   /**
    * @param {string} sessionId
-   * @returns {Promise<import('common-contracts').QuizResponseSubmittedEventPayload | null>}
+   * @returns {Promise<import('common-contracts').UserPressedBuzzerEventPayload | null>}
    */
   async peek(sessionId) {
     const key = `session:${sessionId}:buzzer_queue`;
