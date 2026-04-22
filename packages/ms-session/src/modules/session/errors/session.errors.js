@@ -1,4 +1,9 @@
-import { NotFoundError, ConflictError, BadRequestError } from "common-errors";
+import {
+  NotFoundError,
+  ConflictError,
+  BadRequestError,
+  RateLimitError,
+} from "common-errors";
 
 /** @param {string} [id] */
 export const SESSION_INVALID_STATUS = (id) =>
@@ -41,4 +46,27 @@ export const ALREADY_RESPONDED = (participantId, questionId) =>
 
 /** @param {string} sessionId */
 export const NO_BUZZER_FOUND = (sessionId) =>
-  new BadRequestError(`No participant found in buzzer queue for session ${sessionId}`);
+  new BadRequestError(
+    `No participant found in buzzer queue for session ${sessionId}`,
+  );
+
+/** @param {string} participantId */
+export const PARTICIPANT_ALREADY_BUZZED = (participantId) =>
+  new RateLimitError(
+    `Participant with id ${participantId} has already buzzed in this session`,
+  );
+
+export const QUEUE_SYNCHRONIZING = () =>
+  new BadRequestError(
+    "The buzzer queue is currently synchronizing. Please try again in a few moments.",
+  );
+
+export const UNAUTHORIZED_HOST = () =>
+  new ConflictError("Only the session host can perform this action");
+
+/** @param {string} expectedId
+ * @param {string} actualId */
+export const WRONG_BUZZER_CANDIDATE = (expectedId, actualId) =>
+  new BadRequestError(
+    `Wrong buzzer candidate. Expected ${expectedId} but got ${actualId}`,
+  );

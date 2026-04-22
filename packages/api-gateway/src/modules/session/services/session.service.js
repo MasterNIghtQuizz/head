@@ -140,4 +140,19 @@ export class SessionService extends BaseService {
       headers: /** @type {Record<string, string>} */ (headers),
     });
   }
+
+  /**
+   * @param {string} participantId
+   * @param {boolean} isCorrect
+   * @param {import("http").IncomingHttpHeaders} headers
+   * @returns {Promise<void>}
+   */
+  async answerBuzzer(participantId, isCorrect, headers) {
+    await call({
+      method: "POST",
+      url: `${config.services.session}/sessions/buzzer/answer/`,
+      data: { participantId, isCorrect },
+      headers: /** @type {Record<string, string>} */ (headers),
+    });
+  }
 }

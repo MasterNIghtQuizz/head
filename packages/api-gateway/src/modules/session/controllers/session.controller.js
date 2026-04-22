@@ -125,6 +125,19 @@ export class SessionController extends BaseController {
     );
     return reply.code(206).send();
   }
+
+  /**
+   * @param {import('fastify').FastifyRequest<{ Body: { participantId: string, isCorrect: boolean } }>} request
+   * @param {import('fastify').FastifyReply} reply
+   */
+  async answerBuzzer(request, reply) {
+    await this.sessionService.answerBuzzer(
+      request.body.participantId,
+      request.body.isCorrect,
+      request.headers,
+    );
+    return reply.code(200).send({ message: "Buzzer answer processed" });
+  }
 }
 
 const ErrorResponse = {
@@ -484,6 +497,41 @@ ApplyMethodDecorators(SessionController, "submitResponse", [
   }),
   UseGameToken(),
   Post("/submit/"),
+]);
+
+ApplyMethodDecorators(SessionController, "answerBuzzer", [
+  Schema({
+    description:
+      "Submit host decision for the current buzzer participant (correct/incorrect).",
+    tags: ["Session", "Buzzer"],
+    security: [{ gameToken: [] }],
+    body: {
+      type: "object",
+      required: ["participantId", "isCorrect"],
+      properties: {
+        participantId: { type: "string" },
+        isCorrect: { type: "boolean" },
+      },
+    },
+    response: {
+      200: {
+        description: "Buzzer answer processed successfully.",
+        type: "object",
+        properties: {
+          message: { type: "string", example: "Buzzer answer processed" },
+        },
+      },
+      400: ErrorResponse,
+      401: ErrorResponse,
+      403: ErrorResponse,
+      404: ErrorResponse,
+      409: ErrorResponse,
+      500: ErrorResponse,
+    },
+  }),
+  UseGameToken(),
+  Roles([UserRole.ADMIN, UserRole.MODERATOR]),
+  Post("/buzzer/answer/"),
 ]);
 
 Controller("/sessions")(SessionController);

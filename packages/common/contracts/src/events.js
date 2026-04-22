@@ -35,6 +35,9 @@ export const SessionEventTypes = /** @type {const} */ ({
   BUZZER_NEXT_PLAYER: "buzzer-next-player",
   BUZZER_RESPONSE_VALIDATED: "buzzer-response-validated",
   SESSION_QUESTION_RESOLVED: "session-question-resolved",
+  FEED_BUZZER_QUEUE: "feed-buzzer-queue",
+  BUZZER_ANSWER_SUBMITTED: "buzzer-answer-submitted",
+  PING_HOST_FOR_QUEUE: "ping-host-for-queue",
 });
 
 /**
