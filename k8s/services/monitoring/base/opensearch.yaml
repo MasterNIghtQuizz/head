@@ -64,6 +64,10 @@ spec:
               value: "-Xms1g -Xmx1g"
             - name: plugins.security.disabled
               value: "true"
+            - name: OPENSEARCH_INITIAL_ADMIN_PASSWORD
+              value: "MasterQuizz123!"
+            - name: DISABLE_INSTALL_DEMO_CONFIG
+              value: "true"
           ports:
             - containerPort: 9200
             - containerPort: 9300
