@@ -8,7 +8,12 @@ import logger from "common-logger";
  */
 export function hookInternalToken(options) {
   return function internalTokenHook(request, _reply, done) {
-    if (request.routeOptions?.config?.isPublic) {
+    if (
+      request.routeOptions?.config?.isPublic ||
+      request.url.endsWith("/metrics") ||
+      request.url.endsWith("/metric") ||
+      request.url.endsWith("/health")
+    ) {
       done();
       return;
     }
