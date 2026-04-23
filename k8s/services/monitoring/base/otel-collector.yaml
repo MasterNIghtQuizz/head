@@ -14,10 +14,10 @@ data:
     processors:
       batch:
     exporters:
-      logging:
-        loglevel: debug
-      opensearch:
-        endpoint: "http://opensearch-service:9200"
+      debug:
+        verbosity: detailed
+      elasticsearch:
+        endpoints: ["http://opensearch-service:9200"]
         user: "admin"
         password: "MasterQuizz123!"
         index: "jaeger-span"
@@ -28,15 +28,15 @@ data:
         traces:
           receivers: [otlp]
           processors: [batch]
-          exporters: [logging, opensearch]
+          exporters: [debug, elasticsearch]
         metrics:
           receivers: [otlp]
           processors: [batch]
-          exporters: [logging]
+          exporters: [debug]
         logs:
           receivers: [otlp]
           processors: [batch]
-          exporters: [logging, opensearch]
+          exporters: [debug, elasticsearch]
 ---
 apiVersion: apps/v1
 kind: Deployment
