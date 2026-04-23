@@ -63,10 +63,14 @@ spec:
           volumeMounts:
             - name: config
               mountPath: /usr/share/opensearch-dashboards/config
+            - name: data
+              mountPath: /usr/share/opensearch-dashboards/data
             - name: tmp
               mountPath: /tmp
       volumes:
         - name: config
+          emptyDir: {}
+        - name: data
           emptyDir: {}
         - name: tmp
           emptyDir: {}
