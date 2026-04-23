@@ -1,4 +1,4 @@
-import { SessionEventTypes } from "common-contracts";
+import { SessionEventTypes, Topics } from "common-contracts";
 import { messageType } from "common-websocket";
 import {
   getSessionSockets,
@@ -10,11 +10,6 @@ import {
   setSessionCapacity,
 } from "../../../lib/session-capacity-store.js";
 import logger from "../../../logger.js";
-
-const sessionLifecycleMessageType = {
-  SESSION_ENDED: "session_ended",
-  SESSION_DELETED: "session_deleted",
-};
 
 /**
  * @typedef {import("common-contracts").SessionCreatedEventPayload | import("common-contracts").SessionStartedEventPayload | import("common-contracts").SessionNextQuestionEventPayload | import("common-contracts").SessionEndedEventPayload | import("common-contracts").SessionDeletedEventPayload | import("common-contracts").ParticipantJoinedEventPayload | import("common-contracts").ParticipantLeftEventPayload | import("common-contracts").QuizResponseSubmittedEventPayload} SessionKafkaPayload
@@ -29,78 +24,101 @@ export class SessionEventsConsumer {
   }
 
   register() {
-    logger.info("Registering SessionEventsConsumer handlers");
-    this.kafkaConsumer.addHandler(
-      SessionEventTypes.SESSION_CREATED,
-      /** @param {import("common-contracts").SessionCreatedEventPayload} payload */
-      async (payload) => {
-        const sessionId = payload?.session_id;
-        const participantId = payload?.participant_id;
-        const nickname = payload?.nickname;
+    logger.info(
+      { topic: Topics.QUIZZ_EVENTS },
+      "Registering SessionEventsConsumer for topic",
+    );
+    this.kafkaConsumer.addHandler(Topics.QUIZZ_EVENTS, async (message) => {
+      await this.handleEvent(message);
+    });
+  }
 
-        if (!sessionId || !participantId || !nickname) {
-          logger.warn(
-            { payload },
-            "Missing required fields in session-created event payload",
-          );
-          return;
-        }
+  /**
+   * @param {import('common-contracts').KafkaEvent} message
+   * @returns {Promise<void>}
+   */
+  async handleEvent(message) {
+    const { eventType, payload, eventId } = message;
+    const logCtx = { eventId, eventType };
 
-        setSessionCapacity(sessionId, 10, false, participantId);
+    logger.debug(logCtx, "DEBUG [ws-service] Received event from Kafka");
+
+    switch (eventType) {
+      case SessionEventTypes.SESSION_CREATED:
         logger.info(
-          { sessionId, ownerId: participantId, nickname },
-          "Session state initialized from Kafka session-created event",
+          logCtx,
+          "DEBUG [ws-service] Handling SESSION_CREATED event",
         );
-      },
-    );
+        await this.onSessionCreated(payload);
+        break;
 
-    this.kafkaConsumer.addHandler(
-      SessionEventTypes.SESSION_NEXT_QUESTION,
-      /** @param {import("common-contracts").SessionNextQuestionEventPayload} _payload */
-      async (_payload) => {
+      case SessionEventTypes.SESSION_NEXT_QUESTION:
+        logger.info(
+          logCtx,
+          "DEBUG [ws-service] Handling SESSION_NEXT_QUESTION event",
+        );
         // Intentionally left empty for now.
-      },
-    );
+        break;
 
-    this.kafkaConsumer.addHandler(
-      SessionEventTypes.SESSION_ENDED,
-      /** @param {import("common-contracts").SessionEndedEventPayload} payload */
-      async (payload) => {
+      case SessionEventTypes.SESSION_ENDED:
+        logger.info(logCtx, "DEBUG [ws-service] Handling SESSION_ENDED event");
         await this.destroySessionAndKickParticipants(payload, "ended");
-      },
-    );
+        break;
 
-    this.kafkaConsumer.addHandler(
-      SessionEventTypes.SESSION_DELETED,
-      /** @param {import("common-contracts").SessionDeletedEventPayload} payload */
-      async (payload) => {
+      case SessionEventTypes.SESSION_DELETED:
+        logger.info(
+          logCtx,
+          "DEBUG [ws-service] Handling SESSION_DELETED event",
+        );
         await this.destroySessionAndKickParticipants(payload, "deleted");
-      },
-    );
+        break;
 
-    this.kafkaConsumer.addHandler(
-      SessionEventTypes.PARTICIPANT_JOINED,
-      /** @param {import("common-contracts").ParticipantJoinedEventPayload} payload */
-      async (payload) => {
-        logger.info({ payload }, "Received PARTICIPANT_JOINED event");
+      case SessionEventTypes.PARTICIPANT_JOINED:
+        logger.info(
+          logCtx,
+          "DEBUG [ws-service] Handling PARTICIPANT_JOINED event",
+        );
         this.notifyParticipants(payload, messageType.USER_ONLINE);
-      },
-    );
+        break;
 
-    this.kafkaConsumer.addHandler(
-      SessionEventTypes.PARTICIPANT_LEFT,
-      /** @param {import("common-contracts").ParticipantLeftEventPayload} payload */
-      async (payload) => {
+      case SessionEventTypes.PARTICIPANT_LEFT:
+        logger.info(
+          logCtx,
+          "DEBUG [ws-service] Handling PARTICIPANT_LEFT event",
+        );
         this.notifyParticipants(payload, messageType.USER_OFFLINE);
-      },
-    );
+        break;
 
-    this.kafkaConsumer.addHandler(
-      SessionEventTypes.QUIZ_RESPONSE_SUBMITTED,
-      /** @param {import("common-contracts").QuizResponseSubmittedEventPayload} _payload */
-      async (_payload) => {
+      case SessionEventTypes.QUIZ_RESPONSE_SUBMITTED:
         // Intentionally left empty for now.
-      },
+        break;
+
+      default:
+        logger.warn(logCtx, "DEBUG [ws-service] Unknown event type received");
+    }
+  }
+
+  /**
+   * @param {import("common-contracts").SessionCreatedEventPayload} payload
+   * @returns {Promise<void>}
+   */
+  async onSessionCreated(payload) {
+    const sessionId = payload?.session_id;
+    const participantId = payload?.participant_id;
+    const nickname = payload?.nickname;
+
+    if (!sessionId || !participantId || !nickname) {
+      logger.warn(
+        { payload },
+        "DEBUG [ws-service] Missing required fields in session-created event payload",
+      );
+      return;
+    }
+
+    setSessionCapacity(sessionId, 10, false, participantId);
+    logger.info(
+      { sessionId, ownerId: participantId, nickname },
+      "DEBUG [ws-service] Session state initialized successfully from SESSION_CREATED event",
     );
   }
 
@@ -116,20 +134,20 @@ export class SessionEventsConsumer {
 
     logger.info(
       { sessionId, participantId, nickname, eventType },
-      "Processing participant event for broadcast",
+      "DEBUG [ws-service] Processing participant event for broadcast",
     );
 
     if (!sessionId || !participantId || !nickname) {
       logger.warn(
         { payload },
-        "Missing required fields in participant event payload",
+        "DEBUG [ws-service] Missing required fields in participant event payload",
       );
       return;
     }
 
     logger.info(
       { sessionId, participantId, nickname },
-      "Broadcasting participant event",
+      "DEBUG [ws-service] Broadcasting participant event to session sockets",
     );
     broadcastToSession(
       sessionId,
@@ -164,8 +182,8 @@ export class SessionEventsConsumer {
       {
         type:
           reason === "ended"
-            ? sessionLifecycleMessageType.SESSION_ENDED
-            : sessionLifecycleMessageType.SESSION_DELETED,
+            ? messageType.SESSION_ENDED
+            : messageType.SESSION_DELETED,
         payload: { sessionId },
       },
       null,

@@ -18,6 +18,8 @@ export declare const messageType: {
   JOINED_SESSION: "joined_session";
   MESSAGE_DELIVERED: "message_delivered";
   MESSAGE_NOT_DELIVERED: "message_not_delivered";
+  SESSION_ENDED: "session_ended";
+  SESSION_DELETED: "session_deleted";
   ERROR: "error";
 };
 
@@ -74,6 +76,7 @@ export interface ChatMessagePayload {
 export interface SessionPresencePayload {
   userId: string;
   userName: string;
+  role: string;
 }
 
 export interface SessionCreatedPayload {
@@ -126,4 +129,6 @@ export type ServerToClientMessage =
       type: typeof messageType.MESSAGE_NOT_DELIVERED;
       payload: DeliveryPayload;
     }
+  | { type: typeof messageType.SESSION_ENDED; payload: { sessionId: string } }
+  | { type: typeof messageType.SESSION_DELETED; payload: { sessionId: string } }
   | { type: typeof messageType.ERROR; payload: ErrorPayload };

@@ -90,12 +90,20 @@ export class ParticipantService extends BaseService {
         nickname: participantEntity.nickname,
         role: participantEntity.role,
       };
+      logger.info(
+        { payload },
+        "DEBUG [ms-session] Publishing PARTICIPANT_JOINED event to Kafka",
+      );
       await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
         eventId: randomUUID(),
         timestamp: Date.now(),
         eventType: SessionEventTypes.PARTICIPANT_JOINED,
         payload,
       });
+      logger.info(
+        { sessionId: session.id, participantId },
+        "DEBUG [ms-session] PARTICIPANT_JOINED event published successfully",
+      );
     }
     logger.info(
       {
