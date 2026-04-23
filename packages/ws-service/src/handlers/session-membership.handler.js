@@ -33,7 +33,10 @@ function userJoinSession(ws, sessionId) {
 
   const existingCapacity = getSessionCapacity(sessionId);
   if (existingCapacity === null) {
-    logger.warn({ sessionId, userId: context.userId }, "Join attempt failed: Session not found");
+    logger.warn(
+      { sessionId, userId: context.userId },
+      "Join attempt failed: Session not found",
+    );
     return { error: errorType.SESSION_NOT_FOUND };
   }
 
@@ -62,12 +65,18 @@ function userJoinSession(ws, sessionId) {
   const sessionSockets = getSessionSockets(sessionId);
   const state = getSessionState(sessionId, sessionSockets.size);
   if (state === sessionState.STARTED) {
-    logger.warn({ sessionId, userId: context.userId }, "Join attempt failed: Session already started");
+    logger.warn(
+      { sessionId, userId: context.userId },
+      "Join attempt failed: Session already started",
+    );
     return { error: errorType.SESSION_STARTED };
   }
 
   if (state === sessionState.FULL) {
-    logger.warn({ sessionId, userId: context.userId }, "Join attempt failed: Session is full");
+    logger.warn(
+      { sessionId, userId: context.userId },
+      "Join attempt failed: Session is full",
+    );
     return { error: errorType.SESSION_FULL };
   }
 
@@ -78,11 +87,14 @@ function userJoinSession(ws, sessionId) {
   }
 
   if (previousSessionId && previousSessionId !== sessionId) {
-    logger.info({ previousSessionId, sessionId, userId: context.userId }, "User switching sessions");
-    
+    logger.info(
+      { previousSessionId, sessionId, userId: context.userId },
+      "User switching sessions",
+    );
+
     // Explicitly remove from old session's participant list
     removeParticipant(previousSessionId, context.userId);
-    
+
     broadcastToSession(
       previousSessionId,
       {
@@ -117,7 +129,10 @@ function userJoinSession(ws, sessionId) {
     updatedContext.userId,
   );
 
-  logger.info({ sessionId, userId: updatedContext.userId }, "User successfully joined session");
+  logger.info(
+    { sessionId, userId: updatedContext.userId },
+    "User successfully joined session",
+  );
 
   return {
     userId: updatedContext.userId,
@@ -275,11 +290,17 @@ function userLeaveSession(ws) {
     updatedContext.userId,
   );
 
-  logger.info({ sessionId: leftSessionId, userId: updatedContext.userId }, "User left session");
+  logger.info(
+    { sessionId: leftSessionId, userId: updatedContext.userId },
+    "User left session",
+  );
 
   const socketsLeft = getSessionSockets(leftSessionId).size;
   if (socketsLeft === 0) {
-    logger.info({ sessionId: leftSessionId }, "Last user left, deleting session capacity");
+    logger.info(
+      { sessionId: leftSessionId },
+      "Last user left, deleting session capacity",
+    );
     deleteSessionCapacity(leftSessionId);
   } else {
     handleSessionDeparture(leftSessionId, updatedContext.userId);

@@ -121,9 +121,10 @@ export async function createServer() {
         );
 
         const newHeaders = { ...headers };
-        const userId = request.user?.participantId; 
+        const userId = request.user?.participantId;
 
-        if (userId) { // Check if either userId or participantId is present
+        if (userId) {
+          // Check if either userId or participantId is present
           newHeaders["x-user-id"] = userId;
         }
         if (request.user?.role) {

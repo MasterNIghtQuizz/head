@@ -56,11 +56,7 @@ function broadcastToSession(sessionId, message, excludeUserId) {
   for (const socket of sockets) {
     const socketContext = getSocketContext(socket);
     const socketUserId = socketContext?.userId;
-    console.log(
-      "Broadcasting message to session",
-      sessionId,
-      socketUserId
-    );
+    console.log("Broadcasting message to session", sessionId, socketUserId);
     if (excludeUserId && socketUserId === excludeUserId) {
       continue;
     }

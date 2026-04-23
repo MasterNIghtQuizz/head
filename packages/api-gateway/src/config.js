@@ -81,9 +81,10 @@ export const config = {
   env: /** @type {string} */ (Config.get("app.env")),
   port: /** @type {number} */ (Config.get("app.port")),
   logger: /** @type {Record<string, unknown>} */ (Config.get("logger")),
-  services: /** @type {{ user: string; quizz: string; session:string; websocket: string }} */ (
-    Config.get("services")
-  ),
+  services:
+    /** @type {{ user: string; quizz: string; session:string; websocket: string }} */ (
+      Config.get("services")
+    ),
   kafka: /** @type {{ brokers: string[] }} */ (Config.get("kafka")),
   auth: {
     access: {

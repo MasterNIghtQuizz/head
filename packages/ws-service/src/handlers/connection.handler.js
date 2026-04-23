@@ -85,7 +85,10 @@ function userDisconnect(ws, userId, userName) {
   }
 
   removeParticipant(context.sessionId, userId);
-  logger.info({ sessionId: context.sessionId, userId }, "User removed from session due to disconnect");
+  logger.info(
+    { sessionId: context.sessionId, userId },
+    "User removed from session due to disconnect",
+  );
 
   broadcastToSession(
     context.sessionId,

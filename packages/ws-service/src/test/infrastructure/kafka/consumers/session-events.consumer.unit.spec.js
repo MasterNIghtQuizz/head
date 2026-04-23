@@ -113,11 +113,12 @@ describe("SessionEventsConsumer", () => {
   describe("notifyParticipants", () => {
     it("notifies participants when they are NOT connected locally", async () => {
       const handlers = new Map();
-      const kafkaConsumer = /** @type {import('common-kafka').KafkaConsumer} */ (
-        /** @type {unknown} */ ({
-          addHandler: (topic, handler) => handlers.set(topic, handler),
-        })
-      );
+      const kafkaConsumer =
+        /** @type {import('common-kafka').KafkaConsumer} */ (
+          /** @type {unknown} */ ({
+            addHandler: (topic, handler) => handlers.set(topic, handler),
+          })
+        );
 
       vi.mocked(getSocketByUserId).mockReturnValue(null);
 
@@ -169,11 +170,12 @@ describe("SessionEventsConsumer", () => {
 
     it("uses local handlers when participants ARE connected locally", async () => {
       const handlers = new Map();
-      const kafkaConsumer = /** @type {import('common-kafka').KafkaConsumer} */ (
-        /** @type {unknown} */ ({
-          addHandler: (topic, handler) => handlers.set(topic, handler),
-        })
-      );
+      const kafkaConsumer =
+        /** @type {import('common-kafka').KafkaConsumer} */ (
+          /** @type {unknown} */ ({
+            addHandler: (topic, handler) => handlers.set(topic, handler),
+          })
+        );
 
       const mockSocket = { id: "socket-1" };
       vi.mocked(getSocketByUserId).mockReturnValue(asWebSocket(mockSocket));
@@ -217,11 +219,12 @@ describe("SessionEventsConsumer", () => {
 
     it("broadcasts instead of using local handler if participant is in a DIFFERENT session locally during leave", async () => {
       const handlers = new Map();
-      const kafkaConsumer = /** @type {import('common-kafka').KafkaConsumer} */ (
-        /** @type {unknown} */ ({
-          addHandler: (topic, handler) => handlers.set(topic, handler),
-        })
-      );
+      const kafkaConsumer =
+        /** @type {import('common-kafka').KafkaConsumer} */ (
+          /** @type {unknown} */ ({
+            addHandler: (topic, handler) => handlers.set(topic, handler),
+          })
+        );
 
       const mockSocket = { id: "socket-1" };
       vi.mocked(getSocketByUserId).mockReturnValue(asWebSocket(mockSocket));

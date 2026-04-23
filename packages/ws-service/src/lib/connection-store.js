@@ -105,7 +105,10 @@ function getSessionSockets(sessionId) {
 function initSessionParticipants(sessionId) {
   if (!sessionParticipants.has(sessionId)) {
     sessionParticipants.set(sessionId, []);
-    logger.debug({ sessionId }, "Initialized empty participant list for session");
+    logger.debug(
+      { sessionId },
+      "Initialized empty participant list for session",
+    );
   }
 }
 
@@ -135,7 +138,11 @@ function addParticipant(sessionId, participant) {
   }
   list.push(participant);
   logger.info(
-    { sessionId, participantId: participant.participant_id, role: participant.role },
+    {
+      sessionId,
+      participantId: participant.participant_id,
+      role: participant.role,
+    },
     "Added participant to session list",
   );
   return true;
@@ -149,11 +156,18 @@ function addParticipant(sessionId, participant) {
  */
 function removeParticipant(sessionId, participantId) {
   const list = sessionParticipants.get(sessionId);
-  if (!list) return false;
+  if (!list) {
+    return false;
+  }
   const newList = list.filter((p) => p.participant_id !== participantId);
-  if (newList.length === list.length) return false;
+  if (newList.length === list.length) {
+    return false;
+  }
   sessionParticipants.set(sessionId, newList);
-  logger.info({ sessionId, participantId }, "Removed participant from session list");
+  logger.info(
+    { sessionId, participantId },
+    "Removed participant from session list",
+  );
   return true;
 }
 
