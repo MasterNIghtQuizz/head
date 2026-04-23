@@ -9,6 +9,7 @@ data:
       - name: Prometheus
         type: prometheus
         access: proxy
-        url: http://prometheus-service:9090
+        url: http://prometheus-service.masterquizz-prod.svc.cluster.local:9090
         isDefault: true
+        uid: prometheus
         editable: true
