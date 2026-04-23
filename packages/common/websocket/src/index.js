@@ -12,6 +12,8 @@ export const messageType = {
   JOINED_SESSION: "joined_session",
   MESSAGE_DELIVERED: "message_delivered",
   MESSAGE_NOT_DELIVERED: "message_not_delivered",
+  SESSION_ENDED: "session_ended",
+  SESSION_DELETED: "session_deleted",
   ERROR: "error",
 };
 

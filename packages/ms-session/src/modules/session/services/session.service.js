@@ -177,13 +177,20 @@ export class SessionService extends BaseService {
           nickname: host.nickname,
           role: host.role,
         };
-        logger.error("emmitting SESSION CREATE");
+        logger.info(
+          { payload },
+          "DEBUG [ms-session] Publishing SESSION_CREATED event to Kafka",
+        );
         await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
           eventId: crypto.randomUUID(),
           timestamp: Date.now(),
           eventType: SessionEventTypes.SESSION_CREATED,
           payload,
         });
+        logger.info(
+          { sessionId: session.id, hostId },
+          "DEBUG [ms-session] SESSION_CREATED event published successfully",
+        );
       }
 
       return new CreateSessionResponseDto({
