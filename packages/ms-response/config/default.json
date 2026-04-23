@@ -47,5 +47,8 @@
     "quizzManagement": {
       "baseUrl": "http://localhost:4002"
     }
+  },
+  "metrics": {
+    "enabled": true
   }
 }

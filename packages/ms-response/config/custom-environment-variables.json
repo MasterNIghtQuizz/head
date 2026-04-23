@@ -72,5 +72,11 @@
     "quizzManagement": {
       "baseUrl": "QUIZZ_MANAGEMENT_SERVICE_BASE_URL"
     }
+  },
+  "metrics": {
+    "enabled": {
+      "__name": "METRICS_ENABLED",
+      "__format": "json"
+    }
   }
 }
