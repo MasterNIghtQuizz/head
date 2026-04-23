@@ -28,8 +28,13 @@ const { default: logger } = await import("./logger.js");
 
 const fastify = Fastify({
   loggerInstance: logger,
-  disableRequestLogging: true,
+  disableRequestLogging: false,
 });
+
+logger.info(
+  { metricsEnabled: config.metrics.enabled, port: config.port },
+  "Service configuration diagnostic",
+);
 
 await fastify.register(
   createMetricsPlugin({
