@@ -7,8 +7,6 @@ export declare const config: {
     brokers: string[];
   };
   auth: {
-    access: { privateKeyPath: string; publicKeyPath: string };
-    refresh: { privateKeyPath: string; publicKeyPath: string };
     internal: { privateKeyPath: string; publicKeyPath: string };
   };
   security: {

@@ -13,6 +13,10 @@ spec:
     metadata:
       labels:
         app: ws-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "3000"
+        prometheus.io/path: "/metrics"
     spec:
       securityContext:
         runAsNonRoot: true
@@ -37,6 +41,18 @@ spec:
           command: ["/bin/sh", "-c"]
           args:
             - "node packages/ws-service/src/index.js"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
           ports:
             - containerPort: 3000
           envFrom:
@@ -45,15 +61,8 @@ spec:
           env:
             - name: PORT
               value: "3000"
-            - name: KAFKA_ENABLED
-              value: "true"
-            - name: VALKEY_ENABLED
-              value: "true"
-            - name: SECURITY_ENCRYPTION_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: masterquizz-secrets
-                  key: security-encryption-key
+            - name: OPENSEARCH_INDEX
+              value: "logs-ws-service"
             - name: AUTH_INTERNAL_PRIVATE_KEY_PATH
               value: "/app/keys/internal-private.pem"
             - name: AUTH_INTERNAL_PUBLIC_KEY_PATH

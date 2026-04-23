@@ -11,23 +11,9 @@
     }
   },
   "auth": {
-    "access": {
-      "privateKeyPath": "AUTH_ACCESS_PRIVATE_KEY_PATH",
-      "publicKeyPath": "AUTH_ACCESS_PUBLIC_KEY_PATH",
-      "privateKey": "AUTH_ACCESS_PRIVATE_KEY",
-      "publicKey": "AUTH_ACCESS_PUBLIC_KEY"
-    },
-    "refresh": {
-      "privateKeyPath": "AUTH_REFRESH_PRIVATE_KEY_PATH",
-      "publicKeyPath": "AUTH_REFRESH_PUBLIC_KEY_PATH",
-      "privateKey": "AUTH_REFRESH_PRIVATE_KEY",
-      "publicKey": "AUTH_REFRESH_PUBLIC_KEY"
-    },
     "internal": {
       "privateKeyPath": "AUTH_INTERNAL_PRIVATE_KEY_PATH",
-      "publicKeyPath": "AUTH_INTERNAL_PUBLIC_KEY_PATH",
-      "privateKey": "AUTH_INTERNAL_PRIVATE_KEY",
-      "publicKey": "AUTH_INTERNAL_PUBLIC_KEY"
+      "publicKeyPath": "AUTH_INTERNAL_PUBLIC_KEY_PATH"
     }
   },
   "kafka": {
@@ -58,5 +44,11 @@
     },
     "node": "OPENSEARCH_NODE",
     "index": "OPENSEARCH_INDEX"
+  },
+  "metrics": {
+    "enabled": {
+      "__name": "METRICS_ENABLED",
+      "__format": "json"
+    }
   }
 }
