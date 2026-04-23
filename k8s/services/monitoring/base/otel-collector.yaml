@@ -22,7 +22,7 @@ data:
         user: "admin"
         password: "MasterQuizz123!"
         tls:
-          insecure: true
+          insecure_skip_verify: true
     service:
       pipelines:
         traces:
