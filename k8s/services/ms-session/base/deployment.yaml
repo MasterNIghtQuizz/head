@@ -18,7 +18,6 @@ spec:
         prometheus.io/port: "3000"
         prometheus.io/path: "/metrics"
     spec:
-      hostNetwork: true
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
@@ -90,23 +89,25 @@ spec:
           livenessProbe:
             httpGet:
               path: /metrics
-              port: 4003
+              port: 3000
             initialDelaySeconds: 15
             periodSeconds: 20
           readinessProbe:
             httpGet:
               path: /metrics
-              port: 4003
+              port: 3000
             initialDelaySeconds: 5
             periodSeconds: 10
           ports:
-            - containerPort: 4003
+            - containerPort: 3000
           envFrom:
             - configMapRef:
                 name: global-config
           env:
             - name: PORT
-              value: "4003"
+              value: "3000"
+            - name: QUIZZ_SERVICE_URL
+              value: "http://ms-quizz-management"
             - name: POSTGRES_DB
               value: "ms_session_db"
             - name: POSTGRES_USER
@@ -176,7 +177,7 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    - port: 3000
+    - port: 80
       targetPort: 3000
   selector:
     app: ms-session

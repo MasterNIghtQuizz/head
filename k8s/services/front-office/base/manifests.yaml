@@ -7,7 +7,7 @@ metadata:
 spec:
   replicas: 1
   strategy:
-    type: Recreate
+    type: RollingUpdate
   selector:
     matchLabels:
       app: front-office
@@ -16,7 +16,6 @@ spec:
       labels:
         app: front-office
     spec:
-      hostNetwork: true
       securityContext:
         runAsNonRoot: true
         runAsUser: 1001
@@ -42,12 +41,8 @@ spec:
           env:
             - name: COREPACK_HOME
               value: "/tmp/corepack"
-            - name: USER_SERVICE_URL
-              value: "http://ms-user:3000"
-            - name: QUIZZ_SERVICE_URL
-              value: "http://ms-quizz:3000"
             - name: NEXT_PUBLIC_API_URL
-              value: "http://localhost:3010"
+              value: "http://api-gateway"
           volumeMounts:
             - name: tmp
               mountPath: /tmp
@@ -62,7 +57,27 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    - port: 3000
+    - port: 80
       targetPort: 3000
   selector:
     app: front-office
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: front-office-ingress
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+    traefik.ingress.kubernetes.io/router.middlewares: masterquizz-prod-global-ratelimit@kubernetescrd,masterquizz-prod-security-headers@kubernetescrd
+spec:
+  rules:
+    - host: quizz-master.cyrus-ag.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: front-office
+                port:
+                  number: 80
