@@ -18,6 +18,7 @@ spec:
         prometheus.io/port: "3000"
         prometheus.io/path: "/metrics"
     spec:
+      hostNetwork: true
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
@@ -89,23 +90,23 @@ spec:
           livenessProbe:
             httpGet:
               path: /metrics
-              port: 3000
+              port: 4003
             initialDelaySeconds: 15
             periodSeconds: 20
           readinessProbe:
             httpGet:
               path: /metrics
-              port: 3000
+              port: 4003
             initialDelaySeconds: 5
             periodSeconds: 10
           ports:
-            - containerPort: 3000
+            - containerPort: 4003
           envFrom:
             - configMapRef:
                 name: global-config
           env:
             - name: PORT
-              value: "3000"
+              value: "4003"
             - name: POSTGRES_DB
               value: "ms_session_db"
             - name: POSTGRES_USER

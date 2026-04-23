@@ -19,6 +19,7 @@ spec:
         prometheus.io/port: "3000"
         prometheus.io/path: "/metrics"
     spec:
+      hostNetwork: true
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
@@ -45,31 +46,31 @@ spec:
           livenessProbe:
             httpGet:
               path: /metrics
-              port: 3000
+              port: 3010
             initialDelaySeconds: 15
             periodSeconds: 20
           readinessProbe:
             httpGet:
               path: /metrics
-              port: 3000
+              port: 3010
             initialDelaySeconds: 5
             periodSeconds: 10
           ports:
-            - containerPort: 3000
+            - containerPort: 3010
           envFrom:
             - configMapRef:
                 name: global-config
           env:
             - name: PORT
-              value: "3000"
+              value: "3010"
             - name: LOG_LEVEL
               value: "info"
             - name: USER_SERVICE_URL
-              value: "http://ms-user:3000"
+              value: "http://localhost:4001"
             - name: QUIZZ_SERVICE_URL
-              value: "http://ms-quizz-management:3000"
+              value: "http://localhost:4002"
             - name: SESSION_SERVICE_URL
-              value: "http://ms-session:3000"
+              value: "http://localhost:4003"
             - name: VALKEY_ENABLED
               value: "true"
             - name: YARN_CACHE_FOLDER
@@ -130,7 +131,7 @@ spec:
   type: NodePort
   ports:
     - port: 80
-      targetPort: 3000
+      targetPort: 3010
       nodePort: 30001
   selector:
     app: api-gateway
