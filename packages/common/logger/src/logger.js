@@ -20,6 +20,8 @@ const redactFields = [
  * @property {Object} [auth]
  * @property {string} [auth.username]
  * @property {string} [auth.password]
+ * @property {Object} [ssl]
+ * @property {boolean} [ssl.rejectUnauthorized]
  */
 
 /**
@@ -56,19 +58,28 @@ export const createLogger = ({
 
   // OpenSearch stream
   if (opensearch) {
+    const transport = pino.transport({
+      target: "pino-opensearch",
+      options: {
+        node: opensearch.node,
+        index: opensearch.index,
+        opensearchKeyValues: {
+          service: name,
+        },
+        batchSize: 50,
+        auth: opensearch.auth,
+        ssl: opensearch.ssl,
+      },
+    });
+
+    // CRASH PREVENTION: Handle transport errors gracefully
+    transport.on("error", (err) => {
+      console.error("Logger OpenSearch Transport Error:", err.message);
+    });
+
     streams.push({
       level,
-      stream: pino.transport({
-        target: "pino-opensearch",
-        options: {
-          node: opensearch.node,
-          index: opensearch.index,
-          opensearchKeyValues: {
-            service: name,
-          },
-          batchSize: 50,
-        },
-      }),
+      stream: transport,
     });
   }
 
