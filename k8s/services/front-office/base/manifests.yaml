@@ -47,7 +47,7 @@ spec:
             - name: QUIZZ_SERVICE_URL
               value: "http://ms-quizz:3000"
             - name: NEXT_PUBLIC_API_URL
-              value: "http://localhost:30001"
+              value: "http://localhost:3010"
           volumeMounts:
             - name: tmp
               mountPath: /tmp
