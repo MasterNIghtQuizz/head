@@ -4,7 +4,6 @@ metadata:
   name: front-office
   labels:
     app: front-office
-    allow-traefik: "true"
 spec:
   replicas: 1
   selector:
@@ -14,58 +13,39 @@ spec:
     metadata:
       labels:
         app: front-office
-        allow-traefik: "true"
     spec:
-      hostNetwork: true
       securityContext:
         runAsNonRoot: true
         runAsUser: 1001
         fsGroup: 1001
       containers:
         - name: front-office
-          image: victorcra/masterquizz-front-office:1.0.0
+          image: victorcra/masterquizz-front-office:latest
           securityContext:
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
             capabilities:
               drop:
                 - ALL
-          ports:
-            - containerPort: 3000
-          volumeMounts:
-            - name: next-cache
-              mountPath: /app/.next/cache
-            - name: tmp
-              mountPath: /tmp
           resources:
             requests:
-              cpu: "50m"
+              cpu: "100m"
               memory: "128Mi"
             limits:
-              cpu: "200m"
-              memory: "256Mi"
-          command: ["node"]
-          args: ["server.js"]
+              cpu: "500m"
+              memory: "512Mi"
+          ports:
+            - containerPort: 3000
+              hostPort: 3000 # Expose directement sur le port 3000 du serveur physique
           env:
             - name: COREPACK_HOME
               value: "/tmp/corepack"
             - name: NEXT_PUBLIC_API_URL
               value: "http://api-gateway"
-          livenessProbe:
-            httpGet:
-              path: /
-              port: 3000
-            initialDelaySeconds: 30
-            periodSeconds: 20
-          readinessProbe:
-            httpGet:
-              path: /
-              port: 3000
-            initialDelaySeconds: 10
-            periodSeconds: 10
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
       volumes:
-        - name: next-cache
-          emptyDir: {}
         - name: tmp
           emptyDir: {}
 ---
@@ -80,20 +60,3 @@ spec:
       targetPort: 3000
   selector:
     app: front-office
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: front-office-ingress
-spec:
-  rules:
-    - host: quizz-master.cyrus-ag.com
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: front-office
-                port:
-                  number: 3000
