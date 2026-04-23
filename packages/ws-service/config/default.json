@@ -42,6 +42,9 @@
   "opensearch": {
     "enabled": false,
     "node": "http://localhost:9200",
-    "index": "logs-ms-user"
+    "index": "logs-ws-service"
+  },
+  "metrics": {
+    "enabled": true
   }
 }
