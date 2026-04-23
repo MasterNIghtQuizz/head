@@ -21,10 +21,18 @@ spec:
           image: opensearchproject/opensearch-dashboards:2.13.0
           securityContext:
             runAsUser: 1000
+            readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
             capabilities:
               drop:
                 - ALL
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "128Mi"
+            limits:
+              cpu: "100m"
+              memory: "256Mi"
           command: ['sh', '-c', 'cp -r /usr/share/opensearch-dashboards/config/* /mnt/config/']
           volumeMounts:
             - name: config
