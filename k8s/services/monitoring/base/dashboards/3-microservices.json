@@ -333,7 +333,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(ws_connections_active{service=\"ws-service\"})",
+          "expr": "sum(ws_connections_active{app=\"ws-service\"})",
           "legendFormat": "Active Connections",
           "refId": "A"
         }
@@ -356,7 +356,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(rate(http_requests_total{service=\"ws-service\"}[2m])) by (method, route)",
+          "expr": "sum(rate(http_requests_total{app=\"ws-service\"}[2m])) by (method, route)",
           "legendFormat": "{{method}} {{route}}",
           "refId": "A"
         }
@@ -379,8 +379,8 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "nodejs_eventloop_lag_seconds{service=\"ws-service\"} * 1000",
-          "legendFormat": "{{job}}",
+          "expr": "nodejs_eventloop_lag_seconds{app=\"ws-service\"} * 1000",
+          "legendFormat": "{{app}}",
           "refId": "A"
         }
       ]
@@ -396,7 +396,7 @@
       "id": 31,
       "type": "timeseries",
       "title": "Heap Used (MB)",
-      "gridPos": { "x": 0, "y": 25, "w": 12, "h": 7 },
+      "gridPos": { "x": 0, "y": 33, "w": 12, "h": 7 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "options": {
         "tooltip": { "mode": "multi" },
@@ -409,8 +409,8 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "nodejs_heap_size_used_bytes{job!=\"api-gateway\"} / 1024 / 1024",
-          "legendFormat": "{{job}}",
+          "expr": "nodejs_heap_size_used_bytes{job=\"kubernetes-pods\"} / 1024 / 1024",
+          "legendFormat": "{{app}}",
           "refId": "A"
         }
       ]
@@ -419,7 +419,7 @@
       "id": 32,
       "type": "timeseries",
       "title": "Event Loop Lag (ms)",
-      "gridPos": { "x": 12, "y": 25, "w": 12, "h": 7 },
+      "gridPos": { "x": 12, "y": 33, "w": 12, "h": 7 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "options": {
         "tooltip": { "mode": "multi" },
@@ -432,8 +432,8 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "nodejs_eventloop_lag_seconds{job!=\"api-gateway\"} * 1000",
-          "legendFormat": "{{job}}",
+          "expr": "nodejs_eventloop_lag_seconds{job=\"kubernetes-pods\"} * 1000",
+          "legendFormat": "{{app}}",
           "refId": "A"
         }
       ]

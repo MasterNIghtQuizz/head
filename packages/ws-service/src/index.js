@@ -82,9 +82,10 @@ wss.on(
     ws,
     req,
   ) /** @param {import("ws").WebSocket} ws  @param {import("http").IncomingMessage} req */ => {
-    wsConnectionsActive.inc();
+    wsConnectionsActive.inc({ service: "ws-service" });
     const connectedUser = userConnect(ws, req);
     if (!connectedUser) {
+      wsConnectionsActive.dec({ service: "ws-service" });
       return;
     }
 
@@ -125,6 +126,7 @@ wss.on(
               payload: {
                 reason: errorType.UNSUPPORTED_MESSAGE_TYPE,
                 value: parsedType,
+                service: "ws-service",
               },
             }),
           );
@@ -134,7 +136,7 @@ wss.on(
     ws.on(
       "close",
       (code, reason) /** @param {number} code @param {Buffer} reason */ => {
-        wsConnectionsActive.dec();
+        wsConnectionsActive.dec({ service: "ws-service" });
         userDisconnect(ws, connectedUser.userId, connectedUser.userName);
         logger.info(
           `Client ${connectedUser.userName} ${connectedUser.userId} disconnected with code ${code} and reason: ${reason.toString()}`,
