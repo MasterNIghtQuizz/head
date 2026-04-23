@@ -8,14 +8,6 @@
     "pretty": true
   },
   "auth": {
-    "access": {
-      "privateKeyPath": "../../keys/access-private.pem",
-      "publicKeyPath": "../../keys/access-public.pem"
-    },
-    "refresh": {
-      "privateKeyPath": "../../keys/refresh-private.pem",
-      "publicKeyPath": "../../keys/refresh-public.pem"
-    },
     "internal": {
       "privateKeyPath": "../../keys/internal-private.pem",
       "publicKeyPath": "../../keys/internal-public.pem"

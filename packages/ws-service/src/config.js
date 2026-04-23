@@ -16,14 +16,6 @@ const schema = Joi.object({
     pretty: Joi.boolean().required(),
   }).required(),
   auth: Joi.object({
-    access: Joi.object({
-      privateKeyPath: Joi.string().required(),
-      publicKeyPath: Joi.string().required(),
-    }).required(),
-    refresh: Joi.object({
-      privateKeyPath: Joi.string().required(),
-      publicKeyPath: Joi.string().required(),
-    }).required(),
     internal: Joi.object({
       privateKeyPath: Joi.string().required(),
       publicKeyPath: Joi.string().required(),
@@ -79,14 +71,6 @@ export const config = {
     Config.get("kafka")
   ),
   auth: {
-    access: {
-      privateKeyPath: resolveKeyPath(rawAuth.access.privateKeyPath),
-      publicKeyPath: resolveKeyPath(rawAuth.access.publicKeyPath),
-    },
-    refresh: {
-      privateKeyPath: resolveKeyPath(rawAuth.refresh.privateKeyPath),
-      publicKeyPath: resolveKeyPath(rawAuth.refresh.publicKeyPath),
-    },
     internal: {
       privateKeyPath: resolveKeyPath(rawAuth.internal.privateKeyPath),
       publicKeyPath: resolveKeyPath(rawAuth.internal.publicKeyPath),
