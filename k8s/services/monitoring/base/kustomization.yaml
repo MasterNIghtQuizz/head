@@ -7,3 +7,4 @@ resources:
   - otel-collector.yaml
   - opensearch.yaml
   - opensearch-dashboards.yaml
+  - rbac.yaml
