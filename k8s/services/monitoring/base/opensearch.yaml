@@ -11,6 +11,9 @@ spec:
     metadata:
       labels:
         app: opensearch
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9200"
     spec:
       securityContext:
         runAsNonRoot: true
@@ -33,7 +36,7 @@ spec:
             limits:
               cpu: "50m"
               memory: "256Mi"
-          command: ['sh', '-c', 'cp -r /usr/share/opensearch/config/* /mnt/config/']
+          command: ['sh', '-c', 'cp -r /usr/share/opensearch/config/* /mnt/config/ && rm -rf /mnt/config/opensearch-security && echo "plugins.security.disabled: true" >> /mnt/config/opensearch.yml']
           volumeMounts:
             - name: config
               mountPath: /mnt/config
@@ -62,8 +65,12 @@ spec:
               value: "single-node"
             - name: OPENSEARCH_JAVA_OPTS
               value: "-Xms1g -Xmx1g"
+            - name: plugins.security.disabled
+              value: "true"
             - name: OPENSEARCH_INITIAL_ADMIN_PASSWORD
               value: "MasterQuizz123!"
+            - name: DISABLE_INSTALL_DEMO_CONFIG
+              value: "true"
           ports:
             - containerPort: 9200
             - containerPort: 9300

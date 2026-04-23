@@ -24,6 +24,8 @@ spec:
     metadata:
       labels:
         app: valkey
+      annotations:
+        prometheus.io/scrape: "false"
     spec:
       securityContext:
         runAsUser: 999

@@ -28,7 +28,7 @@
       "id": 2,
       "type": "stat",
       "title": "api-gateway",
-      "gridPos": { "x": 0, "y": 1, "w": 6, "h": 4 },
+      "gridPos": { "x": 0, "y": 1, "w": 4, "h": 4 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
@@ -63,7 +63,7 @@
       "id": 3,
       "type": "stat",
       "title": "ms-user",
-      "gridPos": { "x": 6, "y": 1, "w": 6, "h": 4 },
+      "gridPos": { "x": 4, "y": 1, "w": 4, "h": 4 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
@@ -98,7 +98,7 @@
       "id": 4,
       "type": "stat",
       "title": "ms-quizz-management",
-      "gridPos": { "x": 12, "y": 1, "w": 6, "h": 4 },
+      "gridPos": { "x": 8, "y": 1, "w": 4, "h": 4 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
@@ -133,7 +133,7 @@
       "id": 5,
       "type": "stat",
       "title": "ms-session",
-      "gridPos": { "x": 18, "y": 1, "w": 6, "h": 4 },
+      "gridPos": { "x": 12, "y": 1, "w": 4, "h": 4 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
@@ -159,6 +159,41 @@
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "expr": "max(service_up{service=\"ms-session\"}) by (service)",
           "legendFormat": "ms-session",
+          "refId": "A",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "ms-response",
+      "gridPos": { "x": 16, "y": 1, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } } }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] },
+          "color": { "mode": "thresholds" },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "max(service_up{service=\"ms-response\"}) by (service)",
+          "legendFormat": "ms-response",
           "refId": "A",
           "instant": true
         }

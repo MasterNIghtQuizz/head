@@ -1,9 +1,19 @@
+import { initTracing } from "common-monitoring";
+import { Config } from "common-config";
+
+initTracing({
+  serviceName: "ms-response",
+  enabled: config.otel?.enabled ?? false,
+  exporterUrl: config.otel?.exporterUrl ?? "",
+});
+
 import Fastify from "fastify";
 import { fileURLToPath } from "node:url";
 
 import logger from "./logger.js";
 import { config } from "./config.js";
 import { initDatabase, db } from "./database.js";
+import { createMetricsPlugin } from "common-metrics";
 
 import { TypeOrmResponseRepository } from "./modules/response/infra/persistence/typeorm-response.repository.js";
 import { ResponseService } from "./modules/response/services/response.service.js";
@@ -21,6 +31,28 @@ export async function createServer() {
   const fastify = Fastify({
     loggerInstance: logger,
     disableRequestLogging: true,
+  });
+
+  const metricsEnabled = /** @type {{ enabled: boolean }} */ (
+    Config.get("metrics")
+  ).enabled;
+  await fastify.register(
+    createMetricsPlugin({
+      serviceName: "ms-response",
+      enabled: metricsEnabled,
+    }),
+  );
+
+  fastify.addHook("onResponse", async (request, reply) => {
+    logger.info(
+      {
+        method: request.method,
+        url: request.url,
+        statusCode: reply.statusCode,
+        responseTime: Math.round(reply.elapsedTime),
+      },
+      "request completed",
+    );
   });
 
   await initDatabase();

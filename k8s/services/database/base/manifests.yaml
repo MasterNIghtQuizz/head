@@ -41,6 +41,8 @@ spec:
     metadata:
       labels:
         app: postgres
+      annotations:
+        prometheus.io/scrape: "false"
     spec:
       securityContext:
         fsGroup: 999

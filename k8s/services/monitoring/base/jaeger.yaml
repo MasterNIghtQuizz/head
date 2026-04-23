@@ -13,6 +13,9 @@ spec:
     metadata:
       labels:
         app: jaeger
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "16686"
     spec:
       containers:
         - name: jaeger
@@ -21,15 +24,13 @@ spec:
             - name: SPAN_STORAGE_TYPE
               value: "elasticsearch"
             - name: ES_SERVER_URLS
-              value: "https://opensearch-service:9200"
+              value: "http://opensearch-service:9200"
             - name: ES_USERNAME
               value: "admin"
             - name: ES_PASSWORD
               value: "MasterQuizz123!"
             - name: ES_TLS_ENABLED
-              value: "true"
-            - name: ES_TLS_SKIP_HOST_VERIFY
-              value: "true"
+              value: "false"
           ports:
             - containerPort: 16686
               name: query

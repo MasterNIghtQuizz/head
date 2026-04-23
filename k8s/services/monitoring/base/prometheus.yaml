@@ -23,6 +23,8 @@ data:
             regex: ([^:]+)(?::\d+)?;(\d+)
             replacement: $1:$2
             target_label: __address__
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            target_label: app
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -37,6 +39,9 @@ spec:
     metadata:
       labels:
         app: prometheus
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
     spec:
       serviceAccountName: prometheus
       securityContext:

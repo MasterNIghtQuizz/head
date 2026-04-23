@@ -32,5 +32,12 @@ export declare const config: {
     enabled: boolean;
     node: string;
     index: string;
+    auth?: {
+      username?: string;
+      password?: string;
+    };
+    ssl?: {
+      rejectUnauthorized?: boolean;
+    };
   };
 };

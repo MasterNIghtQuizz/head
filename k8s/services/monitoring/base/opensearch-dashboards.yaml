@@ -55,7 +55,7 @@ spec:
               memory: "512Mi"
           env:
             - name: OPENSEARCH_HOSTS
-              value: "https://opensearch-service:9200"
+              value: "http://opensearch-service:9200"
             - name: OPENSEARCH_SSL_VERIFICATIONMODE
               value: "none"
             - name: OPENSEARCH_USERNAME

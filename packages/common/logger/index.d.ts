@@ -7,6 +7,9 @@ export interface OpenSearchConfig {
     username?: string;
     password?: string;
   };
+  ssl?: {
+    rejectUnauthorized?: boolean;
+  };
 }
 
 export interface LoggerOptions {

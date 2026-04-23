@@ -24,6 +24,8 @@ spec:
     metadata:
       labels:
         app: kafka
+      annotations:
+        prometheus.io/scrape: "false"
     spec:
       securityContext:
         runAsUser: 1000
