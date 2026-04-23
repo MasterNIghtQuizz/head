@@ -49,9 +49,26 @@ spec:
       labels:
         app: otel-collector
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        fsGroup: 10001
       containers:
         - name: otel-collector
           image: otel/opentelemetry-collector-contrib:0.98.0
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "128Mi"
+            limits:
+              cpu: "100m"
+              memory: "256Mi"
           args:
             - "--config=/etc/otel-collector-config.yaml"
           ports:
@@ -61,10 +78,14 @@ spec:
             - name: otel-collector-config
               mountPath: /etc/otel-collector-config.yaml
               subPath: otel-collector-config.yaml
+            - name: tmp
+              mountPath: /tmp
       volumes:
         - name: otel-collector-config
           configMap:
             name: otel-collector-config
+        - name: tmp
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
