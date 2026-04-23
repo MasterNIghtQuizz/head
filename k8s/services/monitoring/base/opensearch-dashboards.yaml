@@ -56,12 +56,10 @@ spec:
           env:
             - name: OPENSEARCH_HOSTS
               value: "http://opensearch-service:9200"
-            - name: DISABLE_SECURITY_DASHBOARDS_PLUGIN
-              value: "true"
-            - name: OPENSEARCH_DASHBOARDS_OSD_SECURITY_ENABLED
-              value: "false"
-            - name: OPENSEARCH_SECURITY_ENABLED
-              value: "false"
+            - name: OPENSEARCH_USERNAME
+              value: "admin"
+            - name: OPENSEARCH_PASSWORD
+              value: "MasterQuizz123!"
           ports:
             - containerPort: 5601
           volumeMounts:

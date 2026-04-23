@@ -62,10 +62,8 @@ spec:
               value: "single-node"
             - name: OPENSEARCH_JAVA_OPTS
               value: "-Xms1g -Xmx1g"
-            - name: DISABLE_INSTALL_DEMO_CONFIG
-              value: "true"
-            - name: DISABLE_SECURITY_PLUGIN
-              value: "true"
+            - name: OPENSEARCH_INITIAL_ADMIN_PASSWORD
+              value: "MasterQuizz123!"
           ports:
             - containerPort: 9200
             - containerPort: 9300
