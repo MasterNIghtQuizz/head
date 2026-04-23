@@ -3,7 +3,6 @@ kind: Kustomization
 
 resources:
   - global-config.yaml
-  - network-policies.yaml
 
 commonLabels:
   project: masterquizz

@@ -4,7 +4,6 @@ metadata:
   name: api-gateway
   labels:
     app: api-gateway
-    allow-traefik: "true"
 spec:
   replicas: 1
   selector:
@@ -127,29 +126,10 @@ kind: Service
 metadata:
   name: api-gateway
 spec:
-  type: ClusterIP
+  type: NodePort
   ports:
     - port: 80
       targetPort: 3000
+      nodePort: 30001
   selector:
     app: api-gateway
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: api-gateway-ingress
-  annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: web
-    traefik.ingress.kubernetes.io/router.middlewares: masterquizz-prod-global-ratelimit@kubernetescrd,masterquizz-prod-security-headers@kubernetescrd
-spec:
-  rules:
-    - host: api-quizz.cyrus-ag.com
-      http:
-        paths:
-          - path: /api
-            pathType: Prefix
-            backend:
-              service:
-                name: api-gateway
-                port:
-                  number: 80
