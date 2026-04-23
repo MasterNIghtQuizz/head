@@ -80,10 +80,8 @@ export function handleJoinSessionMessage(ws, payload) {
     return;
   }
 
-  if (
-    typeof payload.sessionId !== "string" ||
-    payload.sessionId.trim().length === 0
-  ) {
+  const sessionId = payload.sessionId?.trim();
+  if (!sessionId) {
     ws.send(
       JSON.stringify({
         type: messageType.ERROR,
@@ -93,7 +91,7 @@ export function handleJoinSessionMessage(ws, payload) {
     return;
   }
 
-  const updatedUser = userJoinSession(ws, payload.sessionId);
+  const updatedUser = userJoinSession(ws, sessionId);
   if (!updatedUser || "error" in updatedUser) {
     ws.send(
       JSON.stringify({
@@ -130,10 +128,8 @@ export function handleCreateSessionMessage(ws, payload) {
     return;
   }
 
-  if (
-    typeof payload.sessionId !== "string" ||
-    payload.sessionId.trim().length === 0
-  ) {
+  const sessionId = payload.sessionId?.trim();
+  if (!sessionId) {
     ws.send(
       JSON.stringify({
         type: messageType.ERROR,
@@ -154,7 +150,7 @@ export function handleCreateSessionMessage(ws, payload) {
     return;
   }
 
-  const updatedUser = userCreateSession(ws, payload.sessionId, maxUsers);
+  const updatedUser = userCreateSession(ws, sessionId, maxUsers);
   if (!updatedUser || "error" in updatedUser) {
     ws.send(
       JSON.stringify({
@@ -191,10 +187,8 @@ export function handleStartSessionMessage(ws, payload) {
     return;
   }
 
-  if (
-    typeof payload.sessionId !== "string" ||
-    payload.sessionId.trim().length === 0
-  ) {
+  const sessionId = payload.sessionId?.trim();
+  if (!sessionId) {
     ws.send(
       JSON.stringify({
         type: messageType.ERROR,
@@ -204,7 +198,7 @@ export function handleStartSessionMessage(ws, payload) {
     return;
   }
 
-  const startedSession = userStartSession(ws, payload.sessionId);
+  const startedSession = userStartSession(ws, sessionId);
   if (!startedSession || "error" in startedSession) {
     ws.send(
       JSON.stringify({

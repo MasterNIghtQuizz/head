@@ -6,6 +6,9 @@ vi.mock("../../lib/connection-store.js", () => ({
   getSessionSockets: vi.fn(),
   getSocketContext: vi.fn(),
   setSocketSession: vi.fn(),
+  addParticipant: vi.fn(),
+  removeParticipant: vi.fn(),
+  getParticipants: vi.fn(),
 }));
 
 vi.mock("../../lib/messaging.js", () => ({
@@ -33,6 +36,9 @@ import {
   getSessionSockets,
   getSocketContext,
   setSocketSession,
+  getParticipants,
+  addParticipant,
+  removeParticipant,
 } from "../../lib/connection-store.js";
 import { broadcastToSession } from "../../lib/messaging.js";
 import {
@@ -72,13 +78,16 @@ describe("session-membership.handler", () => {
       expect(result).toBeNull();
     });
 
-    it("returns current context when already in target session", () => {
+    it("returns current context when already in target session AND already in participants list", () => {
       const ws = asWebSocket({});
       vi.mocked(getSocketContext).mockReturnValue({
         userId: "u1",
         userName: "alice",
         sessionId: "session-1",
+        role: "user",
       });
+      vi.mocked(getSessionCapacity).mockReturnValue(10);
+      vi.mocked(getParticipants).mockReturnValue([{ participant_id: "u1" }]);
 
       const result = userJoinSession(ws, "session-1");
 
@@ -87,7 +96,34 @@ describe("session-membership.handler", () => {
         userName: "alice",
         sessionId: "session-1",
       });
-      expect(getSessionCapacity).not.toHaveBeenCalled();
+      // Should NOT call addParticipant because they are already there
+      expect(addParticipant).not.toHaveBeenCalled();
+    });
+
+    it("adds participant but returns current context when already in target session but NOT in participants list", () => {
+      const ws = asWebSocket({});
+      vi.mocked(getSocketContext).mockReturnValue({
+        userId: "u1",
+        userName: "alice",
+        sessionId: "session-1",
+        role: "user",
+      });
+      vi.mocked(getSessionCapacity).mockReturnValue(10);
+      vi.mocked(getParticipants).mockReturnValue([]); // Missing from participants list
+
+      const result = userJoinSession(ws, "session-1");
+
+      expect(result).toEqual({
+        userId: "u1",
+        userName: "alice",
+        sessionId: "session-1",
+      });
+      // Should call addParticipant to sync state
+      expect(addParticipant).toHaveBeenCalledWith("session-1", {
+        participant_id: "u1",
+        nickname: "alice",
+        role: "user",
+      });
     });
 
     it("returns SESSION_NOT_FOUND when session capacity is missing", () => {

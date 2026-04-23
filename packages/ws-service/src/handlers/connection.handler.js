@@ -4,6 +4,7 @@ import {
   remove,
   setSocketContext,
   getSocketContext,
+  removeParticipant,
 } from "../lib/connection-store.js";
 import { broadcastToSession } from "../lib/messaging.js";
 import { UserRole } from "common-auth";
@@ -83,11 +84,14 @@ function userDisconnect(ws, userId, userName) {
     return;
   }
 
+  removeParticipant(context.sessionId, userId);
+  logger.info({ sessionId: context.sessionId, userId }, "User removed from session due to disconnect");
+
   broadcastToSession(
     context.sessionId,
     {
       type: messageType.USER_OFFLINE,
-      payload: { userId: userId, userName: userName },
+      payload: { userId: userId, userName: userName, role: context.role },
     },
     userId,
   );

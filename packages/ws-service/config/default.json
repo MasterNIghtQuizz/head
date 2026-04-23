@@ -4,7 +4,7 @@
     "env": "development"
   },
   "logger": {
-    "level": "info",
+    "level": "debug",
     "pretty": true
   },
   "auth": {

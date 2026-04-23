@@ -3,6 +3,11 @@ import { messageType } from "common-websocket";
 import {
   getSessionSockets,
   getSocketContext,
+  get as getSocketByUserId,
+  addParticipant,
+  removeParticipant,
+  initSessionParticipants,
+  deleteParticipants,
 } from "../../../lib/connection-store.js";
 import { broadcastToSession } from "../../../lib/messaging.js";
 import {
@@ -10,6 +15,10 @@ import {
   setSessionCapacity,
 } from "../../../lib/session-capacity-store.js";
 import logger from "../../../logger.js";
+import {
+  userJoinSession,
+  userLeaveSession,
+} from "../../../handlers/session-membership.handler.js";
 
 /**
  * @typedef {import("common-contracts").SessionCreatedEventPayload | import("common-contracts").SessionStartedEventPayload | import("common-contracts").SessionNextQuestionEventPayload | import("common-contracts").SessionEndedEventPayload | import("common-contracts").SessionDeletedEventPayload | import("common-contracts").ParticipantJoinedEventPayload | import("common-contracts").ParticipantLeftEventPayload | import("common-contracts").QuizResponseSubmittedEventPayload} SessionKafkaPayload
@@ -24,13 +33,12 @@ export class SessionEventsConsumer {
   }
 
   register() {
-    logger.info(
-      { topic: Topics.QUIZZ_EVENTS },
-      "Registering SessionEventsConsumer for topic",
-    );
-    this.kafkaConsumer.addHandler(Topics.QUIZZ_EVENTS, async (message) => {
-      await this.handleEvent(message);
-    });
+    const topics = [Topics.USER_EVENTS, Topics.QUIZZ_EVENTS];
+    for (const topic of topics) {
+      this.kafkaConsumer.addHandler(topic, async (message) => {
+        await this.handleEvent(message);
+      });
+    }
   }
 
   /**
@@ -116,6 +124,13 @@ export class SessionEventsConsumer {
     }
 
     setSessionCapacity(sessionId, 10, false, participantId);
+    initSessionParticipants(sessionId);
+    addParticipant(sessionId, {
+      participant_id: participantId,
+      nickname,
+      role: "owner",
+    });
+
     logger.info(
       { sessionId, ownerId: participantId, nickname },
       "DEBUG [ws-service] Session state initialized successfully from SESSION_CREATED event",
@@ -131,6 +146,7 @@ export class SessionEventsConsumer {
     const sessionId = payload?.session_id;
     const participantId = payload?.participant_id;
     const nickname = payload?.nickname;
+    const role = payload?.role;
 
     logger.info(
       { sessionId, participantId, nickname, eventType },
@@ -145,22 +161,67 @@ export class SessionEventsConsumer {
       return;
     }
 
-    logger.info(
-      { sessionId, participantId, nickname },
-      "DEBUG [ws-service] Broadcasting participant event to session sockets",
-    );
-    broadcastToSession(
-      sessionId,
-      {
-        type: eventType,
-        payload: {
-          userId: participantId,
-          userName: nickname,
-          role: payload.role,
+    if (eventType === messageType.USER_ONLINE) {
+      addParticipant(sessionId, {
+        participant_id: participantId,
+        nickname,
+        role,
+      });
+    } else {
+      removeParticipant(sessionId, participantId);
+    }
+
+    // If the participant has an active websocket connection on this service,
+    // prefer to use the existing socket handlers so the local socket context
+    // state stays consistent. Otherwise broadcast the event to session sockets
+    // so connected clients are informed about the change.
+    const participantSocket = getSocketByUserId(participantId);
+    let handledLocally = false;
+
+    try {
+      if (eventType === messageType.USER_ONLINE && participantSocket) {
+        // Participant joined — use server-side join handler to update context
+        // and broadcast via the normal path.
+        userJoinSession(participantSocket, sessionId);
+        handledLocally = true;
+      }
+
+      if (eventType === messageType.USER_OFFLINE && participantSocket) {
+        // Participant left — use server-side leave handler to update context
+        // and broadcast via the normal path, but only if they are actually
+        // locally in the session they are leaving.
+        const context = getSocketContext(participantSocket);
+        if (context && context.sessionId === sessionId) {
+          userLeaveSession(participantSocket);
+          handledLocally = true;
+        }
+      }
+    } catch (error) {
+      logger.warn(
+        { error, sessionId, participantId },
+        "Failed to invoke local session membership handler",
+      );
+      handledLocally = false;
+    }
+
+    if (!handledLocally) {
+      logger.info(
+        { sessionId, participantId, nickname },
+        "DEBUG [ws-service] Broadcasting participant event to session sockets",
+      );
+      broadcastToSession(
+        sessionId,
+        {
+          type: eventType,
+          payload: {
+            userId: participantId,
+            userName: nickname,
+            role: payload.role,
+          },
         },
-      },
-      null,
-    );
+        null,
+      );
+    }
   }
 
   /**
@@ -201,6 +262,7 @@ export class SessionEventsConsumer {
       }
     }
 
+    deleteParticipants(sessionId);
     deleteSessionCapacity(sessionId);
     logger.info(
       { sessionId, reason },

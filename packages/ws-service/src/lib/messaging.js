@@ -51,10 +51,16 @@ function sendMessageToUser(senderId, message, receiverId) {
  */
 function broadcastToSession(sessionId, message, excludeUserId) {
   const sockets = getSessionSockets(sessionId);
+  console.log(`there are ${sockets.size} sockets in session ${sessionId}`);
 
   for (const socket of sockets) {
     const socketContext = getSocketContext(socket);
     const socketUserId = socketContext?.userId;
+    console.log(
+      "Broadcasting message to session",
+      sessionId,
+      socketUserId
+    );
     if (excludeUserId && socketUserId === excludeUserId) {
       continue;
     }
