@@ -24,6 +24,7 @@ spec:
                 - service: database
                 - service: cache
                 - service: messaging
+                - service: monitoring
   template:
     metadata:
       name: "{{env}}-{{service}}"
