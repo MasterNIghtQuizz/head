@@ -10,6 +10,7 @@ import {
   QUEUE_SYNCHRONIZING,
   UNAUTHORIZED_HOST,
   WRONG_BUZZER_CANDIDATE,
+  NO_BUZZER_FOUND,
 } from "../errors/session.errors.js";
 import {
   QuestionType,
@@ -357,7 +358,12 @@ export class ParticipantService extends BaseService {
       throw SESSION_NOT_FOUND(sessionId);
     }
 
-    if (session.hostId !== hostId) {
+    const hostParticipant = await this.participantRepository.find(hostId);
+    if (
+      !hostParticipant ||
+      hostParticipant.role !== ParticipantRoles.HOST ||
+      hostParticipant.sessionId !== sessionId
+    ) {
       throw UNAUTHORIZED_HOST();
     }
 
@@ -365,7 +371,11 @@ export class ParticipantService extends BaseService {
     try {
       currentBuzzer = await this.buzzerRepository.peek(sessionId);
 
-      if (currentBuzzer && currentBuzzer.participantId !== participantId) {
+      if (!currentBuzzer) {
+        throw NO_BUZZER_FOUND(sessionId);
+      }
+
+      if (currentBuzzer.participantId !== participantId) {
         throw WRONG_BUZZER_CANDIDATE(
           currentBuzzer.participantId,
           participantId,
@@ -471,7 +481,7 @@ export class ParticipantService extends BaseService {
       participantId,
       username: participant.nickname,
       questionId: session.currentQuestionId ?? "",
-      pressedAt: new Date().toISOString(),
+      pressedAt: String(Date.now()),
     };
 
     if (this.kafkaProducer) {
@@ -483,6 +493,19 @@ export class ParticipantService extends BaseService {
         { sessionId: session.id, participantId },
         "Buzzer event published to Kafka FEED_BUZZER_QUEUE",
       );
+    } else {
+      try {
+        await this.buzzerRepository.push(session.id, payload);
+        logger.info(
+          { sessionId: session.id, participantId },
+          "Buzzer event pushed directly to buzzer repository",
+        );
+      } catch (err) {
+        logger.error(
+          { err, sessionId: session.id, participantId },
+          "Failed to push buzzer event directly",
+        );
+      }
     }
   }
 }

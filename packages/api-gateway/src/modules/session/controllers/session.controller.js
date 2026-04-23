@@ -222,26 +222,6 @@ ApplyMethodDecorators(SessionController, "getSession", [
             nullable: true,
             description: "ID of the currently active question, if any.",
           },
-          current_question: {
-            type: "object",
-            nullable: true,
-            properties: {
-              id: { type: "string" },
-              label: { type: "string" },
-              type: { type: "string" },
-              timer_seconds: { type: "integer" },
-              choices: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    id: { type: "string" },
-                    text: { type: "string" },
-                  },
-                },
-              },
-            },
-          },
           quizz_id: {
             type: "string",
             description: "ID of the quiz being played.",
@@ -445,10 +425,10 @@ ApplyMethodDecorators(SessionController, "getCurrentQuestion", [
         type: "object",
         nullable: true,
         properties: {
-          id: { type: "string" },
+          question_id: { type: "string" },
           label: { type: "string" },
           type: { type: "string" },
-          timer_seconds: { type: "integer" },
+          timer_seconds: { type: "number" },
           choices: {
             type: "array",
             items: {
@@ -457,6 +437,15 @@ ApplyMethodDecorators(SessionController, "getCurrentQuestion", [
                 id: { type: "string" },
                 text: { type: "string" },
               },
+            },
+          },
+          current_buzzer: {
+            type: "object",
+            nullable: true,
+            properties: {
+              id: { type: "string" },
+              username: { type: "string" },
+              pressed_at: { type: "string" },
             },
           },
         },

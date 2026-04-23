@@ -3,6 +3,7 @@ import {
   ConflictError,
   BadRequestError,
   RateLimitError,
+  UnauthorizedError,
 } from "common-errors";
 
 /** @param {string} [id] */
@@ -55,7 +56,7 @@ export const QUEUE_SYNCHRONIZING = () =>
   );
 
 export const UNAUTHORIZED_HOST = () =>
-  new ConflictError("Only the session host can perform this action");
+  new UnauthorizedError("Only the session host can perform this action");
 
 /** @param {string} expectedId
  * @param {string} actualId */

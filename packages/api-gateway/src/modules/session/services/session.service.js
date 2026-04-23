@@ -5,6 +5,7 @@ import { config } from "../../../config.js";
 /** @typedef {import("common-contracts").CreateSessionResponse} CreateSessionResponse */
 /** @typedef {import("common-contracts").CreateSessionRequest} CreateSessionRequest */
 /** @typedef {import("common-contracts").GetSessionResponse} GetSessionResponse */
+/** @typedef {import("common-contracts").GetCurrentQuestionResponse} GetCurrentQuestionResponse */
 /** @typedef {import("common-contracts").JoinSessionRequest} JoinSessionRequest */
 /** @typedef {import("common-contracts").JoinSessionResponse} JoinSessionResponse */
 /** @typedef {import("common-contracts").LeaveSessionRequest} LeaveSessionRequest */
@@ -117,7 +118,7 @@ export class SessionService extends BaseService {
 
   /**
    * @param {import("http").IncomingHttpHeaders} headers
-   * @returns {Promise<any>}
+   * @returns {Promise<GetCurrentQuestionResponse>}
    */
   async getCurrentQuestion(headers) {
     return call({
