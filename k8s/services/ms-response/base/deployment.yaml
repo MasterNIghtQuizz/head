@@ -24,7 +24,7 @@ spec:
         fsGroup: 1000
       initContainers:
         - name: migrate-ms-response
-          image: victorcra/masterquizz-ms-response:bc87568505e8d38017f7119cf06ddd97bab1f68a
+          image: victorcra/masterquizz-ms-response:88cb7330c05551aa225005dbd5707e680b0e1d6a
           securityContext:
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
@@ -71,7 +71,7 @@ spec:
               mountPath: /tmp
       containers:
         - name: ms-response
-          image: victorcra/masterquizz-ms-response:bc87568505e8d38017f7119cf06ddd97bab1f68a
+          image: victorcra/masterquizz-ms-response:88cb7330c05551aa225005dbd5707e680b0e1d6a
           securityContext:
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
