@@ -42,8 +42,12 @@ spec:
           env:
             - name: COREPACK_HOME
               value: "/tmp/corepack"
+            - name: USER_SERVICE_URL
+              value: "http://ms-user:3000"
+            - name: QUIZZ_SERVICE_URL
+              value: "http://ms-quizz:3000"
             - name: NEXT_PUBLIC_API_URL
-              value: "https://api-quizz.cyrus-ag.com/api"
+              value: "http://localhost:30001"
           volumeMounts:
             - name: tmp
               mountPath: /tmp

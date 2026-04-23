@@ -127,10 +127,11 @@ kind: Service
 metadata:
   name: api-gateway
 spec:
-  type: ClusterIP
+  type: NodePort
   ports:
     - port: 80
       targetPort: 3000
+      nodePort: 30001
   selector:
     app: api-gateway
 ---

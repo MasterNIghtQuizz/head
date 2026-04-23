@@ -39,8 +39,12 @@ spec:
     - Ingress
   ingress:
     - from:
-        - namespaceSelector: {} # Allow from any namespace
-        - podSelector: {}       # Allow from any pod
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
