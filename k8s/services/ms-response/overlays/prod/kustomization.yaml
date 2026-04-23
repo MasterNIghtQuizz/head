@@ -6,4 +6,4 @@ resources:
 images:
 - name: victorcra/masterquizz-ms-response
   newName: victorcra/masterquizz-ms-response
-  newTag: ba00378382ec5fce05c04a7282e9ae5587935a64
+  newTag: acfa7e9baac271cb885ae10348d92ad17aa5986b
