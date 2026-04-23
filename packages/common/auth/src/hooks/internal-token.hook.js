@@ -10,7 +10,13 @@ export function hookInternalToken(options) {
   return function internalTokenHook(request, _reply, done) {
     const isWebSocketRequest =
       request.url?.startsWith("/ws") && request.headers.upgrade === "websocket";
-    if (request.routeOptions?.config?.isPublic || isWebSocketRequest) {
+    if (
+      request.routeOptions?.config?.isPublic ||
+      isWebSocketRequest ||
+      request.url.endsWith("/metrics") ||
+      request.url.endsWith("/metric") ||
+      request.url.endsWith("/health")
+    ) {
       done();
       return;
     }

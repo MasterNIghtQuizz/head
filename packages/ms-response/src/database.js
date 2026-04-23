@@ -5,7 +5,7 @@ import {
   ProcessedEventEntity,
 } from "common-database";
 import { config } from "./config.js";
-import { CreateResponseTable } from "./migrations/1710000000000-CreateResponseTable.js";
+import { CreateResponseTable1710000000000 as CreateResponseTable } from "./migrations/1710000000000-CreateResponseTable.js";
 import { TypeOrmResponseModel as ResponseEntity } from "./modules/response/infra/models/response.model.js";
 
 const strategy = new TypeORMStrategy();

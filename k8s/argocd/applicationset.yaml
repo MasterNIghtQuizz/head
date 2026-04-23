@@ -5,26 +5,37 @@ metadata:
   namespace: argocd
 spec:
   generators:
-    - list:
-        elements:
-          - service: api-gateway
-          - service: ms-user
-          - service: ms-quizz-management
-          - service: database
-          - service: cache
-          - service: messaging
+    - matrix:
+        generators:
+          - list:
+              elements:
+                - env: prod
+                  namespace: masterquizz-prod
+          - list:
+              elements:
+                - service: base
+                - service: api-gateway
+                - service: ms-user
+                - service: ms-quizz-management
+                - service: ms-session
+                - service: ms-response
+                - service: front-office
+                - service: database
+                - service: cache
+                - service: messaging
+                - service: monitoring
   template:
     metadata:
-      name: "{{service}}"
+      name: "{{env}}-{{service}}"
     spec:
       project: default
       source:
         repoURL: "https://github.com/MasterNIghtQuizz/head.git"
         targetRevision: HEAD
-        path: "k8s/services/{{service}}"
+        path: "k8s/services/{{service}}/overlays/{{env}}"
       destination:
         server: https://kubernetes.default.svc
-        namespace: masterquizz
+        namespace: "{{namespace}}"
       syncPolicy:
         automated:
           prune: true

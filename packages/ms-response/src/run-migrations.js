@@ -9,7 +9,16 @@ const run = async () => {
     logger.info("Migrations completed successfully");
     process.exit(0);
   } catch (error) {
-    logger.error({ error }, "Migrations failed");
+    logger.error(
+      {
+        err: error,
+        // @ts-ignore
+        message: error.message,
+        // @ts-ignore
+        stack: error.stack,
+      },
+      "Migrations failed",
+    );
     process.exit(1);
   }
 };

@@ -48,12 +48,25 @@ jobs:
               - 'Dockerfile'
               - 'package.json'
               - 'yarn.lock'
+            ms-session:
+              - 'packages/ms-session/**'
+              - 'packages/common/**'
+              - 'Dockerfile'
+              - 'package.json'
+              - 'yarn.lock'
+            ms-response:
+              - 'packages/ms-response/**'
+              - 'packages/common/**'
+              - 'Dockerfile'
+              - 'package.json'
+              - 'yarn.lock'
+
 
       - name: Set services list
         id: set-services
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.deploy_all }}" == "true" ]]; then
-            echo 'services=["api-gateway", "ms-user", "ms-quizz-management"]' >> $GITHUB_OUTPUT
+            echo 'services=["api-gateway", "ms-user", "ms-quizz-management", "ms-session", "ms-response"]' >> $GITHUB_OUTPUT
           else
             echo 'services=${{ steps.filter.outputs.changes }}' >> $GITHUB_OUTPUT
           fi
@@ -106,12 +119,14 @@ jobs:
           REGISTRY='${{ secrets.DOCKERHUB_USERNAME }}'
 
           echo "$SERVICES" | jq -r '.[]' | while read service; do
-            FILE="k8s/services/$service/manifests.yaml"
-            if [ -f "$FILE" ]; then
-              sed -i "s|image: .*/masterquizz-$service:.*|image: $REGISTRY/masterquizz-$service:$SHA|g" "$FILE"
-            else
-              echo "Warning: $FILE not found"
-            fi
+            echo "Updating image for service $service to $SHA"
+            for env in dev prod; do
+              if [ -d "k8s/services/$service/overlays/$env" ]; then
+                cd "k8s/services/$service/overlays/$env"
+                kustomize edit set image "victorcra/masterquizz-$service=$REGISTRY/masterquizz-$service:$SHA"
+                cd - > /dev/null
+              fi
+            done
           done
 
       - name: Commit and push changes

@@ -1,4 +1,4 @@
-export class CreateResponseTable {
+export class CreateResponseTable1710000000000 {
   /**
    * @param {import('typeorm').QueryRunner} queryRunner
    */
