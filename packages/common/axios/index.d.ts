@@ -5,7 +5,7 @@ export interface CallConfig<Request = any> {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   data?: Request;
   params?: Record<string, any>;
-  headers?: Record<string, string>;
+  headers?: Record<string, any>;
   timeout?: number;
   retry?: IAxiosRetryConfig;
 }

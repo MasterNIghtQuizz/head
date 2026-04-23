@@ -18,6 +18,7 @@ export interface UserDeletedEventPayload {
 
 export interface SessionCreatedEventPayload {
   session_id: string;
+  quiz_id: string;
   participant_id: string;
   nickname: string;
   role: string;

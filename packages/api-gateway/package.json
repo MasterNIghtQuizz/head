@@ -5,8 +5,8 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "lint": "yarn run -T eslint src",
-    "lint:fix": "yarn run -T eslint src --fix"
+    "lint": "yarn run -T eslint .",
+    "lint:fix": "yarn run -T eslint . --fix"
   },
   "dependencies": {
     "@fastify/cors": "^11.1.0",

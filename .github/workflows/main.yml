@@ -20,6 +20,7 @@ jobs:
           - "@monorepo/ms-quizz-management"
           - "@monorepo/ms-user"
           - "@monorepo/ms-session"
+          - "@monorepo/ms-response"
           - "common-auth"
           - "common-axios"
           - "common-config"
@@ -31,6 +32,7 @@ jobs:
           - "common-kafka"
           - "common-logger"
           - "common-swagger"
+          - "common-valkey"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

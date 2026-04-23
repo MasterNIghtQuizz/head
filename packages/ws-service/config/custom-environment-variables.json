@@ -10,13 +10,6 @@
       "__format": "json"
     }
   },
-  "postgres": {
-    "host": "POSTGRES_HOST",
-    "port": "POSTGRES_PORT",
-    "database": "POSTGRES_DB",
-    "user": "POSTGRES_USER",
-    "password": "POSTGRES_PASSWORD"
-  },
   "auth": {
     "access": {
       "privateKeyPath": "AUTH_ACCESS_PRIVATE_KEY_PATH",

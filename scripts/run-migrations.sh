@@ -15,4 +15,8 @@ echo "MS-SESSION"
 yarn workspace @monorepo/ms-session run migrations:run
 
 echo "----------------------------------------"
+echo "MS-RESPONSE"
+yarn workspace @monorepo/ms-response run migrations:run
+
+echo "----------------------------------------"
 echo "All migrations completed."

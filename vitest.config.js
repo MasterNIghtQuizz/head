@@ -5,7 +5,11 @@ export default defineConfig({
     globals: true,
     environment: "node",
     include: ["**/*.spec.{js,ts}"],
-    exclude: ["**/*.e2e.spec.{js,ts}", "**/node_modules/**"],
+    exclude: [
+      "**/*.e2e.spec.{js,ts}",
+      "**/*.int.spec.{js,ts}",
+      "**/node_modules/**",
+    ],
     alias: {
       "@monorepo/api-gateway": new URL(
         "./packages/api-gateway/src",

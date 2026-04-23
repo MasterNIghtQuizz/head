@@ -160,17 +160,55 @@ export async function createServer() {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const { fastify, valkeyService } = await createServer();
-  logger.info(config, "MS Quizz Management starting...");
+  const { fastify, kafkaConsumer, valkeyService } = await createServer();
+  logger.info(
+    { port: config.port, env: config.env },
+    "MS Quizz Management starting...",
+  );
   await fastify.listen({ host: "0.0.0.0", port: config.port });
 
-  const shutdown = async () => {
-    logger.info("Gracefully shutting down ms-quizz-management...");
-    await fastify.close();
-    await valkeyService.disconnect();
+  let shuttingDown = false;
+  const shutdown = async (/** @type {string} */ signal) => {
+    if (shuttingDown) {
+      return;
+    }
+    shuttingDown = true;
+    logger.info({ signal }, "Starting graceful shutdown...");
+
+    try {
+      await fastify.close();
+      logger.info("HTTP server closed");
+    } catch (err) {
+      logger.error({ err }, "Error closing HTTP server");
+    }
+
+    if (kafkaConsumer) {
+      try {
+        await kafkaConsumer.stop();
+        logger.info("Kafka consumer stopped");
+      } catch (err) {
+        logger.error({ err }, "Error stopping Kafka consumer");
+      }
+    }
+
+    try {
+      await valkeyService.disconnect();
+      logger.info("Valkey disconnected");
+    } catch (err) {
+      logger.error({ err }, "Error disconnecting Valkey");
+    }
+
+    try {
+      await db.disconnect();
+      logger.info("Database connection closed");
+    } catch (err) {
+      logger.error({ err }, "Error closing database connection");
+    }
+
+    logger.info("Shutdown complete. Exiting.");
     process.exit(0);
   };
 
-  process.on("SIGINT", shutdown);
-  process.on("SIGTERM", shutdown);
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => shutdown("SIGINT"));
 }

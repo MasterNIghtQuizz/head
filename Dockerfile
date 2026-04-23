@@ -22,10 +22,12 @@ COPY packages/common/logger/package.json ./packages/common/logger/
 COPY packages/common/swagger/package.json ./packages/common/swagger/
 COPY packages/common/valkey/package.json ./packages/common/valkey/
 COPY packages/common/monitoring/package.json ./packages/common/monitoring/
+COPY packages/common/metrics/package.json ./packages/common/metrics/
 COPY packages/api-gateway/package.json ./packages/api-gateway/
 COPY packages/ms-user/package.json ./packages/ms-user/
 COPY packages/ms-quizz-management/package.json ./packages/ms-quizz-management/
 COPY packages/ms-session/package.json ./packages/ms-session/
+COPY packages/ms-response/package.json ./packages/ms-response/
 
 
 RUN yarn install --immutable

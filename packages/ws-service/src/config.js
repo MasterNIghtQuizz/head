@@ -15,13 +15,6 @@ const schema = Joi.object({
     level: Joi.string().required(),
     pretty: Joi.boolean().required(),
   }).required(),
-  postgres: Joi.object({
-    host: Joi.string().required(),
-    port: Joi.number().required(),
-    database: Joi.string().required(),
-    user: Joi.string().required(),
-    password: Joi.string().required(),
-  }).required(),
   auth: Joi.object({
     access: Joi.object({
       privateKeyPath: Joi.string().required(),
@@ -79,7 +72,6 @@ export const config = {
   env: /** @type {string} */ (Config.get("app.env")),
   port: /** @type {number} */ (Config.get("app.port")),
   logger: /** @type {Record<string, unknown>} */ (Config.get("logger")),
-  postgres: /** @type {Record<string, any>} */ (Config.get("postgres")),
   kafka: /** @type {{ brokers: string[], enabled: boolean }} */ (
     Config.get("kafka")
   ),

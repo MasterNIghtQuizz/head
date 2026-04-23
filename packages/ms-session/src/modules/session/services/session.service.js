@@ -9,11 +9,8 @@ import {
   SESSION_NOT_FOUND,
 } from "../errors/session.errors.js";
 import { ParticipantEntity } from "../core/entities/participant.entity.js";
-import {
-  ParticipantRoles,
-  SessionStatus,
-  SessionEventTypes,
-} from "common-contracts";
+import { ParticipantRoles, SessionStatus } from "common-contracts";
+import { SessionEventTypes } from "common-contracts/src/events.js";
 import logger from "../../../logger.js";
 import { SessionMapper } from "../infra/mappers/session.mapper.js";
 import { ParticipantMapper } from "../infra/mappers/participant.mapper.js";
@@ -21,6 +18,7 @@ import { call } from "common-axios";
 import { config } from "../../../config.js";
 import { TokenService, TokenType, UserRole } from "common-auth";
 import { UnauthorizedError } from "common-errors";
+import { Topics } from "common-contracts";
 
 export class SessionService extends BaseService {
   /** @type {import('../core/ports/session.repository.js').ISessionRepository} */
@@ -168,17 +166,24 @@ export class SessionService extends BaseService {
       );
 
       if (this.kafkaProducer) {
+        if (!session.id || !session.quizzId || !host.id) {
+          throw new Error("Invalid session data");
+        }
         /** @type {import('common-contracts').SessionCreatedEventPayload} */
         const payload = {
           session_id: session.id,
+          quiz_id: session.quizzId,
           participant_id: host.id,
           nickname: host.nickname,
           role: host.role,
         };
-        await this.kafkaProducer.publish(
-          SessionEventTypes.SESSION_CREATED,
+        logger.error("emmitting SESSION CREATE");
+        await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
+          eventId: crypto.randomUUID(),
+          timestamp: Date.now(),
+          eventType: SessionEventTypes.SESSION_CREATED,
           payload,
-        );
+        });
       }
 
       return new CreateSessionResponseDto({

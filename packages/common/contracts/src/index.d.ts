@@ -8,3 +8,4 @@ export * from "./websocket/websocket.interface.js";
 export * from "./session/session.interfaces.d.ts";
 export * from "./session/session.constants.js";
 export * from "./events.interfaces.js";
+export * from "./response/response.interfaces.js";

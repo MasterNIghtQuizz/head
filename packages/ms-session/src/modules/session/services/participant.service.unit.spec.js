@@ -159,50 +159,57 @@ describe("ParticipantService unit tests", () => {
 
     it("should successfully submit response", async () => {
       vi.mocked(sessionRepositoryMock.find).mockResolvedValue(session);
-      vi.mocked(valkeyRepositoryMock.get).mockImplementation(async (key) => {
-        if (key.includes("validation")) {
-          return {
-            id: "q1",
-            type: "single",
-            timer_seconds: 10,
-            choiceIds: ["c1"],
-          };
-        }
-        if (key.includes("question_activated_at")) {
-          return Date.now();
-        }
-        return null;
-      });
+      vi.mocked(valkeyRepositoryMock.get).mockImplementation(
+        async (/** @type {string} */ key) => {
+          if (key.includes("validation")) {
+            return {
+              id: "q1",
+              type: "single",
+              timer_seconds: 10,
+              choiceIds: ["c1"],
+            };
+          }
+          if (key.includes("question_activated_at")) {
+            return Date.now();
+          }
+          return null;
+        },
+      );
 
       await service.submitResponse(defaultParams);
 
       expect(kafkaProducerMock.publish).toHaveBeenCalledWith(
-        SessionEventTypes.QUIZ_RESPONSE_SUBMITTED,
+        "quizz.events",
         expect.objectContaining({
-          sessionId: "s1",
-          participantId: "p1",
-          choiceId: "c1",
-          submittedAt: expect.any(String),
+          eventType: SessionEventTypes.QUIZ_RESPONSE_SUBMITTED,
+          payload: expect.objectContaining({
+            sessionId: "s1",
+            participantId: "p1",
+            choiceId: "c1",
+            submittedAt: expect.any(String),
+          }),
         }),
       );
     });
 
     it("should throw QUESTION_TIMED_OUT if too late", async () => {
       vi.mocked(sessionRepositoryMock.find).mockResolvedValue(session);
-      vi.mocked(valkeyRepositoryMock.get).mockImplementation(async (key) => {
-        if (key.includes("validation")) {
-          return {
-            id: "q1",
-            type: "single",
-            timer_seconds: 10,
-            choiceIds: ["c1"],
-          };
-        }
-        if (key.includes("question_activated_at")) {
-          return Date.now() - 20000;
-        } // 10s timer
-        return null;
-      });
+      vi.mocked(valkeyRepositoryMock.get).mockImplementation(
+        async (/** @type {string} */ key) => {
+          if (key.includes("validation")) {
+            return {
+              id: "q1",
+              type: "single",
+              timer_seconds: 10,
+              choiceIds: ["c1"],
+            };
+          }
+          if (key.includes("question_activated_at")) {
+            return Date.now() - 20000;
+          } // 10s timer
+          return null;
+        },
+      );
 
       await expect(service.submitResponse(defaultParams)).rejects.toThrow(
         QUESTION_TIMED_OUT().message,
@@ -211,20 +218,22 @@ describe("ParticipantService unit tests", () => {
 
     it("should throw INVALID_CHOICE_IDS if choiceId not in question choices", async () => {
       vi.mocked(sessionRepositoryMock.find).mockResolvedValue(session);
-      vi.mocked(valkeyRepositoryMock.get).mockImplementation(async (key) => {
-        if (key.includes("validation")) {
-          return {
-            id: "q1",
-            type: "single",
-            timer_seconds: 10,
-            choiceIds: ["c1"],
-          };
-        }
-        if (key.includes("question_activated_at")) {
-          return Date.now();
-        }
-        return null;
-      });
+      vi.mocked(valkeyRepositoryMock.get).mockImplementation(
+        async (/** @type {string} */ key) => {
+          if (key.includes("validation")) {
+            return {
+              id: "q1",
+              type: "single",
+              timer_seconds: 10,
+              choiceIds: ["c1"],
+            };
+          }
+          if (key.includes("question_activated_at")) {
+            return Date.now();
+          }
+          return null;
+        },
+      );
 
       await expect(
         service.submitResponse({ ...defaultParams, choiceIds: ["wrong"] }),
@@ -263,8 +272,10 @@ describe("ParticipantService unit tests", () => {
 
       expect(call).toHaveBeenCalledTimes(2);
       expect(kafkaProducerMock.publish).toHaveBeenCalledWith(
-        SessionEventTypes.QUIZ_RESPONSE_SUBMITTED,
-        expect.any(Object),
+        "quizz.events",
+        expect.objectContaining({
+          eventType: SessionEventTypes.QUIZ_RESPONSE_SUBMITTED,
+        }),
       );
     });
   });

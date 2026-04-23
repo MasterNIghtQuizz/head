@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { UserService } from "./user.service.js";
 import { createUserEntityMock } from "../../../tests/factories/user.factory.js";
 import { UnauthorizedError, ConflictError } from "common-errors";
-import { UserRole, TokenType } from "common-auth";
+import { UserRole } from "common-auth";
 import { UserEventTypes } from "common-contracts";
 import logger, { mockLogger } from "common-logger";
 
@@ -63,8 +63,8 @@ describe("UserService Unit Tests", () => {
     });
 
     userService = new UserService(
-      /** @type {KafkaProducerMock} */(kafkaProducerMock),
-      /** @type {UserRepositoryMock} */(userRepositoryMock),
+      /** @type {KafkaProducerMock} */ (kafkaProducerMock),
+      /** @type {UserRepositoryMock} */ (userRepositoryMock),
     );
   });
 
@@ -87,11 +87,14 @@ describe("UserService Unit Tests", () => {
 
       expect(userRepositoryMock.create).toHaveBeenCalled();
       expect(kafkaProducerMock.publish).toHaveBeenCalledWith(
-        UserEventTypes.USER_CREATED,
+        "user.events",
         expect.objectContaining({
-          userId: "user-1",
-          email: dto.email,
-          role: UserRole.USER,
+          eventType: UserEventTypes.USER_CREATED,
+          payload: expect.objectContaining({
+            userId: "user-1",
+            email: dto.email,
+            role: UserRole.USER,
+          }),
         }),
       );
       expect(result.accessToken).toBeDefined();
@@ -158,7 +161,7 @@ describe("UserService Unit Tests", () => {
     it("should return new tokens if user exists", async () => {
       const userDto = { id: "1", email: "t@t.com", role: UserRole.USER };
       vi.spyOn(userService, "findById").mockResolvedValue(
-        /** @type {import('../contracts/user.dto.js').UserResponseDto} */(
+        /** @type {import('../contracts/user.dto.js').UserResponseDto} */ (
           userDto
         ),
       );
@@ -245,14 +248,14 @@ describe("UserService Unit Tests", () => {
 
       const userDto = { id: "1", email: "new@t.com", role: UserRole.USER };
       vi.spyOn(userService, "findById").mockResolvedValue(
-        /** @type {import('../contracts/user.dto.js').UserResponseDto} */(
+        /** @type {import('../contracts/user.dto.js').UserResponseDto} */ (
           userDto
         ),
       );
 
       const result = await userService.updateUser(
         "1",
-        /** @type {import('../contracts/user.dto.js').UpdateUserDto} */({
+        /** @type {import('../contracts/user.dto.js').UpdateUserDto} */ ({
           email: "new@t.com",
         }),
       );
@@ -261,11 +264,14 @@ describe("UserService Unit Tests", () => {
       expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("user:1");
       expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("user:all");
       expect(kafkaProducerMock.publish).toHaveBeenCalledWith(
-        UserEventTypes.USER_UPDATED,
+        "user.events",
         expect.objectContaining({
-          userId: "1",
-          email: "new@t.com",
-          role: UserRole.USER,
+          eventType: UserEventTypes.USER_UPDATED,
+          payload: expect.objectContaining({
+            userId: "1",
+            email: "new@t.com",
+            role: UserRole.USER,
+          }),
         }),
       );
       expect(result.email).toBe("new@t.com");
@@ -280,7 +286,7 @@ describe("UserService Unit Tests", () => {
       await expect(
         userService.updateUser(
           "1",
-          /** @type {import('../contracts/user.dto.js').UpdateUserDto}  */({
+          /** @type {import('../contracts/user.dto.js').UpdateUserDto}  */ ({
             email: "taken@t.com",
           }),
         ),
@@ -295,10 +301,13 @@ describe("UserService Unit Tests", () => {
       expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("user:1");
       expect(valkeyRepositoryMock.del).toHaveBeenCalledWith("user:all");
       expect(kafkaProducerMock.publish).toHaveBeenCalledWith(
-        UserEventTypes.USER_DELETED,
-        {
-          userId: "1",
-        },
+        "user.events",
+        expect.objectContaining({
+          eventType: UserEventTypes.USER_DELETED,
+          payload: {
+            userId: "1",
+          },
+        }),
       );
     });
   });
@@ -308,7 +317,7 @@ describe("UserService Unit Tests", () => {
       const entity = createUserEntityMock({ id: "1", role: UserRole.USER });
       userRepositoryMock.findOne.mockResolvedValueOnce(entity);
       userRepositoryMock.findOne.mockResolvedValueOnce(
-        /** @type {import('../core/entities/user.entity.js').UserEntity} */({
+        /** @type {import('../core/entities/user.entity.js').UserEntity} */ ({
           ...entity,
           role: UserRole.ADMIN,
         }),

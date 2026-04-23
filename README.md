@@ -8,13 +8,15 @@ It follows a Microservices Architecture governed by Domain-Driven Design (DDD) p
 The system consists of an API Gateway and multiple internal microservices communicating synchronously via HTTP/JSON, and asynchronously via strictly typed **Kafka** events.
 
 - **`api-gateway`**: The single public-facing entry point, acting as a reverse proxy, aggregator, and global authenticator.
-- **`ms-user`**: A microservice that manages user profiles, registration, and user-centric data.
-- **`ms-quizz-management`**: A microservice dedicated to managing quizzes, questions, and choices. Features CRUD operations, bulk question retrieval, and quiz-specific filtering.
+- **`ms-user`**: Manages user profiles, registration, and user-centric data.
+- **`ms-quiz-management`**: Dedicated to managing quizzes, questions, and choices.
+- **`ms-session`**: Manages live quiz sessions, participant tracking, and real-time state.
+- **`ms-response`**: Records participant answers, calculates correctness, and tracks session progress.
 - **`common/*`**: Shared libraries standardizing core behaviors like logging, authentication, database access, messaging, and error handling across all services.
 
 ## 🧱 Service Features (MS Quizz Management)
 
-The `ms-quizz-management` service provides:
+The `ms-quiz-management` service provides:
 
 - **Full CRUD** for Quizzes, Questions, and Choices.
 - **Bonus Operations**:
@@ -56,7 +58,7 @@ For instance, when a new user registers in `ms-user`, it triggers a producer to 
 
 ### 🎧 2. Consumers & Exactly-Once Processing
 
-Subscribing microservices (e.g., `ms-quizz-management`) act as **Consumers** that react to these domain topics. Due to the nature of distributed systems, at-least-once delivery is the standard. This means a consumer might receive the same message multiple times.
+Subscribing microservices (e.g., `ms-quiz-management`) act as **Consumers** that react to these domain topics. Due to the nature of distributed systems, at-least-once delivery is the standard. This means a consumer might receive the same message multiple times.
 
 To protect against this, we implemented robust **Consumer-Side Idempotency**:
 
@@ -142,6 +144,40 @@ Install all monorepo dependencies:
 yarn install
 ```
 
+### 🗄️ Database Initialization
+
+Before running the services, you must initialize the PostgreSQL databases. We provide an `init-db.sh` script to automate this.
+
+**1. Start the infrastructure:**
+```bash
+docker compose --profile infra up -d
+```
+
+**2. Run the initialization script:**
+Depending on your environment, you may need to target different ports:
+
+- **Development Port (5433)**:
+  ```bash
+  POSTGRES_PORT=5433 ./init-db.sh
+  ```
+- **Test Port (5434)**:
+  ```bash
+  POSTGRES_PORT=5434 ./init-db.sh
+  ```
+
+> [!IMPORTANT]
+> The `postgres` container already executes this script on the first startup if the volume is empty. However, if you add new services or modify the script, you should run it manually as shown above.
+
+### 📡 Kafka Initialization
+
+If you are running the services locally for the first time or if Kafka topics have been lost, you must create them manually:
+
+```bash
+./scripts/setup-kafka.sh
+```
+
+This will ensure all domain topics (like `quizz.events`) are created with the correct configurations.
+
 ### 🏃 Running Locally
 
 **With Docker Compose (Recommended):**
@@ -170,7 +206,7 @@ Or individually:
 ```bash
 yarn workspace @monorepo/api-gateway start
 yarn workspace @monorepo/ms-user start
-yarn workspace @monorepo/ms-quizz-management start
+yarn workspace @monorepo/ms-quiz-management start
 ```
 
 ## 🧪 Testing & Quality Assurance

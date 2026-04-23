@@ -7,13 +7,6 @@
     "level": "info",
     "pretty": true
   },
-  "postgres": {
-    "host": "localhost",
-    "port": 5433,
-    "database": "ms_user_db",
-    "user": "postgres",
-    "password": "postgres_password"
-  },
   "auth": {
     "access": {
       "privateKeyPath": "../../keys/access-private.pem",

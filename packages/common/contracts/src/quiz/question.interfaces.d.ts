@@ -24,3 +24,5 @@ export interface QuestionResponse {
 export interface FullQuestionResponse extends QuestionResponse {
   choices: ChoiceResponse[];
 }
+
+export type Question = FullQuestionResponse;
