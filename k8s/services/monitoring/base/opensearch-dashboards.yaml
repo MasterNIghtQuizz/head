@@ -80,8 +80,10 @@ kind: Service
 metadata:
   name: opensearch-dashboards-service
 spec:
+  type: NodePort
   selector:
     app: opensearch-dashboards
   ports:
     - port: 5601
       targetPort: 5601
+      nodePort: 30004
