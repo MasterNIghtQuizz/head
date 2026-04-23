@@ -83,6 +83,9 @@ spec:
             limits:
               cpu: "500m"
               memory: "256Mi"
+          command: ["/bin/sh", "-c"]
+          args:
+            - "node packages/ms-response/src/index.js"
           livenessProbe:
             httpGet:
               path: /metrics
