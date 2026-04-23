@@ -42,8 +42,6 @@ spec:
             limits:
               cpu: "200m"
               memory: "256Mi"
-          command: ["/bin/sh", "-c"]
-          args: ["ls -R /app && sleep 3600"]
           livenessProbe:
             httpGet:
               path: /
