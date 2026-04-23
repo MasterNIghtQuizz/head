@@ -17,3 +17,7 @@ patches:
         value:
           name: NODE_ENV
           value: "development"
+
+images:
+  - name: victorcra/masterquizz-ms-user
+    newTag: latest
