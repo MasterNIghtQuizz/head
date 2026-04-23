@@ -7,4 +7,4 @@ resources:
 images:
 - name: victorcra/masterquizz-ws-service
   newName: victorcra/masterquizz-ws-service
-  newTag: 25e3a0dad028c450ed8c96bc16c383510fe96f10
+  newTag: 4451b1d3b70bdf2e344ed23caead0fdc8048c7f7
