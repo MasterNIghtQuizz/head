@@ -21,4 +21,4 @@ patches:
 images:
 - name: victorcra/masterquizz-ms-user
   newName: victorcra/masterquizz-ms-user
-  newTag: acfa7e9baac271cb885ae10348d92ad17aa5986b
+  newTag: ebc9cd28324691c4dfa67ad2965a65c56aab7360
