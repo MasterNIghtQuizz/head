@@ -51,22 +51,16 @@ kind: NetworkPolicy
 metadata:
   name: allow-microservice-communication
 spec:
-  podSelector:
-    matchLabels:
-      project: masterquizz
+  podSelector: {}
   policyTypes:
     - Ingress
     - Egress
   ingress:
     - from:
-        - podSelector:
-            matchLabels:
-              project: masterquizz
+        - podSelector: {}
   egress:
     - to:
-        - podSelector:
-            matchLabels:
-              project: masterquizz
+        - podSelector: {}
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
