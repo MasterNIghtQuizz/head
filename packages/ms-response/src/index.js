@@ -3,8 +3,8 @@ import { Config } from "common-config";
 
 initTracing({
   serviceName: "ms-response",
-  enabled: config.otel.enabled,
-  exporterUrl: config.otel.exporterUrl,
+  enabled: config.otel?.enabled ?? false,
+  exporterUrl: config.otel?.exporterUrl ?? "",
 });
 
 import Fastify from "fastify";

@@ -9,6 +9,8 @@ const logger = createLogger({
     ? {
         node: config.opensearch.node,
         index: config.opensearch.index,
+        auth: config.opensearch.auth,
+        ssl: config.opensearch.ssl,
       }
     : undefined,
 });

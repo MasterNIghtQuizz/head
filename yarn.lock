@@ -553,6 +553,7 @@ __metadata:
     common-errors: "workspace:*"
     common-kafka: "workspace:*"
     common-logger: "workspace:*"
+    common-metrics: "workspace:*"
     common-monitoring: "workspace:*"
     common-swagger: "workspace:*"
     common-valkey: "workspace:*"

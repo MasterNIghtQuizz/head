@@ -36,7 +36,7 @@ spec:
             limits:
               cpu: "50m"
               memory: "256Mi"
-          command: ['sh', '-c', 'cp -r /usr/share/opensearch/config/* /mnt/config/']
+          command: ['sh', '-c', 'cp -r /usr/share/opensearch/config/* /mnt/config/ && rm -rf /mnt/config/opensearch-security && echo "plugins.security.disabled: true" >> /mnt/config/opensearch.yml']
           volumeMounts:
             - name: config
               mountPath: /mnt/config

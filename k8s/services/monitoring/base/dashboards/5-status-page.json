@@ -101,7 +101,7 @@
           "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
         }
       },
-      "targets": [{ "expr": "max(up{app=\"postgres\"}) or vector(0)", "instant": true }]
+      "targets": [{ "expr": "count(up{app=\"postgres\"}) or vector(0)", "instant": true }]
     },
     {
       "id": 12,
@@ -115,7 +115,7 @@
           "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
         }
       },
-      "targets": [{ "expr": "max(up{app=\"valkey\"}) or vector(0)", "instant": true }]
+      "targets": [{ "expr": "count(up{app=\"valkey\"}) or vector(0)", "instant": true }]
     },
     {
       "id": 13,
@@ -129,7 +129,7 @@
           "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
         }
       },
-      "targets": [{ "expr": "max(up{app=\"kafka\"}) or vector(0)", "instant": true }]
+      "targets": [{ "expr": "count(up{app=\"kafka\"}) or vector(0)", "instant": true }]
     },
     {
       "id": 20,
@@ -149,7 +149,7 @@
           "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
         }
       },
-      "targets": [{ "expr": "max(up{app=\"opensearch\"}) or vector(0)", "instant": true }]
+      "targets": [{ "expr": "count(up{app=\"opensearch\"}) or vector(0)", "instant": true }]
     },
     {
       "id": 22,
@@ -163,7 +163,7 @@
           "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
         }
       },
-      "targets": [{ "expr": "max(up{app=\"jaeger\"}) or vector(0)", "instant": true }]
+      "targets": [{ "expr": "count(up{app=\"jaeger\"}) or vector(0)", "instant": true }]
     },
     {
       "id": 23,
@@ -177,7 +177,7 @@
           "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
         }
       },
-      "targets": [{ "expr": "max(up{app=\"otel-collector\"}) or vector(0)", "instant": true }]
+      "targets": [{ "expr": "count(up{app=\"otel-collector\"}) or vector(0)", "instant": true }]
     },
     {
       "id": 24,
@@ -191,7 +191,7 @@
           "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
         }
       },
-      "targets": [{ "expr": "max(up{app=\"prometheus\"}) or vector(0)", "instant": true }]
+      "targets": [{ "expr": "count(up{app=\"prometheus\"}) or vector(0)", "instant": true }]
     }
   ]
 }
