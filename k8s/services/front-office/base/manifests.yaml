@@ -16,6 +16,7 @@ spec:
         app: front-office
         allow-traefik: "true"
     spec:
+      hostNetwork: true
       securityContext:
         runAsNonRoot: true
         runAsUser: 1001
