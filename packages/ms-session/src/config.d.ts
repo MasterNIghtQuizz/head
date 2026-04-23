@@ -16,8 +16,6 @@ export declare const config: {
     ttl?: number;
   };
   auth: {
-    access: { privateKeyPath: string; publicKeyPath: string };
-    refresh: { privateKeyPath: string; publicKeyPath: string };
     internal: { privateKeyPath: string; publicKeyPath: string };
     game: { privateKeyPath: string; publicKeyPath: string };
   };
