@@ -1,26 +1,30 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ms-quizz-management
+  name: ms-user
   labels:
-    app: ms-quizz-management
+    app: ms-user
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: ms-quizz-management
+      app: ms-user
   template:
     metadata:
       labels:
-        app: ms-quizz-management
+        app: ms-user
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "3000"
+        prometheus.io/path: "/metrics"
     spec:
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
         fsGroup: 1000
       initContainers:
-        - name: migrate-ms-quizz
-          image: victorcra/masterquizz-ms-quizz-management:88cb7330c05551aa225005dbd5707e680b0e1d6a
+        - name: migrate-ms-user
+          image: victorcra/masterquizz-ms-user:88cb7330c05551aa225005dbd5707e680b0e1d6a
           securityContext:
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
@@ -37,20 +41,17 @@ spec:
           command: ["/bin/sh", "-c"]
           args:
             - |
-              node -e "const net = require('net'); const s = () => { const c = net.createConnection(process.env.POSTGRES_PORT, process.env.POSTGRES_HOST).on('connect', () => process.exit(0)).on('error', () => { console.log('waiting for postgres...'); setTimeout(s, 2000); }); }; s();" && yarn workspace @monorepo/ms-quizz-management run migrations:run
+              node -e "const net = require('net'); const s = () => { const c = net.createConnection(process.env.POSTGRES_PORT, process.env.POSTGRES_HOST).on('connect', () => process.exit(0)).on('error', () => { console.log('waiting for postgres...'); setTimeout(s, 2000); }); }; s();" && yarn workspace @monorepo/ms-user run migrations:run
+          envFrom:
+            - configMapRef:
+                name: global-config
           env:
             - name: COREPACK_HOME
               value: "/tmp/corepack"
             - name: YARN_CACHE_FOLDER
               value: "/tmp/yarn-cache"
-            - name: NODE_ENV
-              value: "production"
-            - name: POSTGRES_HOST
-              value: "postgres-service"
-            - name: POSTGRES_PORT
-              value: "5432"
             - name: POSTGRES_DB
-              value: "ms_quizz_db"
+              value: "ms_user_db"
             - name: POSTGRES_USER
               valueFrom:
                 secretKeyRef:
@@ -61,20 +62,16 @@ spec:
                 secretKeyRef:
                   name: masterquizz-db-secrets
                   key: postgres-password
-            - name: VALKEY_HOST
-              value: "valkey-service"
-            - name: VALKEY_PORT
-              value: "6379"
+            - name: VALKEY_ENABLED
+              value: "false"
             - name: KAFKA_ENABLED
               value: "false"
-            - name: KAFKA_BROKERS
-              value: '["kafka-service:29092"]'
           volumeMounts:
             - name: tmp
               mountPath: /tmp
       containers:
-        - name: ms-quizz-management
-          image: victorcra/masterquizz-ms-quizz-management:88cb7330c05551aa225005dbd5707e680b0e1d6a
+        - name: ms-user
+          image: victorcra/masterquizz-ms-user:88cb7330c05551aa225005dbd5707e680b0e1d6a
           securityContext:
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
@@ -90,17 +87,14 @@ spec:
               memory: "256Mi"
           ports:
             - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: global-config
           env:
-            - name: NODE_ENV
-              value: "production"
             - name: PORT
               value: "3000"
-            - name: POSTGRES_HOST
-              value: "postgres-service"
-            - name: POSTGRES_PORT
-              value: "5432"
             - name: POSTGRES_DB
-              value: "ms_quizz_db"
+              value: "ms_user_db"
             - name: POSTGRES_USER
               valueFrom:
                 secretKeyRef:
@@ -111,22 +105,20 @@ spec:
                 secretKeyRef:
                   name: masterquizz-db-secrets
                   key: postgres-password
-            - name: VALKEY_HOST
-              value: "valkey-service"
-            - name: VALKEY_PORT
-              value: "6379"
             - name: VALKEY_ENABLED
               value: "true"
             - name: KAFKA_ENABLED
               value: "true"
-            - name: KAFKA_BROKERS
-              value: '["kafka-service:29092"]'
-            - name: AUTH_INTERNAL_PUBLIC_KEY_PATH
-              value: "/app/keys/internal-public.pem"
+            - name: AUTH_ACCESS_PRIVATE_KEY_PATH
+              value: "/app/keys/access-private.pem"
+            - name: AUTH_ACCESS_PUBLIC_KEY_PATH
+              value: "/app/keys/access-public.pem"
             - name: COREPACK_HOME
               value: "/tmp/corepack"
             - name: YARN_CACHE_FOLDER
               value: "/tmp/yarn-cache"
+            - name: OTEL_SERVICE_NAME
+              value: "ms-user"
           volumeMounts:
             - name: auth-keys
               mountPath: "/app/keys"
@@ -156,11 +148,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: ms-quizz-management
+  name: ms-user
 spec:
   type: ClusterIP
   ports:
     - port: 3000
       targetPort: 3000
   selector:
-    app: ms-quizz-management
+    app: ms-user

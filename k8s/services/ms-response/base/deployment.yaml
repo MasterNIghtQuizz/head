@@ -1,0 +1,135 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ms-response
+  labels:
+    app: ms-response
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ms-response
+  template:
+    metadata:
+      labels:
+        app: ms-response
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "3000"
+        prometheus.io/path: "/metrics"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      initContainers:
+        - name: migrate-ms-response
+          image: victorcra/masterquizz-ms-response:88cb7330c05551aa225005dbd5707e680b0e1d6a
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "100m"
+              memory: "128Mi"
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              node -e "const net = require('net'); const s = () => { const c = net.createConnection(process.env.POSTGRES_PORT, process.env.POSTGRES_HOST).on('connect', () => process.exit(0)).on('error', () => { console.log('waiting for postgres...'); setTimeout(s, 2000); }); }; s();" && yarn workspace @monorepo/ms-response run migrations:run
+          envFrom:
+            - configMapRef:
+                name: global-config
+          env:
+            - name: COREPACK_HOME
+              value: "/tmp/corepack"
+            - name: YARN_CACHE_FOLDER
+              value: "/tmp/yarn-cache"
+            - name: POSTGRES_DB
+              value: "ms_response_db"
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: masterquizz-db-secrets
+                  key: postgres-user
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: masterquizz-db-secrets
+                  key: postgres-password
+            - name: VALKEY_ENABLED
+              value: "false"
+            - name: KAFKA_ENABLED
+              value: "false"
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      containers:
+        - name: ms-response
+          image: victorcra/masterquizz-ms-response:88cb7330c05551aa225005dbd5707e680b0e1d6a
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "200m"
+              memory: "256Mi"
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: global-config
+          env:
+            - name: PORT
+              value: "3000"
+            - name: POSTGRES_DB
+              value: "ms_response_db"
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: masterquizz-db-secrets
+                  key: postgres-user
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: masterquizz-db-secrets
+                  key: postgres-password
+            - name: VALKEY_ENABLED
+              value: "true"
+            - name: KAFKA_ENABLED
+              value: "true"
+            - name: COREPACK_HOME
+              value: "/tmp/corepack"
+            - name: YARN_CACHE_FOLDER
+              value: "/tmp/yarn-cache"
+            - name: OTEL_SERVICE_NAME
+              value: "ms-response"
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ms-response
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3000
+      targetPort: 3000
+  selector:
+    app: ms-response
