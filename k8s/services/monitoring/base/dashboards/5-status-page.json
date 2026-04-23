@@ -84,18 +84,32 @@
       "targets": [{ "expr": "max(service_up{service=\"ms-response\"}) or max(up{app=\"ms-response\"}) or vector(0)", "instant": true }]
     },
     {
-      "id": 7,
+      "id": 8,
       "type": "stat",
-      "title": "Replicas Running",
-      "description": "Total microservice pods being scraped by Prometheus",
+      "title": "WS Service",
       "gridPos": { "x": 20, "y": 1, "w": 4, "h": 4 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "orange", "value": 5 }, { "color": "green", "value": 10 }] }
+          "mappings": [{ "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } } }],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
         }
       },
-      "targets": [{ "expr": "count(up{app=~\"api-gateway|ms-user|ms-quizz-management|ms-session|ms-response\"} == 1) or vector(0)", "instant": true }]
+      "targets": [{ "expr": "max(service_up{service=\"ws-service\"}) or max(up{app=\"ws-service\"}) or vector(0)", "instant": true }]
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Replicas Running",
+      "description": "Total microservice pods being scraped by Prometheus",
+      "gridPos": { "x": 18, "y": 6, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "orange", "value": 5 }, { "color": "green", "value": 12 }] }
+        }
+      },
+      "targets": [{ "expr": "count(up{app=~\"api-gateway|ms-user|ms-quizz-management|ms-session|ms-response|ws-service\"} == 1) or vector(0)", "instant": true }]
     },
     {
       "id": 10,
@@ -123,7 +137,7 @@
       "type": "stat",
       "title": "Valkey (Cache)",
       "description": "Inferred from microservice connectivity — Valkey does not expose HTTP metrics",
-      "gridPos": { "x": 8, "y": 6, "w": 8, "h": 4 },
+      "gridPos": { "x": 8, "y": 6, "w": 5, "h": 4 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
@@ -131,14 +145,14 @@
           "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
         }
       },
-      "targets": [{ "expr": "clamp_max(count(up{app=~\"api-gateway|ms-user|ms-session\"} == 1), 1) or vector(0)", "instant": true }]
+      "targets": [{ "expr": "clamp_max(count(up{app=~\"api-gateway|ms-user|ms-session|ws-service\"} == 1), 1) or vector(0)", "instant": true }]
     },
     {
       "id": 13,
       "type": "stat",
       "title": "Kafka (Broker)",
       "description": "Inferred from microservice connectivity — Kafka does not expose Prometheus metrics natively",
-      "gridPos": { "x": 16, "y": 6, "w": 8, "h": 4 },
+      "gridPos": { "x": 13, "y": 6, "w": 5, "h": 4 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
@@ -146,7 +160,7 @@
           "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
         }
       },
-      "targets": [{ "expr": "clamp_max(count(up{app=~\"ms-user|ms-session|ms-response\"} == 1), 1) or vector(0)", "instant": true }]
+      "targets": [{ "expr": "clamp_max(count(up{app=~\"ms-user|ms-session|ms-response|ws-service\"} == 1), 1) or vector(0)", "instant": true }]
     },
     {
       "id": 20,

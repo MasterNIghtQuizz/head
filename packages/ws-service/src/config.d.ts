@@ -31,4 +31,7 @@ export declare const config: {
     node: string;
     index: string;
   };
+  metrics: {
+    enabled: boolean;
+  };
 };

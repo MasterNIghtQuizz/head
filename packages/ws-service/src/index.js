@@ -1,7 +1,18 @@
+import { initTracing } from "common-monitoring";
+import { config } from "./config.js";
+
+initTracing({
+  serviceName: "ws-service",
+  enabled: config.otel.enabled,
+  exporterUrl: config.otel.exporterUrl,
+});
+
 import { WebSocketServer } from "ws";
+import { Gauge } from "prom-client";
+import { registry, createMetricsPlugin, serviceUp } from "common-metrics";
 import { errorType, messageType } from "common-websocket";
 import { createKafkaClient, KafkaConsumer } from "common-kafka";
-import { config } from "./config.js";
+import Fastify from "fastify";
 
 import { userConnect, userDisconnect } from "./handlers/connection.handler.js";
 import {
@@ -14,6 +25,31 @@ import {
 import { SessionEventsConsumer } from "./infrastructure/kafka/consumers/session-events.consumer.js";
 
 const { default: logger } = await import("./logger.js");
+
+const fastify = Fastify({
+  loggerInstance: logger,
+  disableRequestLogging: true,
+});
+
+await fastify.register(
+  createMetricsPlugin({
+    serviceName: "ws-service",
+    enabled: config.metrics.enabled,
+  }),
+);
+
+fastify.get("/health", async () => {
+  return { status: "ok", service: "ws-service" };
+});
+
+await fastify.ready();
+serviceUp.set({ service: "ws-service" }, 1);
+
+const wsConnectionsActive = new Gauge({
+  name: "ws_connections_active",
+  help: "Number of active WebSocket connections",
+  registers: [registry],
+});
 
 /** @type {KafkaConsumer | null} */
 let kafkaConsumer = null;
@@ -38,7 +74,7 @@ if (config.kafka.enabled) {
   }
 }
 
-const wss = new WebSocketServer({ port: config.port });
+const wss = new WebSocketServer({ server: fastify.server });
 
 wss.on(
   "connection",
@@ -46,6 +82,7 @@ wss.on(
     ws,
     req,
   ) /** @param {import("ws").WebSocket} ws  @param {import("http").IncomingMessage} req */ => {
+    wsConnectionsActive.inc();
     const connectedUser = userConnect(ws, req);
     if (!connectedUser) {
       return;
@@ -97,6 +134,7 @@ wss.on(
     ws.on(
       "close",
       (code, reason) /** @param {number} code @param {Buffer} reason */ => {
+        wsConnectionsActive.dec();
         userDisconnect(ws, connectedUser.userId, connectedUser.userName);
         logger.info(
           `Client ${connectedUser.userName} ${connectedUser.userId} disconnected with code ${code} and reason: ${reason.toString()}`,
@@ -106,29 +144,56 @@ wss.on(
   },
 );
 
-logger.info(`WebSocket service started on port ${config.port}`);
+try {
+  await fastify.listen({ port: config.port, host: "0.0.0.0" });
+  logger.info(`WebSocket service started on port ${config.port}`);
+} catch (err) {
+  logger.error(err, "Failed to start Fastify server");
+  process.exit(1);
+}
 
-let isShuttingDown = false;
-const shutdown = async () => {
-  if (isShuttingDown) {
+let shuttingDown = false;
+const shutdown = async (/** @type {string} */ signal) => {
+  if (shuttingDown) {
     return;
   }
-  isShuttingDown = true;
+  shuttingDown = true;
+  logger.info({ signal }, "Starting graceful shutdown...");
 
-  logger.info("Gracefully shutting down ws-service...");
-
-  if (kafkaConsumer) {
-    await kafkaConsumer.stop().catch((error) => {
-      logger.error({ error }, "Failed to stop Kafka consumer cleanly");
+  try {
+    await new Promise((resolve, reject) => {
+      wss.close((err) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(null);
+        }
+      });
     });
+    logger.info("WebSocket server closed");
+  } catch (err) {
+    logger.error({ err }, "Error closing WebSocket server");
   }
 
-  await new Promise((resolve) => {
-    wss.close(() => resolve(null));
-  });
+  try {
+    await fastify.close();
+    logger.info("HTTP server closed");
+  } catch (err) {
+    logger.error({ err }, "Error closing HTTP server");
+  }
 
+  if (kafkaConsumer) {
+    try {
+      await kafkaConsumer.stop();
+      logger.info("Kafka consumer stopped");
+    } catch (err) {
+      logger.error({ err }, "Error stopping Kafka consumer");
+    }
+  }
+
+  logger.info("Shutdown complete. Exiting.");
   process.exit(0);
 };
 
-process.on("SIGINT", shutdown);
-process.on("SIGTERM", shutdown);
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));

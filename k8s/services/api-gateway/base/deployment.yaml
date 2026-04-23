@@ -69,6 +69,8 @@ spec:
               value: "http://ms-quizz-management"
             - name: SESSION_SERVICE_URL
               value: "http://ms-session"
+            - name: WEBSOCKET_SERVICE_URL
+              value: "http://ws-service:3000"
             - name: VALKEY_ENABLED
               value: "true"
             - name: YARN_CACHE_FOLDER

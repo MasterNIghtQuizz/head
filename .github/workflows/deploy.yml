@@ -60,13 +60,19 @@ jobs:
               - 'Dockerfile'
               - 'package.json'
               - 'yarn.lock'
+            ws-service:
+              - 'packages/ws-service/**'
+              - 'packages/common/**'
+              - 'Dockerfile'
+              - 'package.json'
+              - 'yarn.lock'
 
 
       - name: Set services list
         id: set-services
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.deploy_all }}" == "true" ]]; then
-            echo 'services=["api-gateway", "ms-user", "ms-quizz-management", "ms-session", "ms-response"]' >> $GITHUB_OUTPUT
+            echo 'services=["api-gateway", "ms-user", "ms-quizz-management", "ms-session", "ms-response", "ws-service"]' >> $GITHUB_OUTPUT
           else
             echo 'services=${{ steps.filter.outputs.changes }}' >> $GITHUB_OUTPUT
           fi
