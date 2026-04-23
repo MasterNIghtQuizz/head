@@ -16,6 +16,19 @@ spec:
         runAsNonRoot: true
         runAsUser: 1000
         fsGroup: 1000
+      initContainers:
+        - name: init-config
+          image: opensearchproject/opensearch:2.13.0
+          securityContext:
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          command: ['sh', '-c', 'cp -r /usr/share/opensearch/config/* /mnt/config/']
+          volumeMounts:
+            - name: config
+              mountPath: /mnt/config
       containers:
         - name: opensearch
           image: opensearchproject/opensearch:2.13.0
@@ -55,12 +68,16 @@ spec:
               mountPath: /usr/share/opensearch/logs
             - name: tmp
               mountPath: /tmp
+            - name: config
+              mountPath: /usr/share/opensearch/config
       volumes:
         - name: opensearch-storage
           emptyDir: {}
         - name: logs
           emptyDir: {}
         - name: tmp
+          emptyDir: {}
+        - name: config
           emptyDir: {}
 ---
 apiVersion: v1
