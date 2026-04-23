@@ -20,7 +20,7 @@ spec:
         fsGroup: 1001
       containers:
         - name: front-office
-          image: victorcra/masterquizz-front-office:1.0.0
+          image: victorcra/masterquizz-front-office:latest
           securityContext:
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
