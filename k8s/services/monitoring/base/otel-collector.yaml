@@ -19,10 +19,10 @@ data:
       opensearch:
         http:
           endpoint: "http://opensearch-service:9200"
-          user: "admin"
-          password: "MasterQuizz123!"
           tls:
             insecure_skip_verify: true
+        user: "admin"
+        password: "MasterQuizz123!"
         index: "jaeger-span"
     service:
       pipelines:
