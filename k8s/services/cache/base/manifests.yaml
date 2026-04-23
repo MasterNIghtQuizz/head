@@ -25,8 +25,7 @@ spec:
       labels:
         app: valkey
       annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "6379"
+        prometheus.io/scrape: "false"
     spec:
       securityContext:
         runAsUser: 999

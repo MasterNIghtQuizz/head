@@ -25,7 +25,7 @@
           "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
         }
       },
-      "targets": [{ "expr": "max(service_up{service=\"api-gateway\"}) or vector(0)", "instant": true }]
+      "targets": [{ "expr": "max(service_up{service=\"api-gateway\"}) or up{app=\"api-gateway\"} or vector(0)", "instant": true }]
     },
     {
       "id": 3,
@@ -39,7 +39,7 @@
           "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
         }
       },
-      "targets": [{ "expr": "max(service_up{service=\"ms-user\"}) or vector(0)", "instant": true }]
+      "targets": [{ "expr": "max(service_up{service=\"ms-user\"}) or max(up{app=\"ms-user\"}) or vector(0)", "instant": true }]
     },
     {
       "id": 4,
@@ -53,7 +53,7 @@
           "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
         }
       },
-      "targets": [{ "expr": "max(service_up{service=\"ms-quizz-management\"}) or vector(0)", "instant": true }]
+      "targets": [{ "expr": "max(service_up{service=\"ms-quizz-management\"}) or max(up{app=\"ms-quizz-management\"}) or vector(0)", "instant": true }]
     },
     {
       "id": 5,
@@ -67,7 +67,7 @@
           "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
         }
       },
-      "targets": [{ "expr": "max(service_up{service=\"ms-session\"}) or vector(0)", "instant": true }]
+      "targets": [{ "expr": "max(service_up{service=\"ms-session\"}) or max(up{app=\"ms-session\"}) or vector(0)", "instant": true }]
     },
     {
       "id": 6,
@@ -84,6 +84,20 @@
       "targets": [{ "expr": "max(service_up{service=\"ms-response\"}) or max(up{app=\"ms-response\"}) or vector(0)", "instant": true }]
     },
     {
+      "id": 7,
+      "type": "stat",
+      "title": "Replicas Running",
+      "description": "Total microservice pods being scraped by Prometheus",
+      "gridPos": { "x": 20, "y": 1, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "orange", "value": 5 }, { "color": "green", "value": 10 }] }
+        }
+      },
+      "targets": [{ "expr": "count(up{app=~\"api-gateway|ms-user|ms-quizz-management|ms-session|ms-response\"} == 1) or vector(0)", "instant": true }]
+    },
+    {
       "id": 10,
       "type": "row",
       "title": "Core Infrastructure",
@@ -93,6 +107,7 @@
       "id": 11,
       "type": "stat",
       "title": "PostgreSQL",
+      "description": "Inferred from microservice connectivity — Postgres does not expose HTTP metrics",
       "gridPos": { "x": 0, "y": 6, "w": 8, "h": 4 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
@@ -101,12 +116,13 @@
           "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
         }
       },
-      "targets": [{ "expr": "count(up{app=\"postgres\"}) or vector(0)", "instant": true }]
+      "targets": [{ "expr": "clamp_max(count(up{app=~\"ms-user|ms-quizz-management|ms-session|ms-response\"} == 1) , 1) or vector(0)", "instant": true }]
     },
     {
       "id": 12,
       "type": "stat",
       "title": "Valkey (Cache)",
+      "description": "Inferred from microservice connectivity — Valkey does not expose HTTP metrics",
       "gridPos": { "x": 8, "y": 6, "w": 8, "h": 4 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
@@ -115,12 +131,13 @@
           "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
         }
       },
-      "targets": [{ "expr": "count(up{app=\"valkey\"}) or vector(0)", "instant": true }]
+      "targets": [{ "expr": "clamp_max(count(up{app=~\"api-gateway|ms-user|ms-session\"} == 1), 1) or vector(0)", "instant": true }]
     },
     {
       "id": 13,
       "type": "stat",
       "title": "Kafka (Broker)",
+      "description": "Inferred from microservice connectivity — Kafka does not expose Prometheus metrics natively",
       "gridPos": { "x": 16, "y": 6, "w": 8, "h": 4 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
@@ -129,7 +146,7 @@
           "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
         }
       },
-      "targets": [{ "expr": "count(up{app=\"kafka\"}) or vector(0)", "instant": true }]
+      "targets": [{ "expr": "clamp_max(count(up{app=~\"ms-user|ms-session|ms-response\"} == 1), 1) or vector(0)", "instant": true }]
     },
     {
       "id": 20,
@@ -149,7 +166,7 @@
           "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
         }
       },
-      "targets": [{ "expr": "count(up{app=\"opensearch\"}) or vector(0)", "instant": true }]
+      "targets": [{ "expr": "up{app=\"opensearch\"} or vector(0)", "instant": true }]
     },
     {
       "id": 22,
@@ -163,7 +180,7 @@
           "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
         }
       },
-      "targets": [{ "expr": "count(up{app=\"jaeger\"}) or vector(0)", "instant": true }]
+      "targets": [{ "expr": "up{app=\"jaeger\"} or vector(0)", "instant": true }]
     },
     {
       "id": 23,
@@ -177,7 +194,7 @@
           "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
         }
       },
-      "targets": [{ "expr": "count(up{app=\"otel-collector\"}) or vector(0)", "instant": true }]
+      "targets": [{ "expr": "up{app=\"otel-collector\"} or vector(0)", "instant": true }]
     },
     {
       "id": 24,
@@ -191,7 +208,7 @@
           "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
         }
       },
-      "targets": [{ "expr": "count(up{app=\"prometheus\"}) or vector(0)", "instant": true }]
+      "targets": [{ "expr": "up{app=\"prometheus\"} or vector(0)", "instant": true }]
     }
   ]
 }

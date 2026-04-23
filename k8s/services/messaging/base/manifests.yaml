@@ -25,8 +25,7 @@ spec:
       labels:
         app: kafka
       annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "29092"
+        prometheus.io/scrape: "false"
     spec:
       securityContext:
         runAsUser: 1000
