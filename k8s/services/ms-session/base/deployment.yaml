@@ -124,10 +124,6 @@ spec:
               value: "true"
             - name: KAFKA_ENABLED
               value: "true"
-            - name: AUTH_ACCESS_PRIVATE_KEY_PATH
-              value: "/app/keys/access-private.pem"
-            - name: AUTH_ACCESS_PUBLIC_KEY_PATH
-              value: "/app/keys/access-public.pem"
             - name: AUTH_INTERNAL_PRIVATE_KEY_PATH
               value: "/app/keys/internal-private.pem"
             - name: AUTH_INTERNAL_PUBLIC_KEY_PATH
