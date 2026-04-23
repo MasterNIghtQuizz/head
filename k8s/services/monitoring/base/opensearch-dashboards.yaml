@@ -16,6 +16,19 @@ spec:
         runAsNonRoot: true
         runAsUser: 1000
         fsGroup: 1000
+      initContainers:
+        - name: init-config
+          image: opensearchproject/opensearch-dashboards:2.13.0
+          securityContext:
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          command: ['sh', '-c', 'cp -r /usr/share/opensearch-dashboards/config/* /mnt/config/']
+          volumeMounts:
+            - name: config
+              mountPath: /mnt/config
       containers:
         - name: opensearch-dashboards
           image: opensearchproject/opensearch-dashboards:2.13.0
@@ -40,9 +53,13 @@ spec:
           ports:
             - containerPort: 5601
           volumeMounts:
+            - name: config
+              mountPath: /usr/share/opensearch-dashboards/config
             - name: tmp
               mountPath: /tmp
       volumes:
+        - name: config
+          emptyDir: {}
         - name: tmp
           emptyDir: {}
 ---
