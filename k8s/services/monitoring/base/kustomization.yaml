@@ -8,5 +8,7 @@ resources:
   - opensearch.yaml
   - opensearch-dashboards.yaml
   - grafana-datasources.yaml
+  - grafana-dashboards-config.yaml
+  - grafana-dashboards-json.yaml
   - jaeger.yaml
   - rbac.yaml
