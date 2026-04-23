@@ -38,6 +38,25 @@ export async function createServer() {
     },
   });
 
+  fastify.addContentTypeParser(
+    "application/json",
+    { parseAs: "string" },
+    (req, body, done) => {
+      if (!body || body.toString().trim() === "") {
+        done(null, {});
+        return;
+      }
+      try {
+        const json = JSON.parse(body.toString());
+        done(null, json);
+      } catch (err) {
+        const error = /** @type {import('common-errors').BaseError} */ (err);
+        error.statusCode = 400;
+        done(error);
+      }
+    },
+  );
+
   fastify.addHook("onRequest", async (request) => {
     if (
       (request.method === "POST" || request.method === "PUT") &&
