@@ -127,7 +127,8 @@ metadata:
     traefik.ingress.kubernetes.io/router.middlewares: masterquizz-prod-global-ratelimit@kubernetescrd,masterquizz-prod-security-headers@kubernetescrd
 spec:
   rules:
-    - http:
+    - host: api-quizz.cyrus-ag.com
+      http:
         paths:
           - path: /api
             pathType: Prefix
