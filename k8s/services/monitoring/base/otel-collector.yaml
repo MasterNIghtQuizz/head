@@ -67,7 +67,7 @@ spec:
               cpu: "50m"
               memory: "128Mi"
             limits:
-              cpu: "100m"
+              cpu: "50m"
               memory: "256Mi"
           args:
             - "--config=/etc/otel-collector-config.yaml"

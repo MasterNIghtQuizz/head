@@ -57,10 +57,10 @@ spec:
             - "--storage.tsdb.path=/prometheus"
           resources:
             requests:
-              cpu: "100m"
+              cpu: "50m"
               memory: "256Mi"
             limits:
-              cpu: "200m"
+              cpu: "50m"
               memory: "512Mi"
           ports:
             - containerPort: 9090
