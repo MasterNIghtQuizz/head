@@ -68,7 +68,17 @@
       "__format": "json"
     },
     "node": "OPENSEARCH_NODE",
-    "index": "OPENSEARCH_INDEX"
+    "index": "OPENSEARCH_INDEX",
+    "auth": {
+      "username": "OPENSEARCH_USERNAME",
+      "password": "OPENSEARCH_PASSWORD"
+    },
+    "ssl": {
+      "rejectUnauthorized": {
+        "__name": "OPENSEARCH_SSL_REJECT_UNAUTHORIZED",
+        "__format": "json"
+      }
+    }
   },
   "metrics": {
     "enabled": {
