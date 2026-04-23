@@ -466,7 +466,7 @@ export class SessionService extends BaseService {
         logger.warn(
           `No more questions available for quiz with id ${session.quizzId}`,
         );
-        this.endSession(sessionId);
+        await this.endSession(sessionId);
         return;
       }
 
