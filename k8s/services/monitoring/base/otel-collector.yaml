@@ -17,13 +17,12 @@ data:
       logging:
         loglevel: debug
       opensearch:
-        http:
-          endpoint: "http://opensearch-service:9200"
-          tls:
-            insecure_skip_verify: true
+        endpoint: "http://opensearch-service:9200"
         user: "admin"
         password: "MasterQuizz123!"
         index: "jaeger-span"
+        tls:
+          insecure_skip_verify: true
     service:
       pipelines:
         traces:
