@@ -1,4 +1,7 @@
 import Fastify from "fastify";
+import cors from "@fastify/cors";
+import proxy from "@fastify/http-proxy";
+
 import logger from "./logger.js";
 import { config } from "./config.js";
 import { registerSwagger } from "common-swagger";
@@ -11,6 +14,7 @@ import {
   hookRefreshToken,
   hookGameToken,
 } from "common-auth";
+
 import { hookRoles } from "./infrastructure/hooks/roles.hook.js";
 import { HelpersController } from "./modules/helpers/controllers/helpers.controller.js";
 import { HelpersService } from "./modules/helpers/services/helpers.service.js";
@@ -29,7 +33,9 @@ export async function createServer() {
   const fastify = Fastify({
     loggerInstance: logger,
     disableRequestLogging: true,
-    ignoreTrailingSlash: true,
+    routerOptions: {
+      ignoreTrailingSlash: true,
+    },
   });
 
   fastify.addContentTypeParser(
@@ -58,6 +64,20 @@ export async function createServer() {
     ) {
       request.headers["content-type"] = "application/json";
     }
+  });
+
+  await fastify.register(cors, {
+    origin: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: [
+      "Content-Type",
+      "Accept",
+      "Authorization",
+      "access-token",
+      "refresh-token",
+      "internal-token",
+      "game-token",
+    ],
   });
 
   fastify.addHook(
@@ -95,6 +115,66 @@ export async function createServer() {
     );
   });
 
+  await fastify.register(proxy, {
+    upstream: config.services.websocket,
+    prefix: "/ws",
+    proxyPayloads: false,
+    websocket: true,
+    preHandler: async (request, _reply) => {
+      const url = new URL(request.url, `http://${request.hostname}`);
+      url.searchParams.delete("access-token");
+      request.raw.url = url.pathname + url.search;
+    },
+    wsClientOptions: {
+      rewriteRequestHeaders: (headers, request) => {
+        logger.info(
+          {
+            method: request.method,
+            url: request.url,
+            hasUser: !!request.user,
+            userId: request.user?.userId,
+            role: request.user?.role,
+            isFastifyRequest: !!request.log,
+          },
+          "Proxying WebSocket request with user context",
+        );
+
+        const newHeaders = { ...headers };
+        const userId = request.user?.participantId;
+
+        if (userId) {
+          // Check if either userId or participantId is present
+          newHeaders["x-user-id"] = userId;
+        }
+        if (request.user?.role) {
+          newHeaders["x-user-role"] = request.user.role;
+        }
+
+        return newHeaders;
+      },
+    },
+  });
+
+  if (!fastify.hasContentTypeParser("application/json")) {
+    fastify.addContentTypeParser(
+      "application/json",
+      { parseAs: "string" },
+      (req, body, done) => {
+        if (!body || body.toString().trim() === "") {
+          done(null, {});
+          return;
+        }
+        try {
+          const json = JSON.parse(body.toString());
+          done(null, json);
+        } catch (err) {
+          const error = /** @type {import('common-errors').BaseError} */ (err);
+          error.statusCode = 400;
+          done(error);
+        }
+      },
+    );
+  }
   const metricsEnabled = /** @type {{ enabled: boolean }} */ (
     Config.get("metrics")
   ).enabled;

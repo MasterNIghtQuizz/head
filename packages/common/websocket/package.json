@@ -1,0 +1,22 @@
+{
+  "name": "common-websocket",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/index.js",
+  "types": "src/index.d.ts",
+  "scripts": {
+    "lint": "yarn run -T eslint .",
+    "lint:fix": "yarn run -T eslint . --fix",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "common-logger": "workspace:*",
+    "common-websocket": "workspace:*",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.3",
+    "typescript": "^5.7.3",
+    "vitest": "^4.0.18"
+  }
+}

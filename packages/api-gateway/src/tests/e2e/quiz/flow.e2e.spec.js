@@ -148,7 +148,7 @@ describe("Technical Quizz Full E2E Scenarios", () => {
     });
     expect(c1.statusCode).toBe(201);
 
-    const c2 = await app.inject({
+    await app.inject({
       method: "POST",
       url: "/choices",
       headers: { "access-token": token },

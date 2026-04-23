@@ -27,7 +27,9 @@ import { db, valkey } from "./database.js";
 const fastify = Fastify({
   loggerInstance: logger,
   disableRequestLogging: true,
-  ignoreTrailingSlash: true,
+  routerOptions: {
+    ignoreTrailingSlash: true,
+  },
 });
 
 const metricsEnabled = /** @type {{ enabled: boolean }} */ (

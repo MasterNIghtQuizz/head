@@ -26,6 +26,8 @@ COPY packages/common/metrics/package.json ./packages/common/metrics/
 COPY packages/api-gateway/package.json ./packages/api-gateway/
 COPY packages/ms-user/package.json ./packages/ms-user/
 COPY packages/ms-quizz-management/package.json ./packages/ms-quizz-management/
+COPY packages/common/websocket/package.json ./packages/common/websocket/
+COPY packages/ws-service/package.json ./packages/ws-service/
 COPY packages/ms-session/package.json ./packages/ms-session/
 COPY packages/ms-response/package.json ./packages/ms-response/
 

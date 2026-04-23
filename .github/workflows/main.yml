@@ -21,6 +21,7 @@ jobs:
           - "@monorepo/ms-user"
           - "@monorepo/ms-session"
           - "@monorepo/ms-response"
+          - "@monorepo/ws-service"
           - "common-auth"
           - "common-axios"
           - "common-config"

@@ -75,6 +75,24 @@ describe("hookAccessToken (Guard/Hook Unit Test)", () => {
     expect(error.message).toBe("Invalid or expired access token");
   });
 
+  it("should skip access-token validation for websocket handshake requests", async () => {
+    const { request, reply, done, fastify } = createExecutionContext({
+      "access-token": "ignored.token",
+    });
+    request["url"] = "/ws/some-endpoint?game-token=valid.token";
+    request["query"] = { "game-token": "valid.token" };
+    request["headers"] = { upgrade: "websocket" };
+
+    const cryptoSpy = vi.spyOn(CryptoService, "verify");
+
+    await hook.call(fastify, request, reply, done);
+
+    expect(cryptoSpy).not.toHaveBeenCalled();
+    expect(request.user).toBeUndefined();
+    expect(done).toHaveBeenCalledWith();
+    expect(reply.code).not.toHaveBeenCalled();
+  });
+
   it("should append user to request and call done() if token is valid", async () => {
     const { request, reply, done, fastify } = createExecutionContext({
       "access-token": "valid.token",

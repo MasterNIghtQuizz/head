@@ -28,7 +28,9 @@ export async function createServer() {
   const fastify = Fastify({
     loggerInstance: logger,
     disableRequestLogging: true,
-    ignoreTrailingSlash: true,
+    routerOptions: {
+      ignoreTrailingSlash: true,
+    },
   });
 
   const metricsEnabled = /** @type {{ enabled: boolean }} */ (

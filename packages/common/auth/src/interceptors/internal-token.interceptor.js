@@ -16,6 +16,12 @@ export function hookInternalTokenInterceptor(options) {
       done();
       return;
     }
+    if (request.url.startsWith("/ws")) {
+      // For WebSocket connections, we won't have the user context in the onRequest hook,
+      // so we'll generate the internal token in the preHandler instead.
+      done();
+      return;
+    }
 
     const authContext = request.user || request.gameTokenPayload;
 

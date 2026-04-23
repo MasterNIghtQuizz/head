@@ -263,6 +263,7 @@ services:
       USER_SERVICE_URL: "http://ms-user:4001"
       QUIZZ_SERVICE_URL: "http://ms-quizz-management:4002"
       SESSION_SERVICE_URL: "http://ms-session:4003"
+      WEBSOCKET_SERVICE_URL: "http://ws-service:4005"
       VALKEY_HOST: valkey
       VALKEY_PORT: 6379
       OTEL_ENABLED: ${MONITORING_ENABLED:-false}
@@ -406,6 +407,38 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      kafka:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+
+  ws-service:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.ws-service
+    ports:
+      - "4005:4005"
+    environment:
+      NODE_ENV: production
+      PORT: 4005
+      LOG_PRETTY: false
+      KAFKA_BROKERS: '["kafka:29092"]'
+      VALKEY_HOST: valkey
+      VALKEY_PORT: 6379
+      OTEL_ENABLED: ${MONITORING_ENABLED:-false}
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+      OPENSEARCH_ENABLED: ${MONITORING_ENABLED:-false}
+      OPENSEARCH_NODE: "http://opensearch:9200"
+      OPENSEARCH_INDEX: "logs-ws-service"
+      AUTH_ACCESS_PUBLIC_KEY_PATH: "/app/keys/access-public.pem"
+      AUTH_ACCESS_PRIVATE_KEY_PATH: "/app/keys/access-private.pem"
+      AUTH_REFRESH_PUBLIC_KEY_PATH: "/app/keys/refresh-public.pem"
+      AUTH_REFRESH_PRIVATE_KEY_PATH: "/app/keys/refresh-private.pem"
+      AUTH_INTERNAL_PUBLIC_KEY_PATH: "/app/keys/internal-public.pem"
+      AUTH_INTERNAL_PRIVATE_KEY_PATH: "/app/keys/internal-private.pem"
+      SECURITY_ENCRYPTION_KEY: "1c20db7ae7a3b8d332d4f25f740e835e4c84d91c7d879b6ed700140871f18acb"
+    depends_on:
       kafka:
         condition: service_healthy
       valkey:

@@ -1,0 +1,20 @@
+{
+  "name": "@monorepo/ws-service",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "lint": "yarn run -T eslint .",
+    "lint:fix": "yarn run -T eslint . --fix",
+    "test": "yarn run -T vitest run"
+  },
+  "dependencies": {
+    "common-auth": "workspace:*",
+    "common-contracts": "workspace:*",
+    "common-kafka": "workspace:*",
+    "common-logger": "workspace:*",
+    "common-websocket": "workspace:*",
+    "ws": "^8.19.0"
+  }
+}

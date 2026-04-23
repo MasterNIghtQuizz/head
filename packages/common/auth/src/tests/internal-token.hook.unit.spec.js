@@ -30,6 +30,18 @@ describe("hookInternalToken (Guard/Hook Unit Test)", () => {
     expect(reply.code).not.toHaveBeenCalled();
   });
 
+  it("should call done() immediately and not process if it's a websocket request", async () => {
+    const { request, reply, done, fastify } = createExecutionContext();
+    // @ts-ignore
+    request["url"] = "/ws/some-endpoint";
+    request["headers"] = { upgrade: "websocket" };
+
+    await hook.call(fastify, request, reply, done);
+
+    expect(done).toHaveBeenCalledWith();
+    expect(reply.code).not.toHaveBeenCalled();
+  });
+
   it("should call done(error) if internal-token header is missing", async () => {
     const { request, reply, done, fastify } = createExecutionContext();
     const loggerSpy = logger.warn;
