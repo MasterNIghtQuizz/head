@@ -37,7 +37,10 @@ export async function createServer() {
     Config.get("metrics")
   ).enabled;
   await fastify.register(
-    createMetricsPlugin({ serviceName: "ms-response", enabled: metricsEnabled }),
+    createMetricsPlugin({
+      serviceName: "ms-response",
+      enabled: metricsEnabled,
+    }),
   );
 
   fastify.addHook("onResponse", async (request, reply) => {
