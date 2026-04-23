@@ -10,6 +10,7 @@ resources:
   - grafana-datasources.yaml
   - grafana-dashboards-config.yaml
   - jaeger.yaml
+  - opensearch-init-job.yaml
   - rbac.yaml
 
 configMapGenerator:
