@@ -53,6 +53,9 @@ const schema = Joi.object({
     node: Joi.string().uri().required(),
     index: Joi.string().required(),
   }).optional(),
+  metrics: Joi.object({
+    enabled: Joi.boolean().default(true),
+  }).optional(),
 });
 
 Config.init({ directory: configDirectory, schema });
@@ -100,5 +103,8 @@ export const config = {
   ),
   opensearch: /** @type {{ enabled: boolean; node: string; index: string }} */ (
     Config.get("opensearch")
+  ),
+  metrics: /** @type {{ enabled: boolean }} */ (
+    Config.get("metrics") || { enabled: true }
   ),
 };

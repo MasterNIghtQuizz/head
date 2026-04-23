@@ -24,6 +24,7 @@ spec:
                 - service: cache
                 - service: messaging
                 - service: monitoring
+                - service: ws-service
   template:
     metadata:
       name: "{{env}}-{{service}}"
