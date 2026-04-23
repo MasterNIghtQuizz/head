@@ -6,3 +6,4 @@ resources:
   - grafana.yaml
   - otel-collector.yaml
   - opensearch.yaml
+  - opensearch-dashboards.yaml
