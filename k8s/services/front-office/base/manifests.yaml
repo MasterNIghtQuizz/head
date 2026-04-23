@@ -48,6 +48,8 @@ spec:
           env:
             - name: COREPACK_HOME
               value: "/tmp/corepack"
+            - name: NEXT_PUBLIC_API_URL
+              value: "http://api-gateway"
           livenessProbe:
             httpGet:
               path: /
