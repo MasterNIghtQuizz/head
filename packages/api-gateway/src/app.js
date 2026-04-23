@@ -57,6 +57,7 @@ export async function createServer() {
       "access-token",
       "refresh-token",
       "internal-token",
+      "game-token",
     ],
   });
 
