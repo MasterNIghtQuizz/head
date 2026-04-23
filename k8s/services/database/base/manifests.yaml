@@ -41,6 +41,9 @@ spec:
     metadata:
       labels:
         app: postgres
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "5432"
     spec:
       securityContext:
         fsGroup: 999

@@ -51,6 +51,9 @@ spec:
     metadata:
       labels:
         app: otel-collector
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "4318"
     spec:
       securityContext:
         runAsNonRoot: true

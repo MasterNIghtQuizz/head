@@ -13,6 +13,9 @@ spec:
     metadata:
       labels:
         app: jaeger
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "16686"
     spec:
       containers:
         - name: jaeger

@@ -11,6 +11,9 @@ spec:
     metadata:
       labels:
         app: opensearch
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9200"
     spec:
       securityContext:
         runAsNonRoot: true

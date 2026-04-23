@@ -11,6 +11,9 @@ spec:
     metadata:
       labels:
         app: grafana
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "3000"
     spec:
       securityContext:
         runAsNonRoot: true
