@@ -15,7 +15,7 @@ resources:
 configMapGenerator:
   - name: grafana-dashboards-json
     files:
-      - 1-platform-overview.json=../../../../monitoring/grafana/dashboards/1-platform-overview.json
-      - 2-api-gateway.json=../../../../monitoring/grafana/dashboards/2-api-gateway.json
-      - 3-microservices.json=../../../../monitoring/grafana/dashboards/3-microservices.json
-      - 4-kafka.json=../../../../monitoring/grafana/dashboards/4-kafka.json
+      - 1-platform-overview.json=dashboards/1-platform-overview.json
+      - 2-api-gateway.json=dashboards/2-api-gateway.json
+      - 3-microservices.json=dashboards/3-microservices.json
+      - 4-kafka.json=dashboards/4-kafka.json
