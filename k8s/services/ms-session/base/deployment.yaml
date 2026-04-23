@@ -46,8 +46,6 @@ spec:
             - configMapRef:
                 name: global-config
           env:
-            - name: COREPACK_HOME
-              value: "/tmp/corepack"
             - name: YARN_CACHE_FOLDER
               value: "/tmp/yarn-cache"
             - name: POSTGRES_DB
@@ -133,8 +131,6 @@ spec:
               value: "/app/keys/game-private.pem"
             - name: AUTH_GAME_PUBLIC_KEY_PATH
               value: "/app/keys/game-public.pem"
-            - name: COREPACK_HOME
-              value: "/tmp/corepack"
             - name: YARN_CACHE_FOLDER
               value: "/tmp/yarn-cache"
             - name: OTEL_SERVICE_NAME

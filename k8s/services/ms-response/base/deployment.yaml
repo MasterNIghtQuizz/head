@@ -46,8 +46,6 @@ spec:
             - configMapRef:
                 name: global-config
           env:
-            - name: COREPACK_HOME
-              value: "/tmp/corepack"
             - name: YARN_CACHE_FOLDER
               value: "/tmp/yarn-cache"
             - name: POSTGRES_DB
@@ -121,8 +119,6 @@ spec:
               value: "true"
             - name: KAFKA_ENABLED
               value: "true"
-            - name: COREPACK_HOME
-              value: "/tmp/corepack"
             - name: YARN_CACHE_FOLDER
               value: "/tmp/yarn-cache"
             - name: OTEL_SERVICE_NAME

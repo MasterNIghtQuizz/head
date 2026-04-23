@@ -67,8 +67,6 @@ spec:
               value: "http://ms-quizz-management:3000"
             - name: VALKEY_ENABLED
               value: "true"
-            - name: COREPACK_HOME
-              value: "/tmp/corepack"
             - name: YARN_CACHE_FOLDER
               value: "/tmp/yarn-cache"
             - name: AUTH_ACCESS_PRIVATE_KEY_PATH
