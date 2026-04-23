@@ -14,6 +14,7 @@ spec:
       labels:
         app: front-office
     spec:
+      hostNetwork: true
       securityContext:
         runAsNonRoot: true
         runAsUser: 1001
@@ -36,12 +37,11 @@ spec:
               memory: "512Mi"
           ports:
             - containerPort: 3000
-              hostPort: 3000 # Expose directement sur le port 3000 du serveur physique
           env:
             - name: COREPACK_HOME
               value: "/tmp/corepack"
             - name: NEXT_PUBLIC_API_URL
-              value: "http://api-gateway"
+              value: "https://api-quizz.cyrus-ag.com/api"
           volumeMounts:
             - name: tmp
               mountPath: /tmp
