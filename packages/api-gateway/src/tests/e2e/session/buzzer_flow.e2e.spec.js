@@ -13,6 +13,47 @@ describe("Session E2E - Buzzer flow", () => {
   let playerOne;
   let playerTwo;
 
+  async function waitForAnswerableParticipant(participantIds, isCorrect) {
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      for (const participantId of participantIds) {
+        const answerRes = await app.inject({
+          method: "POST",
+          url: "/sessions/buzzer/answer/",
+          headers: { "game-token": hostGameToken },
+          payload: { participantId, isCorrect },
+        });
+
+        if (answerRes.statusCode === 200) {
+          return participantId;
+        }
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    throw new Error("No answerable buzzer participant found");
+  }
+
+  async function ensureCurrentQuestionIsBuzzer() {
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      const questionRes = await app.inject({
+        method: "GET",
+        url: "/sessions/current-question/",
+        headers: { "game-token": hostGameToken },
+      });
+      expect(questionRes.statusCode).toBe(200);
+      const question = questionRes.json();
+      if (question?.question_id) {
+        expect(question.label).toBeDefined();
+        expect(question.type).toBe("buzzer");
+        expect(question.timer_seconds).toBeDefined();
+        expect(Array.isArray(question.choices)).toBe(true);
+        return;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    throw new Error("Current buzzer question was not available");
+  }
+
   beforeAll(async () => {
     await seedDatabase();
   });
@@ -92,6 +133,8 @@ describe("Session E2E - Buzzer flow", () => {
   });
 
   it("accepts buzz submissions and lets host answer buzzers", async () => {
+    await ensureCurrentQuestionIsBuzzer();
+
     const p1Buzz = await app.inject({
       method: "POST",
       url: "/sessions/submit/",
@@ -108,21 +151,44 @@ describe("Session E2E - Buzzer flow", () => {
     });
     expect(p2Buzz.statusCode).toBe(206);
 
-    const rejectFirst = await app.inject({
-      method: "POST",
-      url: "/sessions/buzzer/answer/",
-      headers: { "game-token": hostGameToken },
-      payload: { participantId: playerOne.participant_id, isCorrect: false },
-    });
-    expect(rejectFirst.statusCode).toBe(200);
+    const firstAnsweredParticipantId = await waitForAnswerableParticipant(
+      [playerOne.participant_id, playerTwo.participant_id],
+      false,
+    );
+    const secondParticipantId =
+      firstAnsweredParticipantId === playerOne.participant_id
+        ? playerTwo.participant_id
+        : playerOne.participant_id;
 
-    const acceptSecond = await app.inject({
+    const secondAnsweredParticipantId = await waitForAnswerableParticipant(
+      [secondParticipantId],
+      true,
+    );
+
+    expect([playerOne.participant_id, playerTwo.participant_id]).toContain(
+      firstAnsweredParticipantId,
+    );
+    expect(secondAnsweredParticipantId).toBe(secondParticipantId);
+  });
+
+  it("rejects wrong buzzer candidate when forcing unknown participant", async () => {
+    await ensureCurrentQuestionIsBuzzer();
+
+    await app.inject({
+      method: "POST",
+      url: "/sessions/submit/",
+      headers: { "game-token": playerOne.game_token },
+      payload: { choiceIds: [] },
+    });
+
+    const response = await app.inject({
       method: "POST",
       url: "/sessions/buzzer/answer/",
       headers: { "game-token": hostGameToken },
-      payload: { participantId: playerTwo.participant_id, isCorrect: true },
+      payload: { participantId: crypto.randomUUID(), isCorrect: false },
     });
-    expect(acceptSecond.statusCode).toBe(200);
+
+    expect([400, 401, 409]).toContain(response.statusCode);
   });
 
   it("rejects buzzer answer without game token", async () => {

@@ -9,6 +9,7 @@ import {
   SessionEventTypes,
   ParticipantRoles,
   QuestionType,
+  ParticipantRoles,
 } from "common-contracts";
 
 import { TokenService } from "common-auth";
@@ -417,6 +418,16 @@ describe("ParticipantService unit tests", () => {
     });
 
     describe("answerBuzzer", () => {
+      beforeEach(() => {
+        vi.mocked(participantRepositoryMock.find).mockResolvedValue(
+          createParticipantEntity({
+            id: "h1",
+            role: ParticipantRoles.HOST,
+            sessionId,
+          }),
+        );
+      });
+
       it("should publish BUZZER_ANSWER_SUBMITTED and clear queue if correct", async () => {
         const buzzer = {
           sessionId,
@@ -427,7 +438,7 @@ describe("ParticipantService unit tests", () => {
         };
         vi.mocked(buzzerRepositoryMock.peek).mockResolvedValue(buzzer);
         vi.mocked(sessionRepositoryMock.find).mockResolvedValue(
-          createSessionEntity({ id: sessionId, hostId: "h1" }),
+          createSessionEntity({ id: sessionId, hostId: "some-user-id" }),
         );
 
         await service.answerBuzzer({
@@ -458,7 +469,7 @@ describe("ParticipantService unit tests", () => {
         };
         vi.mocked(buzzerRepositoryMock.peek).mockResolvedValue(buzzer);
         vi.mocked(sessionRepositoryMock.find).mockResolvedValue(
-          createSessionEntity({ id: sessionId, hostId: "h1" }),
+          createSessionEntity({ id: sessionId, hostId: "some-user-id" }),
         );
 
         await service.answerBuzzer({
@@ -481,7 +492,14 @@ describe("ParticipantService unit tests", () => {
 
       it("should throw UNAUTHORIZED_HOST if hostId mismatch", async () => {
         vi.mocked(sessionRepositoryMock.find).mockResolvedValue(
-          createSessionEntity({ id: sessionId, hostId: "h1" }),
+          createSessionEntity({ id: sessionId, hostId: "some-user-id" }),
+        );
+        vi.mocked(participantRepositoryMock.find).mockResolvedValue(
+          createParticipantEntity({
+            id: "wrong",
+            role: ParticipantRoles.PLAYER,
+            sessionId,
+          }),
         );
 
         await expect(
@@ -504,7 +522,7 @@ describe("ParticipantService unit tests", () => {
         };
         vi.mocked(buzzerRepositoryMock.peek).mockResolvedValue(buzzer);
         vi.mocked(sessionRepositoryMock.find).mockResolvedValue(
-          createSessionEntity({ id: sessionId, hostId: "h1" }),
+          createSessionEntity({ id: sessionId, hostId: "some-user-id" }),
         );
 
         await expect(
