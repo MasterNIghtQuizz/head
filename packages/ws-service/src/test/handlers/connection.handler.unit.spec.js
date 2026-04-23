@@ -7,6 +7,7 @@ vi.mock("../../lib/connection-store.js", () => ({
   remove: vi.fn(),
   setSocketContext: vi.fn(),
   getSocketContext: vi.fn(),
+  removeParticipant: vi.fn(),
 }));
 
 vi.mock("../../lib/messaging.js", () => ({
@@ -35,6 +36,7 @@ import {
   remove,
   setSocketContext,
   getSocketContext,
+  removeParticipant,
 } from "../../lib/connection-store.js";
 import { broadcastToSession } from "../../lib/messaging.js";
 import { handleSessionDeparture } from "../../handlers/session-membership.handler.js";
@@ -187,11 +189,12 @@ describe("connection.handler", () => {
       userDisconnect(asWebSocket(ws), "u1", "alice");
 
       expect(remove).toHaveBeenCalledWith("u1", ws);
+      expect(removeParticipant).toHaveBeenCalledWith("session-1", "u1");
       expect(broadcastToSession).toHaveBeenCalledWith(
         "session-1",
         {
           type: messageType.USER_OFFLINE,
-          payload: { userId: "u1", userName: "alice" },
+          payload: { userId: "u1", userName: "alice", role: undefined },
         },
         "u1",
       );
