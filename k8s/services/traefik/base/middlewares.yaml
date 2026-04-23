@@ -27,5 +27,4 @@ metadata:
   name: api-auth
 spec:
   basicAuth:
-    users:
-      - "admin:$apr1$k7j5w2m3$q9Z6X7V8K9L0M1N2O3P4Q5"
+    secret: traefik-auth

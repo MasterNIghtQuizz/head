@@ -67,3 +67,5 @@ profile*
 # RSA Keys
 keys/
 *.pem
+
+kubeconfig*.yaml

@@ -24,7 +24,7 @@ spec:
         fsGroup: 1000
       initContainers:
         - name: migrate-ms-quizz
-          image: victorcra/masterquizz-ms-quizz-management:latest
+          image: victorcra/masterquizz-ms-quizz-management:1.0.0
           securityContext:
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
@@ -69,7 +69,7 @@ spec:
               mountPath: /tmp
       containers:
         - name: ms-quizz-management
-          image: victorcra/masterquizz-ms-quizz-management:latest
+          image: victorcra/masterquizz-ms-quizz-management:1.0.0
           securityContext:
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
@@ -78,11 +78,23 @@ spec:
                 - ALL
           resources:
             requests:
-              cpu: "50m"
+              cpu: "100m"
               memory: "128Mi"
             limits:
-              cpu: "50m"
+              cpu: "500m"
               memory: "256Mi"
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
           ports:
             - containerPort: 3000
           envFrom:

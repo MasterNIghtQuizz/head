@@ -33,7 +33,7 @@ spec:
         fsGroup: 1000
       initContainers:
         - name: migrate-ms-user
-          image: victorcra/masterquizz-ms-user:latest
+          image: victorcra/masterquizz-ms-user:1.0.0
           securityContext:
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
@@ -42,11 +42,11 @@ spec:
                 - ALL
           resources:
             requests:
-              cpu: "50m"
-              memory: "64Mi"
+              cpu: "100m"
+              memory: "256Mi"
             limits:
-              cpu: "50m"
-              memory: "128Mi"
+              cpu: "500m"
+              memory: "512Mi"
           command: ["/bin/sh", "-c"]
           args:
             - |
@@ -80,7 +80,7 @@ spec:
               mountPath: /tmp
       containers:
         - name: ms-user
-          image: victorcra/masterquizz-ms-user:latest
+          image: victorcra/masterquizz-ms-user:1.0.0
           securityContext:
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
@@ -89,11 +89,23 @@ spec:
                 - ALL
           resources:
             requests:
-              cpu: "50m"
+              cpu: "100m"
               memory: "128Mi"
             limits:
-              cpu: "50m"
+              cpu: "500m"
               memory: "256Mi"
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
           ports:
             - containerPort: 3000
           envFrom:

@@ -13,6 +13,7 @@ spec:
                   namespace: masterquizz-prod
           - list:
               elements:
+                - service: base
                 - service: api-gateway
                 - service: ms-user
                 - service: ms-quizz-management

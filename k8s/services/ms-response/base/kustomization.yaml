@@ -4,5 +4,4 @@ kind: Kustomization
 resources:
   - deployment.yaml
 
-bases:
-  - ../../../base
+resources:
