@@ -58,10 +58,10 @@ spec:
               value: "http://opensearch-service:9200"
             - name: DISABLE_SECURITY_DASHBOARDS_PLUGIN
               value: "true"
+            - name: OPENSEARCH_DASHBOARDS_OSD_SECURITY_ENABLED
+              value: "false"
             - name: OPENSEARCH_SECURITY_ENABLED
               value: "false"
-            - name: DISABLE_INSTALL_DEMO_CONFIG
-              value: "true"
           ports:
             - containerPort: 5601
           volumeMounts:
