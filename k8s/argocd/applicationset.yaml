@@ -23,6 +23,7 @@ spec:
                 - service: cache
                 - service: messaging
                 - service: monitoring
+                - service: traefik
   template:
     metadata:
       name: "{{env}}-{{service}}"

@@ -55,6 +55,7 @@ metadata:
   name: front-office-ingress
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: web
+    traefik.ingress.kubernetes.io/router.middlewares: masterquizz-prod-global-ratelimit@kubernetescrd,masterquizz-prod-security-headers@kubernetescrd
 spec:
   rules:
     - http:
