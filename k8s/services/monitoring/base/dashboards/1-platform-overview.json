@@ -349,7 +349,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "expr": "nodejs_heap_size_used_bytes / 1024 / 1024",
-          "legendFormat": "{{job}}",
+          "legendFormat": "{{service}}",
           "refId": "A"
         }
       ]
