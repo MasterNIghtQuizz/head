@@ -18,9 +18,11 @@ data:
         loglevel: debug
       opensearch:
         http:
-          endpoint: "http://opensearch-service:9200"
-          tls:
-            insecure: true
+          endpoint: "https://opensearch-service:9200"
+        user: "admin"
+        password: "MasterQuizz123!"
+        tls:
+          insecure: true
     service:
       pipelines:
         traces:

@@ -21,9 +21,13 @@ spec:
             - name: SPAN_STORAGE_TYPE
               value: "elasticsearch"
             - name: ES_SERVER_URLS
-              value: "http://opensearch-service:9200"
-            - name: ES_INDEX_PREFIX
-              value: "otel"
+              value: "https://opensearch-service:9200"
+            - name: ES_USERNAME
+              value: "admin"
+            - name: ES_PASSWORD
+              value: "MasterQuizz123!"
+            - name: ES_TLS_SKIP_HOST_VERIFY
+              value: "true"
           ports:
             - containerPort: 16686
               name: query
