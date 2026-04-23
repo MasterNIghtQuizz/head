@@ -62,8 +62,8 @@ spec:
               value: "single-node"
             - name: OPENSEARCH_JAVA_OPTS
               value: "-Xms1g -Xmx1g"
-            - name: OPENSEARCH_INITIAL_ADMIN_PASSWORD
-              value: "MasterQuizz123!"
+            - name: plugins.security.disabled
+              value: "true"
           ports:
             - containerPort: 9200
             - containerPort: 9300

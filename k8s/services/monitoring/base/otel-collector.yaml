@@ -18,7 +18,7 @@ data:
         loglevel: debug
       opensearch:
         http:
-          endpoint: "https://opensearch-service:9200"
+          endpoint: "http://opensearch-service:9200"
           user: "admin"
           password: "MasterQuizz123!"
           tls:

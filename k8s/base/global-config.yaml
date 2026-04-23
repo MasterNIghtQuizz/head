@@ -15,7 +15,7 @@ data:
   OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector-service:4317"
   METRICS_ENABLED: "true"
   OPENSEARCH_ENABLED: "true"
-  OPENSEARCH_NODE: "https://opensearch-service:9200"
+  OPENSEARCH_NODE: "http://opensearch-service:9200"
   OPENSEARCH_USERNAME: "admin"
   OPENSEARCH_PASSWORD: "MasterQuizz123!"
   OPENSEARCH_INDEX: "logs"
