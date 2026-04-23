@@ -51,8 +51,16 @@ spec:
           volumeMounts:
             - name: opensearch-storage
               mountPath: /usr/share/opensearch/data
+            - name: logs
+              mountPath: /usr/share/opensearch/logs
+            - name: tmp
+              mountPath: /tmp
       volumes:
         - name: opensearch-storage
+          emptyDir: {}
+        - name: logs
+          emptyDir: {}
+        - name: tmp
           emptyDir: {}
 ---
 apiVersion: v1
