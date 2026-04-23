@@ -26,6 +26,8 @@ spec:
               value: "admin"
             - name: ES_PASSWORD
               value: "MasterQuizz123!"
+            - name: ES_TLS_ENABLED
+              value: "true"
             - name: ES_TLS_SKIP_HOST_VERIFY
               value: "true"
           ports:
