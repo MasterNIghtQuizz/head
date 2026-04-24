@@ -66,8 +66,8 @@ describe("Session Resilience E2E", () => {
       headers: { "access-token": token },
       payload: { quiz_id: quizId },
     });
-    const { public_key: publicKey, game_token: hostGameToken } = createSessionRes.json();
- 
+    const { public_key: publicKey, game_token: hostGameToken } =
+      createSessionRes.json();
     // Join as player to get a PLAYER token
     const joinRes = await app.inject({
       method: "POST",
