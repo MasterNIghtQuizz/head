@@ -79,7 +79,6 @@ export class QuestionResponseDto {
     this.type = data.type;
     this.order_index = data.order_index;
     this.timer_seconds = data.timer_seconds;
-    this.choices = data.choices || [];
   }
 }
 
@@ -92,10 +91,6 @@ export const QuestionResponseSchema = {
     type: { type: "string" },
     order_index: { type: "integer" },
     timer_seconds: { type: "integer" },
-    choices: {
-      type: "array",
-      items: { $ref: "../contracts/choice.dto.js#/ChoiceResponseDto" },
-    },
   },
   required: ["id", "label", "type", "order_index", "timer_seconds"],
 };

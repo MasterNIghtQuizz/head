@@ -46,7 +46,6 @@ export class QuestionMapper {
       type: entity.type,
       order_index: entity.order_index,
       timer_seconds: entity.timer_seconds,
-      choices: entity.choices ? ChoiceMapper.toDtos(entity.choices) : [],
     });
   }
 
