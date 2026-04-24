@@ -10,6 +10,7 @@ const schema = Joi.object({
   app: Joi.object({
     port: Joi.number().required(),
     env: Joi.string().valid("development", "production", "test").required(),
+    frontendUrl: Joi.string().optional(),
   }).required(),
   logger: Joi.object({
     level: Joi.string().required(),
@@ -80,6 +81,7 @@ const rawAuth =
 export const config = {
   env: /** @type {string} */ (Config.get("app.env")),
   port: /** @type {number} */ (Config.get("app.port")),
+  frontendUrl: /** @type {string} */ (Config.get("app.frontendUrl")),
   logger: /** @type {Record<string, unknown>} */ (Config.get("logger")),
   services:
     /** @type {{ user: string; quizz: string; session:string; websocket: string }} */ (

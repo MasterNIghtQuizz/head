@@ -33,6 +33,7 @@ export async function createServer() {
   const fastify = Fastify({
     loggerInstance: logger,
     disableRequestLogging: true,
+    bodyLimit: 256000,
     routerOptions: {
       ignoreTrailingSlash: true,
     },
@@ -41,6 +42,7 @@ export async function createServer() {
   fastify.addContentTypeParser(
     "application/json",
     { parseAs: "string" },
+    // @ts-ignore
     (req, body, done) => {
       if (!body || body.toString().trim() === "") {
         done(null, {});
@@ -66,8 +68,58 @@ export async function createServer() {
     }
   });
 
+  // @ts-ignore
+  fastify.addHook("onSend", async (request, reply, payload) => {
+    if (!reply.hasHeader("Strict-Transport-Security")) {
+      reply.header(
+        "Strict-Transport-Security",
+        "max-age=63072000; includeSubDomains; preload",
+      );
+    }
+    if (!reply.hasHeader("X-DNS-Prefetch-Control")) {
+      reply.header("X-DNS-Prefetch-Control", "off");
+    }
+    if (!reply.hasHeader("X-Frame-Options")) {
+      reply.header("X-Frame-Options", "DENY");
+    }
+    if (!reply.hasHeader("X-XSS-Protection")) {
+      reply.header("X-XSS-Protection", "1; mode=block");
+    }
+    if (!reply.hasHeader("X-Content-Type-Options")) {
+      reply.header("X-Content-Type-Options", "nosniff");
+    }
+    if (!reply.hasHeader("Referrer-Policy")) {
+      reply.header("Referrer-Policy", "strict-origin-when-cross-origin");
+    }
+    if (!reply.hasHeader("Content-Security-Policy")) {
+      reply.header(
+        "Content-Security-Policy",
+        "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+      );
+    }
+    return payload;
+  });
+
   await fastify.register(cors, {
-    origin: true,
+    origin: (origin, cb) => {
+      if (!origin || config.env === "development") {
+        cb(null, true);
+        return;
+      }
+      const allowedOrigins = config.frontendUrl
+        ? config.frontendUrl.split(",")
+        : [/^https:\/\/.*\.nightquizz\.com$/];
+
+      const isAllowed = allowedOrigins.some((o) =>
+        typeof o === "string" ? o === origin : o.test(origin),
+      );
+
+      if (isAllowed) {
+        cb(null, true);
+      } else {
+        cb(new Error("Not allowed by CORS"), false);
+      }
+    },
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: [
       "Content-Type",
@@ -124,34 +176,28 @@ export async function createServer() {
       const url = new URL(request.url, `http://${request.hostname}`);
       url.searchParams.delete("access-token");
       request.raw.url = url.pathname + url.search;
-    },
-    wsClientOptions: {
-      rewriteRequestHeaders: (headers, request) => {
-        logger.info(
-          {
-            method: request.method,
-            url: request.url,
-            hasUser: !!request.user,
-            userId: request.user?.userId,
-            role: request.user?.role,
-            isFastifyRequest: !!request.log,
-          },
-          "Proxying WebSocket request with user context",
-        );
 
-        const newHeaders = { ...headers };
-        const userId = request.user?.participantId;
+      logger.info(
+        {
+          method: request.method,
+          url: request.url,
+          hasUser: !!request.user,
+          userId: request.user?.userId || request.user?.participantId,
+          role: request.user?.role,
+          isFastifyRequest: !!request.log,
+        },
+        "Proxying WebSocket request with user context",
+      );
 
-        if (userId) {
-          // Check if either userId or participantId is present
-          newHeaders["x-user-id"] = userId;
-        }
-        if (request.user?.role) {
-          newHeaders["x-user-role"] = request.user.role;
-        }
-
-        return newHeaders;
-      },
+      const userId = request.user?.participantId || request.user?.userId;
+      if (userId) {
+        // @ts-ignore
+        request.headers["x-user-id"] = userId;
+      }
+      if (request.user?.role) {
+        // @ts-ignore
+        request.headers["x-user-role"] = request.user.role;
+      }
     },
   });
 
@@ -159,6 +205,7 @@ export async function createServer() {
     fastify.addContentTypeParser(
       "application/json",
       { parseAs: "string" },
+      // @ts-ignore
       (req, body, done) => {
         if (!body || body.toString().trim() === "") {
           done(null, {});
