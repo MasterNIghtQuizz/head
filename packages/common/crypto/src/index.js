@@ -5,6 +5,9 @@ import bcrypt from "bcrypt";
 import logger from "common-logger";
 
 export class CryptoService {
+  /** @type {Map<string, string>} */
+  static _keyCache = new Map();
+
   /**
    * @param {Object} payload
    * @param {string} privateKeyPath
@@ -13,10 +16,14 @@ export class CryptoService {
    */
   static sign(payload, privateKeyPath, options = {}) {
     try {
-      if (!fs.existsSync(privateKeyPath)) {
-        throw new Error(`Private key not found at: ${privateKeyPath}`);
+      let privateKey = this._keyCache.get(privateKeyPath);
+      if (!privateKey) {
+        if (!fs.existsSync(privateKeyPath)) {
+          throw new Error(`Private key not found at: ${privateKeyPath}`);
+        }
+        privateKey = fs.readFileSync(privateKeyPath, "utf-8");
+        this._keyCache.set(privateKeyPath, privateKey);
       }
-      const privateKey = fs.readFileSync(privateKeyPath, "utf-8");
       return jwt.sign(payload, privateKey, {
         algorithm: "RS256",
         ...options,
@@ -34,10 +41,14 @@ export class CryptoService {
    */
   static verify(token, publicKeyPath) {
     try {
-      if (!fs.existsSync(publicKeyPath)) {
-        throw new Error(`Public key not found at: ${publicKeyPath}`);
+      let publicKey = this._keyCache.get(publicKeyPath);
+      if (!publicKey) {
+        if (!fs.existsSync(publicKeyPath)) {
+          throw new Error(`Public key not found at: ${publicKeyPath}`);
+        }
+        publicKey = fs.readFileSync(publicKeyPath, "utf-8");
+        this._keyCache.set(publicKeyPath, publicKey);
       }
-      const publicKey = fs.readFileSync(publicKeyPath, "utf-8");
       return jwt.verify(token, publicKey, {
         algorithms: ["RS256"],
       });

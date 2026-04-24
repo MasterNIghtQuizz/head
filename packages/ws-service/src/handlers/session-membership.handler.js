@@ -301,7 +301,7 @@ function handleSessionDeparture(sessionId, leavingUserId) {
     broadcastToSession(sessionId, participantsUpdateMessage, null);
 
     clearPendingDeparture(leavingUserId);
-  }, 5000);
+  }, 2000);
 
   registerPendingDeparture(leavingUserId, timeoutId);
 }

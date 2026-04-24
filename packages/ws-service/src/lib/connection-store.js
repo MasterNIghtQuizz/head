@@ -90,16 +90,14 @@ function setSocketSession(ws, sessionId) {
 function getSessionSockets(sessionId) {
   const participants = getParticipants(sessionId);
   const sockets = new Set();
-  const allAuthenticatedUserIds = Array.from(clients.keys());
 
   logger.debug(
     {
       sessionId,
       participantCount: participants.length,
       participantsInRoom: participants.map((p) => p.participant_id),
-      allConnectedUserIds: allAuthenticatedUserIds,
     },
-    "DEBUG [getSessionSockets] Analyzing session sockets",
+    "[getSessionSockets] Analyzing session sockets",
   );
 
   for (const p of participants) {
@@ -107,13 +105,13 @@ function getSessionSockets(sessionId) {
     if (ws) {
       sockets.add(ws);
     } else {
-      logger.warn(
+      logger.debug(
         {
           participantId: p.participant_id,
           nickname: p.nickname,
           sessionId,
         },
-        "DEBUG [getSessionSockets] Participant has no active socket",
+        "[getSessionSockets] Participant has no active socket",
       );
     }
   }
