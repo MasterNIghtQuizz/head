@@ -186,7 +186,7 @@ export class SessionEventsConsumer {
     addParticipant(sessionId, {
       participant_id: participantId,
       nickname,
-      role: "owner",
+      role: "moderator",
     });
 
     logger.info(

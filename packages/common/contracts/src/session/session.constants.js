@@ -7,6 +7,6 @@ export const SessionStatus = {
 };
 
 export const ParticipantRoles = {
-  HOST: "HOST",
-  PLAYER: "PLAYER",
+  MODERATOR: "moderator",
+  USER: "user",
 };
