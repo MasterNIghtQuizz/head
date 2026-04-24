@@ -212,7 +212,11 @@ describe("session-membership.handler", () => {
         "session-1",
         {
           type: messageType.USER_ONLINE,
-          payload: { userId: "u1", userName: "alice" },
+          payload: {
+            participant_id: "u1",
+            nickname: "alice",
+            role: undefined,
+          },
         },
         "u1",
       );
@@ -528,7 +532,11 @@ describe("session-membership.handler", () => {
         "session-1",
         {
           type: messageType.USER_OFFLINE,
-          payload: { userId: "u1", userName: "alice" },
+          payload: {
+            participant_id: "u1",
+            nickname: "alice",
+            role: undefined,
+          },
         },
         "u1",
       );

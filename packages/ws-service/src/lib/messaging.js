@@ -30,15 +30,15 @@ function sendMessageToUser(senderId, message, receiverId) {
     return false;
   }
 
-  socket.send(
-    JSON.stringify({
-      type: messageType.CHAT_MESSAGE,
-      payload: {
-        ...message,
-        senderId: senderId,
-      },
-    }),
-  );
+  /** @type {import("common-websocket").ServerToClientMessage} */
+  const chatMessage = {
+    type: messageType.CHAT_MESSAGE,
+    payload: {
+      ...message,
+      senderId: senderId,
+    },
+  };
+  socket.send(JSON.stringify(chatMessage));
 
   return true;
 }

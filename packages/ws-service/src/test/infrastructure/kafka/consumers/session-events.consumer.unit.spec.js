@@ -140,7 +140,7 @@ describe("SessionEventsConsumer", () => {
         "session-1",
         {
           type: messageType.USER_ONLINE,
-          payload: { userId: "p1", userName: "alice", role: "player" },
+          payload: { participant_id: "p1", nickname: "alice", role: "player" },
         },
         null,
       );
@@ -161,7 +161,7 @@ describe("SessionEventsConsumer", () => {
         "session-1",
         {
           type: messageType.USER_OFFLINE,
-          payload: { userId: "p2", userName: "bob", role: "player" },
+          payload: { participant_id: "p2", nickname: "bob", role: "player" },
         },
         null,
       );
@@ -255,7 +255,7 @@ describe("SessionEventsConsumer", () => {
         "session-1",
         {
           type: messageType.USER_OFFLINE,
-          payload: { userId: "p1", userName: "alice", role: "player" },
+          payload: { participant_id: "p1", nickname: "alice", role: "player" },
         },
         null,
       );

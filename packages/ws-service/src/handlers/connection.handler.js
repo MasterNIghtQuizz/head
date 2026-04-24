@@ -50,7 +50,7 @@ function userConnect(ws, req) {
   const userId = forwardedUserId;
   const role =
     typeof forwardedUserRole === "string" &&
-    Object.values(UserRole).includes(forwardedUserRole)
+    /** @type {string[]} */ (Object.values(UserRole)).includes(forwardedUserRole)
       ? forwardedUserRole
       : null;
   logger.info(`trying to connect user: ${userName} (ID: ${userId})`);
@@ -90,14 +90,17 @@ function userDisconnect(ws, userId, userName) {
     "User removed from session due to disconnect",
   );
 
-  broadcastToSession(
-    context.sessionId,
-    {
-      type: messageType.USER_OFFLINE,
-      payload: { userId: userId, userName: userName, role: context.role },
+  /** @type {import("common-websocket").ServerToClientMessage} */
+  const offlineMessage = {
+    type: messageType.USER_OFFLINE,
+    payload: {
+      participant_id: userId,
+      nickname: userName,
+      role: context.role || undefined,
     },
-    userId,
-  );
+  };
+
+  broadcastToSession(context.sessionId, offlineMessage, userId);
 
   handleSessionDeparture(context.sessionId, userId);
 }

@@ -194,7 +194,11 @@ describe("connection.handler", () => {
         "session-1",
         {
           type: messageType.USER_OFFLINE,
-          payload: { userId: "u1", userName: "alice", role: undefined },
+          payload: {
+            participant_id: "u1",
+            nickname: "alice",
+            role: undefined,
+          },
         },
         "u1",
       );

@@ -1,7 +1,10 @@
 import logger from "../logger.js";
 
+/** @type {Map<string, import("ws").WebSocket>} */
 const clients = new Map();
+/** @type {Map<import("ws").WebSocket, import("common-websocket").SocketContext>} */
 const socketContexts = new Map();
+/** @type {Map<string, Array<{ participant_id: string, nickname: string, role: string | null }>>} */
 const sessionParticipants = new Map();
 
 /**
@@ -115,7 +118,7 @@ function initSessionParticipants(sessionId) {
 /**
  * Add a participant to an in-memory participant list for a session.
  * @param {string} sessionId
- * @param {{ participant_id: string, nickname: string, role: string }} participant
+ * @param {{ participant_id: string, nickname: string, role: string | null }} participant
  * @returns {boolean} true if added or updated
  */
 function addParticipant(sessionId, participant) {
@@ -174,7 +177,7 @@ function removeParticipant(sessionId, participantId) {
 /**
  * Get persisted participants for a session.
  * @param {string} sessionId
- * @returns {Array<{ participant_id: string, nickname: string, role: string }>}
+ * @returns {Array<{ participant_id: string, nickname: string, role: string | null }>}
  */
 function getParticipants(sessionId) {
   return sessionParticipants.get(sessionId) || [];

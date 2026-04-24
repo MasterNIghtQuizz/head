@@ -33,23 +33,23 @@ export function parseClientMessage(rawMessage) {
  */
 export function handleDirectChatMessage(ws, senderId, payload) {
   if (!payload || typeof payload !== "object") {
-    ws.send(
-      JSON.stringify({
-        type: messageType.ERROR,
-        payload: { reason: errorType.INVALID_PAYLOAD },
-      }),
-    );
+    /** @type {import("common-websocket").ServerToClientMessage} */
+    const errorMessage = {
+      type: messageType.ERROR,
+      payload: { reason: errorType.INVALID_PAYLOAD },
+    };
+    ws.send(JSON.stringify(errorMessage));
     return;
   }
 
   const receiverId = payload.receiverId;
   if (typeof receiverId !== "string" || receiverId.length === 0) {
-    ws.send(
-      JSON.stringify({
-        type: messageType.ERROR,
-        payload: { reason: errorType.MISSING_RECEIVER_ID },
-      }),
-    );
+    /** @type {import("common-websocket").ServerToClientMessage} */
+    const errorMessage = {
+      type: messageType.ERROR,
+      payload: { reason: errorType.MISSING_RECEIVER_ID },
+    };
+    ws.send(JSON.stringify(errorMessage));
     return;
   }
 
@@ -93,23 +93,23 @@ export function handleJoinSessionMessage(ws, payload) {
 
   const updatedUser = userJoinSession(ws, sessionId);
   if (!updatedUser || "error" in updatedUser) {
-    ws.send(
-      JSON.stringify({
-        type: messageType.ERROR,
-        payload: {
-          reason: updatedUser?.error ?? errorType.JOIN_SESSION_FAILED,
-        },
-      }),
-    );
+    /** @type {import("common-websocket").ServerToClientMessage} */
+    const errorMessage = {
+      type: messageType.ERROR,
+      payload: {
+        reason: updatedUser?.error ?? errorType.JOIN_SESSION_FAILED,
+      },
+    };
+    ws.send(JSON.stringify(errorMessage));
     return;
   }
 
-  ws.send(
-    JSON.stringify({
-      type: messageType.JOINED_SESSION,
-      payload: { sessionId: updatedUser.sessionId },
-    }),
-  );
+  /** @type {import("common-websocket").ServerToClientMessage} */
+  const joinedMessage = {
+    type: messageType.JOINED_SESSION,
+    payload: { sessionId: updatedUser.sessionId },
+  };
+  ws.send(JSON.stringify(joinedMessage));
 }
 
 /**
@@ -211,13 +211,13 @@ export function handleStartSessionMessage(ws, payload) {
     return;
   }
 
-  ws.send(
-    JSON.stringify({
-      type: messageType.SESSION_STARTED,
-      payload: {
-        sessionId: startedSession.sessionId,
-        ownerId: startedSession.ownerId,
-      },
-    }),
-  );
+  /** @type {import("common-websocket").ServerToClientMessage} */
+  const startedMessage = {
+    type: messageType.SESSION_STARTED,
+    payload: {
+      sessionId: startedSession.sessionId,
+      ownerId: startedSession.ownerId,
+    },
+  };
+  ws.send(JSON.stringify(startedMessage));
 }

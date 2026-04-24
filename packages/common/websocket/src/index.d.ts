@@ -2,6 +2,7 @@ export interface SocketContext {
   userId: string;
   userName: string;
   sessionId: string | null;
+  role: string | null;
 }
 
 export declare const messageType: {
@@ -75,9 +76,9 @@ export interface ChatMessagePayload {
 }
 
 export interface SessionPresencePayload {
-  userId: string;
-  userName: string;
-  role: string;
+  participant_id: string;
+  nickname: string;
+  role?: string;
 }
 
 export interface SessionCreatedPayload {

@@ -265,18 +265,18 @@ export class SessionEventsConsumer {
         { sessionId, participantId, nickname },
         "DEBUG [ws-service] Broadcasting participant event to session sockets",
       );
-      broadcastToSession(
-        sessionId,
-        {
-          type: wsMessageType,
-          payload: {
-            participant_id: participantId,
-            nickname: nickname,
-            role: payload.role,
-          },
+
+      /** @type {import("common-websocket").ServerToClientMessage} */
+      const participantMessage = {
+        type: wsMessageType,
+        payload: {
+          participant_id: participantId,
+          nickname: nickname,
+          role: payload.role || undefined,
         },
-        null,
-      );
+      };
+
+      broadcastToSession(sessionId, participantMessage, null);
     }
   }
 
@@ -294,17 +294,16 @@ export class SessionEventsConsumer {
 
     const sockets = Array.from(getSessionSockets(sessionId));
 
-    broadcastToSession(
-      sessionId,
-      {
-        type:
-          reason === "ended"
-            ? messageType.SESSION_ENDED
-            : messageType.SESSION_DELETED,
-        payload: { sessionId },
-      },
-      null,
-    );
+    /** @type {import("common-websocket").ServerToClientMessage} */
+    const lifecycleMessage = {
+      type:
+        reason === "ended"
+          ? messageType.SESSION_ENDED
+          : messageType.SESSION_DELETED,
+      payload: { sessionId },
+    };
+
+    broadcastToSession(sessionId, lifecycleMessage, null);
 
     for (const socket of sockets) {
       const socketContext = getSocketContext(socket);

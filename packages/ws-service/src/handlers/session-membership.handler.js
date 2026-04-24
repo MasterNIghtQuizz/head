@@ -23,7 +23,7 @@ import logger from "../logger.js";
 /**
  * @param {import("ws").WebSocket} ws
  * @param {string} sessionId
- * @returns {{ userId: string, userName: string, sessionId: string } | { error: string } | null}
+ * @returns {{ userId: string, userName: string, sessionId: string } | { error: import("common-websocket").ErrorType } | null}
  */
 function userJoinSession(ws, sessionId) {
   const context = getSocketContext(ws);
@@ -95,18 +95,17 @@ function userJoinSession(ws, sessionId) {
     // Explicitly remove from old session's participant list
     removeParticipant(previousSessionId, context.userId);
 
-    broadcastToSession(
-      previousSessionId,
-      {
-        type: messageType.USER_OFFLINE,
-        payload: {
-          userId: context.userId,
-          userName: context.userName,
-          role: context.role,
-        },
+    /** @type {import("common-websocket").ServerToClientMessage} */
+    const offlineMessage = {
+      type: messageType.USER_OFFLINE,
+      payload: {
+        participant_id: context.userId,
+        nickname: context.userName,
+        role: context.role || undefined,
       },
-      context.userId,
-    );
+    };
+
+    broadcastToSession(previousSessionId, offlineMessage, context.userId);
     handleSessionDeparture(previousSessionId, context.userId);
   }
 
@@ -116,18 +115,17 @@ function userJoinSession(ws, sessionId) {
     role: updatedContext.role,
   });
 
-  broadcastToSession(
-    sessionId,
-    {
-      type: messageType.USER_ONLINE,
-      payload: {
-        userId: updatedContext.userId,
-        userName: updatedContext.userName,
-        role: updatedContext.role,
-      },
+  /** @type {import("common-websocket").ServerToClientMessage} */
+  const onlineMessage = {
+    type: messageType.USER_ONLINE,
+    payload: {
+      participant_id: updatedContext.userId,
+      nickname: updatedContext.userName,
+      role: updatedContext.role || undefined,
     },
-    updatedContext.userId,
-  );
+  };
+
+  broadcastToSession(sessionId, onlineMessage, updatedContext.userId);
 
   logger.info(
     { sessionId, userId: updatedContext.userId },
@@ -145,7 +143,7 @@ function userJoinSession(ws, sessionId) {
  * @param {import("ws").WebSocket} ws
  * @param {string} sessionId
  * @param {number} maxUsers
- * @returns {{ userId: string, userName: string, sessionId: string } | { error: string } | null}
+ * @returns {{ userId: string, userName: string, sessionId: string } | { error: import("common-websocket").ErrorType } | null}
  */
 function userCreateSession(ws, sessionId, maxUsers) {
   const context = getSocketContext(ws);
@@ -172,7 +170,7 @@ function userCreateSession(ws, sessionId, maxUsers) {
 /**
  * @param {import("ws").WebSocket} ws
  * @param {string} sessionId
- * @returns {{ sessionId: string, ownerId: string } | { error: string } | null}
+ * @returns {{ sessionId: string, ownerId: string } | { error: import("common-websocket").ErrorType } | null}
  */
 function userStartSession(ws, sessionId) {
   const context = getSocketContext(ws);
@@ -199,14 +197,13 @@ function userStartSession(ws, sessionId) {
   }
 
   setSessionStarted(sessionId, true);
-  broadcastToSession(
-    sessionId,
-    {
-      type: messageType.SESSION_STARTED,
-      payload: { sessionId, ownerId },
-    },
-    null,
-  );
+  /** @type {import("common-websocket").ServerToClientMessage} */
+  const startedMessage = {
+    type: messageType.SESSION_STARTED,
+    payload: { sessionId, ownerId },
+  };
+
+  broadcastToSession(sessionId, startedMessage, null);
 
   return { sessionId, ownerId };
 }
@@ -245,14 +242,13 @@ function handleSessionDeparture(sessionId, leavingUserId) {
   }
 
   setSessionOwnerId(sessionId, newOwnerId);
-  broadcastToSession(
-    sessionId,
-    {
-      type: messageType.SESSION_OWNER_CHANGED,
-      payload: { sessionId, ownerId: newOwnerId },
-    },
-    null,
-  );
+  /** @type {import("common-websocket").ServerToClientMessage} */
+  const ownerChangeMessage = {
+    type: messageType.SESSION_OWNER_CHANGED,
+    payload: { sessionId, ownerId: newOwnerId },
+  };
+
+  broadcastToSession(sessionId, ownerChangeMessage, null);
 }
 
 /**
@@ -277,18 +273,17 @@ function userLeaveSession(ws) {
 
   removeParticipant(leftSessionId, updatedContext.userId);
 
-  broadcastToSession(
-    leftSessionId,
-    {
-      type: messageType.USER_OFFLINE,
-      payload: {
-        userId: updatedContext.userId,
-        userName: updatedContext.userName,
-        role: updatedContext.role,
-      },
+  /** @type {import("common-websocket").ServerToClientMessage} */
+  const leaveMessage = {
+    type: messageType.USER_OFFLINE,
+    payload: {
+      participant_id: updatedContext.userId,
+      nickname: updatedContext.userName,
+      role: updatedContext.role || undefined,
     },
-    updatedContext.userId,
-  );
+  };
+
+  broadcastToSession(leftSessionId, leaveMessage, updatedContext.userId);
 
   logger.info(
     { sessionId: leftSessionId, userId: updatedContext.userId },
