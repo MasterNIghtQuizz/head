@@ -1,7 +1,8 @@
 {
   "app": {
     "port": 3010,
-    "env": "development"
+    "env": "development",
+    "frontendUrl": "http://localhost:3005"
   },
   "logger": {
     "level": "info",

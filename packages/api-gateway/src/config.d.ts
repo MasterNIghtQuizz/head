@@ -1,6 +1,7 @@
 export declare const config: {
   env: string;
   port: number;
+  frontendUrl: string;
   logger: Record<string, unknown>;
   services: {
     user: string;

@@ -1,7 +1,8 @@
 {
   "app": {
     "port": "PORT",
-    "env": "NODE_ENV"
+    "env": "NODE_ENV",
+    "frontendUrl": "FRONTEND_URL"
   },
   "logger": {
     "level": "LOG_LEVEL",
