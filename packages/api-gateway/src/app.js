@@ -39,6 +39,28 @@ export async function createServer() {
     },
   });
 
+  fastify.setErrorHandler((error, request, reply) => {
+    const fastifyError = /** @type {import('fastify').FastifyError} */ (error);
+    logger.error(
+      {
+        err: error,
+        method: request.method,
+        url: request.url,
+        body: request.body,
+        headers: request.headers,
+      },
+      "API Gateway Error Handler",
+    );
+
+    if (fastifyError.statusCode) {
+      reply.status(fastifyError.statusCode).send({ message: fastifyError.message });
+    } else {
+      reply
+        .status(500)
+        .send({ message: "Internal Server Error", detail: fastifyError.message });
+    }
+  });
+
   fastify.addContentTypeParser(
     "application/json",
     { parseAs: "string" },
@@ -107,8 +129,8 @@ export async function createServer() {
         return;
       }
       const allowedOrigins = config.frontendUrl
-        ? config.frontendUrl.split(",")
-        : [/^https:\/\/.*\.nightquizz\.com$/];
+        ? config.frontendUrl.split(",").map((o) => o.trim())
+        : [/^https:\/\/.*\.nightquizz\.com$/i];
 
       const isAllowed = allowedOrigins.some((o) =>
         typeof o === "string" ? o === origin : o.test(origin),
@@ -117,7 +139,8 @@ export async function createServer() {
       if (isAllowed) {
         cb(null, true);
       } else {
-        cb(new Error("Not allowed by CORS"), false);
+        logger.warn({ origin, allowedOrigins }, "CORS Origin rejected");
+        cb(null, false);
       }
     },
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],

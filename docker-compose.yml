@@ -264,6 +264,7 @@ services:
       QUIZZ_SERVICE_URL: "http://ms-quizz-management:4002"
       SESSION_SERVICE_URL: "http://ms-session:4003"
       WEBSOCKET_SERVICE_URL: "http://ws-service:4005"
+      FRONTEND_URL: "http://localhost:3005"
       VALKEY_HOST: valkey
       VALKEY_PORT: 6379
       OTEL_ENABLED: ${MONITORING_ENABLED:-false}
