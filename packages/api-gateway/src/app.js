@@ -34,6 +34,7 @@ export async function createServer() {
     loggerInstance: logger,
     disableRequestLogging: true,
     bodyLimit: 256000,
+    trustProxy: true,
     routerOptions: {
       ignoreTrailingSlash: true,
     },
@@ -53,11 +54,14 @@ export async function createServer() {
     );
 
     if (fastifyError.statusCode) {
-      reply.status(fastifyError.statusCode).send({ message: fastifyError.message });
-    } else {
       reply
-        .status(500)
-        .send({ message: "Internal Server Error", detail: fastifyError.message });
+        .status(fastifyError.statusCode)
+        .send({ message: fastifyError.message });
+    } else {
+      reply.status(500).send({
+        message: "Internal Server Error",
+        detail: fastifyError.message,
+      });
     }
   });
 
@@ -114,10 +118,21 @@ export async function createServer() {
       reply.header("Referrer-Policy", "strict-origin-when-cross-origin");
     }
     if (!reply.hasHeader("Content-Security-Policy")) {
-      reply.header(
-        "Content-Security-Policy",
-        "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
-      );
+      const csp = [
+        "default-src 'self'",
+        "base-uri 'self'",
+        "font-src 'self' https: data:",
+        "form-action 'self'",
+        "frame-ancestors 'self'",
+        "img-src 'self' data: https://api.qrserver.com",
+        "object-src 'none'",
+        "script-src 'self'",
+        "script-src-attr 'none'",
+        "style-src 'self' https: 'unsafe-inline'",
+        "connect-src 'self' ws: wss: http://localhost:* ws://localhost:* https://*.nightquizz.com wss://*.nightquizz.com",
+        "upgrade-insecure-requests",
+      ].join("; ");
+      reply.header("Content-Security-Policy", csp);
     }
     return payload;
   });
