@@ -22,8 +22,10 @@ export declare const messageType: {
   SESSION_ENDED: "session_ended";
   SESSION_NEXT_QUESTION: "session_next_question";
   SESSION_DELETED: "session_deleted";
+  PARTICIPANTS_UPDATE: "participants_update";
   ERROR: "error";
 };
+
 
 export type MessageType = (typeof messageType)[keyof typeof messageType];
 
@@ -77,9 +79,10 @@ export interface ChatMessagePayload {
 
 export interface SessionPresencePayload {
   participant_id: string;
-  nickname: string;
-  role?: string;
+  nickname?: string;
+  role?: string | null;
 }
+
 
 export interface SessionCreatedPayload {
   sessionId: string;
@@ -89,11 +92,13 @@ export interface SessionCreatedPayload {
 export interface SessionStartedPayload {
   sessionId: string;
   ownerId?: string;
+  activated_at?: number | null;
 }
 
 export interface SessionNextQuestionPayload {
   sessionId: string;
   question_id: string;
+  activated_at?: number | null;
 }
 
 export interface SessionOwnerChangedPayload {
@@ -103,7 +108,23 @@ export interface SessionOwnerChangedPayload {
 
 export interface JoinedSessionPayload {
   sessionId: string;
+  participants?: Array<SessionPresencePayload>;
+  activated_at?: number | null;
 }
+
+export interface ParticipantsUpdatePayload {
+  sessionId: string;
+  participants: Array<SessionPresencePayload>;
+  activated_at?: number | null;
+}
+
+
+
+export interface SessionIdPayload {
+  sessionId: string;
+}
+
+
 
 export interface DeliveryPayload {
   receiverId: string;
@@ -124,22 +145,27 @@ export type ServerToClientMessage =
   | { type: typeof messageType.SESSION_CREATED; payload: SessionCreatedPayload }
   | { type: typeof messageType.SESSION_STARTED; payload: SessionStartedPayload }
   | {
-      type: typeof messageType.SESSION_OWNER_CHANGED;
-      payload: SessionOwnerChangedPayload;
-    }
+    type: typeof messageType.SESSION_OWNER_CHANGED;
+    payload: SessionOwnerChangedPayload;
+  }
   | { type: typeof messageType.JOINED_SESSION; payload: JoinedSessionPayload }
+  | {
+    type: typeof messageType.PARTICIPANTS_UPDATE;
+    payload: ParticipantsUpdatePayload;
+  }
   | { type: typeof messageType.USER_ONLINE; payload: SessionPresencePayload }
   | { type: typeof messageType.USER_OFFLINE; payload: SessionPresencePayload }
   | { type: typeof messageType.CHAT_MESSAGE; payload: ChatMessagePayload }
   | { type: typeof messageType.MESSAGE_DELIVERED; payload: DeliveryPayload }
   | {
-      type: typeof messageType.MESSAGE_NOT_DELIVERED;
-      payload: DeliveryPayload;
-    }
-  | { type: typeof messageType.SESSION_ENDED; payload: { sessionId: string } }
-  | { type: typeof messageType.SESSION_DELETED; payload: { sessionId: string } }
+    type: typeof messageType.MESSAGE_NOT_DELIVERED;
+    payload: DeliveryPayload;
+  }
+  | { type: typeof messageType.SESSION_ENDED; payload: SessionIdPayload }
+  | { type: typeof messageType.SESSION_DELETED; payload: SessionIdPayload }
+
   | {
-      type: typeof messageType.SESSION_NEXT_QUESTION;
-      payload: SessionNextQuestionPayload;
-    }
+    type: typeof messageType.SESSION_NEXT_QUESTION;
+    payload: SessionNextQuestionPayload;
+  }
   | { type: typeof messageType.ERROR; payload: ErrorPayload };

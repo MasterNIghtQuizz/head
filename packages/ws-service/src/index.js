@@ -53,6 +53,7 @@ serviceUp.set({ service: "ws-service" }, 1);
 const wsConnectionsActive = new Gauge({
   name: "ws_connections_active",
   help: "Number of active WebSocket connections",
+  labelNames: ["service"],
   registers: [registry],
 });
 
@@ -96,7 +97,11 @@ wss.on(
       headers: req.headers,
       success: !!connectedUser,
       user: connectedUser
-        ? { id: connectedUser.userId, name: connectedUser.userName }
+        ? {
+            id: connectedUser.userId,
+            name: connectedUser.userName,
+            role: connectedUser.role,
+          }
         : "unauthorized",
     });
 
@@ -104,6 +109,16 @@ wss.on(
       wsConnectionsActive.dec({ service: "ws-service" });
       ws.close(1008, "Authentication failed");
       return;
+    }
+
+    // Auto-join session if present in token/URL
+    const sessionId = connectedUser.sessionId;
+    if (sessionId) {
+      import("./handlers/session-membership.handler.js").then(
+        ({ userJoinSession }) => {
+          userJoinSession(ws, sessionId);
+        },
+      );
     }
 
     ws.on("error", (err) => {

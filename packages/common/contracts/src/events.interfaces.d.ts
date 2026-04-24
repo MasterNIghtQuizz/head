@@ -58,10 +58,12 @@ export interface ParticipantLeftEventPayload {
 export interface QuizResponseSubmittedEventPayload {
   sessionId: string;
   participantId: string;
+  questionId: string;
   choiceId: string | null;
   submittedAt: string;
   type?: string;
 }
+
 
 export interface AnswerSubmittedEventPayload {
   sessionId: string;

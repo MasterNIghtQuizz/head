@@ -34,9 +34,11 @@ export function hookGameToken(options) {
         CryptoService.verify(token, options.publicKeyPath)
       );
 
-      logger.info({ url: request.url, payload }, "Verified game token");
+      logger.debug({ url: request.url, payload }, "Verified game token");
       request.gameTokenPayload = payload;
-      request.user = payload;
+      if (!request.user) {
+        request.user = payload;
+      }
       done();
     } catch (error) {
       logger.warn({ url: request.url, error }, "Invalid game token");

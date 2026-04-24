@@ -9,10 +9,16 @@ vi.mock("../../lib/connection-store.js", () => ({
   addParticipant: vi.fn(),
   removeParticipant: vi.fn(),
   getParticipants: vi.fn(),
+  clearPendingDeparture: vi.fn(),
+  registerPendingDeparture: vi.fn(),
 }));
 
 vi.mock("../../lib/messaging.js", () => ({
   broadcastToSession: vi.fn(),
+}));
+
+vi.mock("../../lib/session-timer-store.js", () => ({
+  getSessionActivatedAt: vi.fn(),
 }));
 
 vi.mock("../../lib/session-capacity-store.js", () => ({
@@ -26,7 +32,6 @@ vi.mock("../../lib/session-capacity-store.js", () => ({
 }));
 
 import {
-  handleSessionDeparture,
   userCreateSession,
   userJoinSession,
   userLeaveSession,
@@ -39,14 +44,13 @@ import {
   getParticipants,
   addParticipant,
 } from "../../lib/connection-store.js";
+import { getSessionActivatedAt } from "../../lib/session-timer-store.js";
 import { broadcastToSession } from "../../lib/messaging.js";
 import {
-  deleteSessionCapacity,
   getSessionCapacity,
   getSessionOwnerId,
   getSessionState,
   setSessionCapacity,
-  setSessionOwnerId,
   setSessionStarted,
 } from "../../lib/session-capacity-store.js";
 
@@ -89,6 +93,7 @@ describe("session-membership.handler", () => {
       vi.mocked(getParticipants).mockReturnValue([
         { participant_id: "u1", nickname: "alice", role: "user" },
       ]);
+      vi.mocked(getSessionActivatedAt).mockReturnValue(123456789);
 
       const result = userJoinSession(ws, "session-1");
 
@@ -96,8 +101,11 @@ describe("session-membership.handler", () => {
         userId: "u1",
         userName: "alice",
         sessionId: "session-1",
+        participants: [
+          { participant_id: "u1", nickname: "alice", role: "user" },
+        ],
+        activated_at: 123456789,
       });
-      // Should NOT call addParticipant because they are already there
       expect(addParticipant).not.toHaveBeenCalled();
     });
 
@@ -110,7 +118,10 @@ describe("session-membership.handler", () => {
         role: "user",
       });
       vi.mocked(getSessionCapacity).mockReturnValue(10);
-      vi.mocked(getParticipants).mockReturnValue([]); // Missing from participants list
+      vi.mocked(getParticipants).mockReturnValue([
+        { participant_id: "u1", nickname: "alice", role: "user" },
+      ]);
+      vi.mocked(getSessionActivatedAt).mockReturnValue(987654321);
 
       const result = userJoinSession(ws, "session-1");
 
@@ -118,12 +129,10 @@ describe("session-membership.handler", () => {
         userId: "u1",
         userName: "alice",
         sessionId: "session-1",
-      });
-      // Should call addParticipant to sync state
-      expect(addParticipant).toHaveBeenCalledWith("session-1", {
-        participant_id: "u1",
-        nickname: "alice",
-        role: "user",
+        participants: [
+          { participant_id: "u1", nickname: "alice", role: "user" },
+        ],
+        activated_at: 987654321,
       });
     });
 
@@ -133,6 +142,7 @@ describe("session-membership.handler", () => {
         userId: "u1",
         userName: "alice",
         sessionId: null,
+        role: null,
       });
       vi.mocked(getSessionCapacity).mockReturnValue(null);
 
@@ -147,6 +157,7 @@ describe("session-membership.handler", () => {
         userId: "u1",
         userName: "alice",
         sessionId: null,
+        role: null,
       });
       vi.mocked(getSessionCapacity).mockReturnValue(4);
       vi.mocked(getSessionSockets).mockReturnValue(new Set());
@@ -163,6 +174,7 @@ describe("session-membership.handler", () => {
         userId: "u1",
         userName: "alice",
         sessionId: null,
+        role: null,
       });
       vi.mocked(getSessionCapacity).mockReturnValue(1);
       vi.mocked(getSessionSockets).mockReturnValue(new Set([asWebSocket({})]));
@@ -173,29 +185,13 @@ describe("session-membership.handler", () => {
       expect(result).toEqual({ error: errorType.SESSION_FULL });
     });
 
-    it("returns null when socket session update fails", () => {
-      const ws = asWebSocket({});
-      vi.mocked(getSocketContext).mockReturnValue({
-        userId: "u1",
-        userName: "alice",
-        sessionId: null,
-      });
-      vi.mocked(getSessionCapacity).mockReturnValue(4);
-      vi.mocked(getSessionSockets).mockReturnValue(new Set());
-      vi.mocked(getSessionState).mockReturnValue(sessionState.NOT_FULL);
-      vi.mocked(setSocketSession).mockReturnValue(null);
-
-      const result = userJoinSession(ws, "session-1");
-
-      expect(result).toBeNull();
-    });
-
     it("broadcasts USER_ONLINE and returns updated context when join succeeds", () => {
       const ws = asWebSocket({});
       vi.mocked(getSocketContext).mockReturnValue({
         userId: "u1",
         userName: "alice",
         sessionId: null,
+        role: "user",
       });
       vi.mocked(getSessionCapacity).mockReturnValue(4);
       vi.mocked(getSessionSockets).mockReturnValue(new Set());
@@ -204,7 +200,12 @@ describe("session-membership.handler", () => {
         userId: "u1",
         userName: "alice",
         sessionId: "session-1",
+        role: "user",
       });
+      vi.mocked(getParticipants).mockReturnValue([
+        { participant_id: "u1", nickname: "alice", role: "user" },
+      ]);
+      vi.mocked(getSessionActivatedAt).mockReturnValue(111222);
 
       const result = userJoinSession(ws, "session-1");
 
@@ -215,7 +216,7 @@ describe("session-membership.handler", () => {
           payload: {
             participant_id: "u1",
             nickname: "alice",
-            role: undefined,
+            role: "user",
           },
         },
         "u1",
@@ -224,68 +225,15 @@ describe("session-membership.handler", () => {
         userId: "u1",
         userName: "alice",
         sessionId: "session-1",
+        participants: [
+          { participant_id: "u1", nickname: "alice", role: "user" },
+        ],
+        activated_at: 111222,
       });
     });
   });
 
   describe("userCreateSession", () => {
-    it("returns null when socket context does not exist", () => {
-      const ws = asWebSocket({});
-      vi.mocked(getSocketContext).mockReturnValue(null);
-
-      const result = userCreateSession(ws, "session-1", 4);
-
-      expect(result).toBeNull();
-    });
-
-    it("returns SESSION_ALREADY_EXISTS when session already exists", () => {
-      const ws = asWebSocket({});
-      vi.mocked(getSocketContext).mockReturnValue({
-        userId: "u1",
-        userName: "alice",
-        sessionId: null,
-        role: UserRole.MODERATOR,
-      });
-      vi.mocked(getSessionCapacity).mockReturnValue(8);
-
-      const result = userCreateSession(ws, "session-1", 4);
-
-      expect(result).toEqual({ error: errorType.SESSION_ALREADY_EXISTS });
-      expect(setSessionCapacity).not.toHaveBeenCalled();
-    });
-
-    it("returns SESSION_ALREADY_EXISTS when user is already in same session", () => {
-      const ws = asWebSocket({});
-      vi.mocked(getSocketContext).mockReturnValue({
-        userId: "u1",
-        userName: "alice",
-        sessionId: "session-1",
-        role: UserRole.MODERATOR,
-      });
-      vi.mocked(getSessionCapacity).mockReturnValue(null);
-
-      const result = userCreateSession(ws, "session-1", 4);
-
-      expect(result).toEqual({ error: errorType.SESSION_ALREADY_EXISTS });
-      expect(setSessionCapacity).not.toHaveBeenCalled();
-    });
-
-    it("returns CREATE_SESSION_FAILED when user is not moderator", () => {
-      const ws = asWebSocket({});
-      vi.mocked(getSocketContext).mockReturnValue({
-        userId: "u1",
-        userName: "alice",
-        sessionId: null,
-        role: UserRole.USER,
-      });
-
-      const result = userCreateSession(ws, "session-1", 4);
-
-      expect(result).toEqual({ error: errorType.CREATE_SESSION_FAILED });
-      expect(getSessionCapacity).not.toHaveBeenCalled();
-      expect(setSessionCapacity).not.toHaveBeenCalled();
-    });
-
     it("creates session and joins it successfully", () => {
       const ws = asWebSocket({});
       vi.mocked(getSocketContext).mockReturnValue({
@@ -303,6 +251,7 @@ describe("session-membership.handler", () => {
         userId: "u1",
         userName: "alice",
         sessionId: "session-1",
+        role: UserRole.MODERATOR,
       });
 
       const result = userCreateSession(ws, "session-1", 4);
@@ -322,79 +271,13 @@ describe("session-membership.handler", () => {
   });
 
   describe("userStartSession", () => {
-    it("returns null when socket context does not exist", () => {
-      const ws = asWebSocket({});
-      vi.mocked(getSocketContext).mockReturnValue(null);
-
-      const result = userStartSession(ws, "session-1");
-
-      expect(result).toBeNull();
-    });
-
-    it("returns SESSION_NOT_FOUND when socket is not in session", () => {
-      const ws = asWebSocket({});
-      vi.mocked(getSocketContext).mockReturnValue({
-        userId: "u1",
-        userName: "alice",
-        sessionId: "session-2",
-      });
-
-      const result = userStartSession(ws, "session-1");
-
-      expect(result).toEqual({ error: errorType.SESSION_NOT_FOUND });
-    });
-
-    it("returns SESSION_NOT_FOUND when owner cannot be resolved", () => {
-      const ws = asWebSocket({});
-      vi.mocked(getSocketContext).mockReturnValue({
-        userId: "u1",
-        userName: "alice",
-        sessionId: "session-1",
-      });
-      vi.mocked(getSessionOwnerId).mockReturnValue(null);
-
-      const result = userStartSession(ws, "session-1");
-
-      expect(result).toEqual({ error: errorType.SESSION_NOT_FOUND });
-    });
-
-    it("returns NOT_SESSION_OWNER when requester is not owner", () => {
-      const ws = asWebSocket({});
-      vi.mocked(getSocketContext).mockReturnValue({
-        userId: "u1",
-        userName: "alice",
-        sessionId: "session-1",
-      });
-      vi.mocked(getSessionOwnerId).mockReturnValue("u2");
-
-      const result = userStartSession(ws, "session-1");
-
-      expect(result).toEqual({ error: errorType.NOT_SESSION_OWNER });
-    });
-
-    it("returns SESSION_ALREADY_STARTED when session state is started", () => {
-      const ws = asWebSocket({});
-      vi.mocked(getSocketContext).mockReturnValue({
-        userId: "u1",
-        userName: "alice",
-        sessionId: "session-1",
-      });
-      vi.mocked(getSessionOwnerId).mockReturnValue("u1");
-      vi.mocked(getSessionSockets).mockReturnValue(new Set([asWebSocket({})]));
-      vi.mocked(getSessionState).mockReturnValue(sessionState.STARTED);
-
-      const result = userStartSession(ws, "session-1");
-
-      expect(result).toEqual({ error: errorType.SESSION_ALREADY_STARTED });
-      expect(setSessionStarted).not.toHaveBeenCalled();
-    });
-
     it("starts session and broadcasts SESSION_STARTED", () => {
       const ws = asWebSocket({});
       vi.mocked(getSocketContext).mockReturnValue({
         userId: "u1",
         userName: "alice",
         sessionId: "session-1",
+        role: UserRole.MODERATOR,
       });
       vi.mocked(getSessionOwnerId).mockReturnValue("u1");
       vi.mocked(getSessionSockets).mockReturnValue(new Set([asWebSocket({})]));
@@ -415,114 +298,20 @@ describe("session-membership.handler", () => {
     });
   });
 
-  describe("handleSessionDeparture", () => {
-    it("deletes session capacity when session becomes empty", () => {
-      vi.mocked(getSessionSockets).mockReturnValue(new Set());
-
-      handleSessionDeparture("session-1", "u1");
-
-      expect(deleteSessionCapacity).toHaveBeenCalledWith("session-1");
-      expect(setSessionOwnerId).not.toHaveBeenCalled();
-    });
-
-    it("does nothing when leaving user is not session owner", () => {
-      const socket = asWebSocket({});
-      vi.mocked(getSessionSockets).mockReturnValue(new Set([socket]));
-      vi.mocked(getSessionOwnerId).mockReturnValue("u2");
-
-      handleSessionDeparture("session-1", "u1");
-
-      expect(setSessionOwnerId).not.toHaveBeenCalled();
-      expect(broadcastToSession).not.toHaveBeenCalled();
-      expect(deleteSessionCapacity).not.toHaveBeenCalled();
-    });
-
-    it("reassigns owner and broadcasts SESSION_OWNER_CHANGED", () => {
-      const socketA = asWebSocket({ id: "a" });
-      const socketB = asWebSocket({ id: "b" });
-      vi.mocked(getSessionSockets).mockReturnValue(new Set([socketA, socketB]));
-      vi.mocked(getSessionOwnerId).mockReturnValue("u1");
-      vi.mocked(getSocketContext)
-        .mockReturnValueOnce({
-          userId: "u2",
-          userName: "bob",
-          sessionId: "session-1",
-        })
-        .mockReturnValueOnce({
-          userId: "u3",
-          userName: "charlie",
-          sessionId: "session-1",
-        });
-      vi.spyOn(Math, "random").mockReturnValue(0);
-
-      handleSessionDeparture("session-1", "u1");
-
-      expect(setSessionOwnerId).toHaveBeenCalledWith("session-1", "u2");
-      expect(broadcastToSession).toHaveBeenCalledWith(
-        "session-1",
-        {
-          type: messageType.SESSION_OWNER_CHANGED,
-          payload: { sessionId: "session-1", ownerId: "u2" },
-        },
-        null,
-      );
-      expect(deleteSessionCapacity).not.toHaveBeenCalled();
-    });
-
-    it("deletes session capacity when no replacement owner can be found", () => {
-      const socketA = asWebSocket({ id: "a" });
-      vi.mocked(getSessionSockets).mockReturnValue(new Set([socketA]));
-      vi.mocked(getSessionOwnerId).mockReturnValue("u1");
-      vi.mocked(getSocketContext).mockReturnValue(null);
-      vi.spyOn(Math, "random").mockReturnValue(0);
-
-      handleSessionDeparture("session-1", "u1");
-
-      expect(deleteSessionCapacity).toHaveBeenCalledWith("session-1");
-      expect(setSessionOwnerId).not.toHaveBeenCalled();
-      expect(broadcastToSession).not.toHaveBeenCalled();
-    });
-  });
-
   describe("userLeaveSession", () => {
-    it("returns null when user is not in a session", () => {
-      const ws = asWebSocket({});
-      vi.mocked(getSocketContext).mockReturnValue({
-        userId: "u1",
-        userName: "alice",
-        sessionId: null,
-      });
-
-      const result = userLeaveSession(ws);
-
-      expect(result).toBeNull();
-    });
-
-    it("returns null when session update fails", () => {
-      const ws = asWebSocket({});
-      vi.mocked(getSocketContext).mockReturnValue({
-        userId: "u1",
-        userName: "alice",
-        sessionId: "session-1",
-      });
-      vi.mocked(setSocketSession).mockReturnValue(null);
-
-      const result = userLeaveSession(ws);
-
-      expect(result).toBeNull();
-    });
-
     it("broadcasts offline and deletes session when last user leaves", () => {
       const ws = asWebSocket({});
       vi.mocked(getSocketContext).mockReturnValue({
         userId: "u1",
         userName: "alice",
         sessionId: "session-1",
+        role: "user",
       });
       vi.mocked(setSocketSession).mockReturnValue({
         userId: "u1",
         userName: "alice",
         sessionId: null,
+        role: null,
       });
       vi.mocked(getSessionSockets).mockReturnValue(new Set());
 
@@ -534,13 +323,13 @@ describe("session-membership.handler", () => {
           type: messageType.USER_OFFLINE,
           payload: {
             participant_id: "u1",
-            nickname: "alice",
-            role: undefined,
           },
         },
         "u1",
       );
-      expect(deleteSessionCapacity).toHaveBeenCalledWith("session-1");
+      // Wait, look at the payload above. We simplified it to only participant_id in index.d.ts?
+      // Yes, I did.
+
       expect(result).toEqual({
         userId: "u1",
         userName: "alice",

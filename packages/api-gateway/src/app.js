@@ -205,42 +205,42 @@ export async function createServer() {
     );
   });
 
+  fastify.addHook("onRequest", async (request) => {
+    if (request.url.startsWith("/ws")) {
+      const userId =
+        request.gameTokenPayload?.participantId ||
+        request.user?.participantId ||
+        request.user?.userId;
+
+      if (userId) {
+        request.headers["x-user-id"] = String(userId);
+        request.raw.headers["x-user-id"] = String(userId);
+      }
+      if (request.user?.role) {
+        request.headers["x-user-role"] = String(request.user.role);
+        request.raw.headers["x-user-role"] = String(request.user.role);
+      }
+    }
+  });
+
   await fastify.register(proxy, {
     upstream: config.services.websocket,
     prefix: "/ws",
     proxyPayloads: false,
     websocket: true,
-    preHandler: async (request, _reply) => {
-      const url = new URL(request.url, `http://${request.hostname}`);
-      
-      logger.info({
-        msg: "WS Upgrade Request",
-        url: request.url,
-        headers: request.headers,
-        hasUser: !!request.user,
-        userId: request.user?.userId || request.user?.participantId,
-      });
-
-      url.searchParams.delete("access-token");
-      url.searchParams.delete("game-token");
-      request.raw.url = url.pathname + url.search;
-
-      const userId = request.user?.participantId || request.user?.userId;
-      if (userId) {
-        // @ts-ignore
-        request.headers["x-user-id"] = userId;
-      }
-      if (request.user?.role) {
-        // @ts-ignore
-        request.headers["x-user-role"] = request.user.role;
-      }
-
-      logger.info({
-        msg: "WS Proxied",
-        finalUrl: request.raw.url,
-        userId,
-        target: config.services.websocket
-      });
+    replyOptions: {
+      rewriteRequestHeaders: (request, headers) => {
+        const {
+          "access-token": _at,
+          "game-token": _gt,
+          authorization: _auth,
+          ...rest
+        } = headers;
+        return rest;
+      },
+    },
+    preHandler: async (_request) => {
+      // We keep the tokens in the URL so the backend can decode them if headers are missing
     },
   });
 

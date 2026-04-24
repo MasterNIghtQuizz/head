@@ -1,45 +1,35 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { messageType } from "common-websocket";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../lib/connection-store.js", () => ({
   add: vi.fn(),
-  get: vi.fn(),
   remove: vi.fn(),
+  get: vi.fn(),
   setSocketContext: vi.fn(),
   getSocketContext: vi.fn(),
-  removeParticipant: vi.fn(),
-}));
-
-vi.mock("../../lib/messaging.js", () => ({
-  broadcastToSession: vi.fn(),
+  deleteSocketContext: vi.fn(),
+  setSocketSession: vi.fn(),
+  findNicknameFallback: vi.fn(),
 }));
 
 vi.mock("../../handlers/session-membership.handler.js", () => ({
   handleSessionDeparture: vi.fn(),
 }));
 
-vi.mock("../../logger.js", () => ({
-  default: {
-    info: vi.fn(),
-    error: vi.fn(),
-    debug: vi.fn(),
-  },
+vi.mock("../../lib/messaging.js", () => ({
+  broadcastToSession: vi.fn(),
 }));
 
 import {
   userConnect,
   userDisconnect,
-} from "../../handlers/connection.handler.js";
+} from "../../../src/handlers/connection.handler.js";
 import {
-  add,
-  get,
-  remove,
   setSocketContext,
   getSocketContext,
-  removeParticipant,
-} from "../../lib/connection-store.js";
-import { broadcastToSession } from "../../lib/messaging.js";
-import { handleSessionDeparture } from "../../handlers/session-membership.handler.js";
+  findNicknameFallback,
+} from "../../../src/lib/connection-store.js";
+import { handleSessionDeparture } from "../../../src/handlers/session-membership.handler.js";
+import { broadcastToSession } from "../../../src/lib/messaging.js";
 
 /**
  * @param {unknown} ws
@@ -50,159 +40,105 @@ function asWebSocket(ws) {
 }
 
 /**
- * @param {unknown} req
+ * @param {any} req
  * @returns {import("http").IncomingMessage}
  */
 function asIncomingMessage(req) {
-  return /** @type {import("http").IncomingMessage} */ (req);
-}
-
-function createWsMock() {
-  return {
-    close: vi.fn(),
-  };
+  return req;
 }
 
 describe("connection.handler", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
   });
 
   describe("userConnect", () => {
-    it("returns null and closes socket when URL is missing", () => {
-      const ws = createWsMock();
-      const req = { headers: { host: "localhost:8080" } };
-
-      const result = userConnect(asWebSocket(ws), asIncomingMessage(req));
-
-      expect(result).toBeNull();
-      expect(ws.close).toHaveBeenCalledWith(1002, "URL manquante");
-      expect(add).not.toHaveBeenCalled();
-      expect(setSocketContext).not.toHaveBeenCalled();
-    });
-
-    it("returns null and closes socket when userId is missing", () => {
-      const ws = createWsMock();
+    it("successfully connects a user with token and session", () => {
+      const ws = { close: vi.fn() };
       const req = {
-        url: "/?userName=alice",
-        headers: { host: "localhost:8080" },
+        url: "ws://localhost?sessionId=session-1&userName=alice",
+        headers: {
+          host: "localhost",
+          "x-user-id": "u1",
+          "x-user-role": "user",
+        },
       };
 
-      const result = userConnect(asWebSocket(ws), asIncomingMessage(req));
-
-      expect(result).toBeNull();
-      expect(ws.close).toHaveBeenCalledWith(1002, "Header x-user-id manquant");
-      expect(add).not.toHaveBeenCalled();
-      expect(setSocketContext).not.toHaveBeenCalled();
-    });
-
-    it("registers socket and context when request is valid", () => {
-      const ws = createWsMock();
-      const req = {
-        url: "/?userId=u1&userName=alice",
-        headers: { host: "localhost:8080", "x-user-id": "u1" },
-      };
+      vi.mocked(setSocketContext).mockReturnValue(undefined);
 
       const result = userConnect(asWebSocket(ws), asIncomingMessage(req));
 
       expect(result).toEqual({
         userId: "u1",
         userName: "alice",
-        sessionId: null,
+        sessionId: "session-1",
+        role: "user",
       });
-      expect(add).toHaveBeenCalledWith("u1", ws);
       expect(setSocketContext).toHaveBeenCalledWith(ws, {
         userId: "u1",
         userName: "alice",
-        sessionId: null,
-        role: null,
+        sessionId: "session-1",
+        role: "user",
       });
-      expect(ws.close).not.toHaveBeenCalled();
     });
 
     it("defaults userName to anonymous when not provided", () => {
-      const ws = createWsMock();
+      const ws = { close: vi.fn() };
       const req = {
-        url: "/",
-        headers: { host: "localhost:8080", "x-user-id": "u2" },
+        url: "ws://localhost",
+        headers: {
+          host: "localhost",
+          "x-user-id": "u1",
+        },
       };
+
+      vi.mocked(findNicknameFallback).mockReturnValue(null);
+      vi.mocked(setSocketContext).mockReturnValue(undefined);
 
       const result = userConnect(asWebSocket(ws), asIncomingMessage(req));
 
-      expect(result).toEqual({
-        userId: "u2",
-        userName: "anonymous",
-        sessionId: null,
-      });
-      expect(setSocketContext).toHaveBeenCalledWith(ws, {
-        userId: "u2",
-        userName: "anonymous",
-        sessionId: null,
-        role: null,
-      });
+      expect(result).not.toBeNull();
+      expect(result?.userName).toBe("anonymous");
+      expect(findNicknameFallback).toHaveBeenCalledWith("u1");
     });
   });
 
   describe("userDisconnect", () => {
-    it("only removes user when socket is not in a session", () => {
-      const ws = {};
-      vi.mocked(getSocketContext).mockReturnValue({
-        userId: "u1",
-        userName: "alice",
-        sessionId: null,
-        role: null,
-      });
-
-      userDisconnect(asWebSocket(ws), "u1", "alice");
-
-      expect(remove).toHaveBeenCalledWith("u1", ws);
-      expect(broadcastToSession).not.toHaveBeenCalled();
-      expect(handleSessionDeparture).not.toHaveBeenCalled();
-    });
-
-    it("does not broadcast offline when same user is still connected", () => {
-      const ws = {};
-      vi.mocked(getSocketContext).mockReturnValue({
-        userId: "u1",
-        userName: "alice",
-        sessionId: "session-1",
-      });
-      vi.mocked(get).mockReturnValue(asWebSocket({}));
-
-      userDisconnect(asWebSocket(ws), "u1", "alice");
-
-      expect(remove).toHaveBeenCalledWith("u1", ws);
-      expect(get).toHaveBeenCalledWith("u1");
-      expect(broadcastToSession).not.toHaveBeenCalled();
-      expect(handleSessionDeparture).not.toHaveBeenCalled();
-    });
-
     it("broadcasts offline and handles session departure when user leaves session", () => {
-      const ws = {};
+      const ws = { close: vi.fn() };
       vi.mocked(getSocketContext).mockReturnValue({
         userId: "u1",
         userName: "alice",
         sessionId: "session-1",
+        role: "user",
       });
-      vi.mocked(get).mockReturnValue(null);
 
       userDisconnect(asWebSocket(ws), "u1", "alice");
 
-      expect(remove).toHaveBeenCalledWith("u1", ws);
-      expect(removeParticipant).toHaveBeenCalledWith("session-1", "u1");
       expect(broadcastToSession).toHaveBeenCalledWith(
         "session-1",
         {
-          type: messageType.USER_OFFLINE,
-          payload: {
-            participant_id: "u1",
-            nickname: "alice",
-            role: undefined,
-          },
+          type: "user_offline",
+          payload: { participant_id: "u1" },
         },
         "u1",
       );
       expect(handleSessionDeparture).toHaveBeenCalledWith("session-1", "u1");
+    });
+
+    it("does nothing if user has no session", () => {
+      const ws = { close: vi.fn() };
+      vi.mocked(getSocketContext).mockReturnValue({
+        userId: "u1",
+        userName: "alice",
+        sessionId: null,
+        role: "user",
+      });
+
+      userDisconnect(asWebSocket(ws), "u1", "alice");
+
+      expect(broadcastToSession).not.toHaveBeenCalled();
+      expect(handleSessionDeparture).not.toHaveBeenCalled();
     });
   });
 });

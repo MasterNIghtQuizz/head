@@ -8,7 +8,9 @@ import {
   removeParticipant,
   initSessionParticipants,
   deleteParticipants,
+  getParticipants,
 } from "../../../lib/connection-store.js";
+import { setSessionActivatedAt } from "../../../lib/session-timer-store.js";
 import { broadcastToSession } from "../../../lib/messaging.js";
 import {
   deleteSessionCapacity,
@@ -34,6 +36,10 @@ export class SessionEventsConsumer {
 
   register() {
     const topics = [Topics.USER_EVENTS, Topics.QUIZZ_EVENTS];
+    logger.info(
+      { topics, clientId: "ws-service", groupId: "ws-service-group" },
+      "DEBUG [ws-service] Registering Kafka topics for consumption",
+    );
     for (const topic of topics) {
       this.kafkaConsumer.addHandler(topic, async (message) => {
         await this.handleEvent(message);
@@ -49,7 +55,10 @@ export class SessionEventsConsumer {
     const { eventType, payload, eventId } = message;
     const logCtx = { eventId, eventType };
 
-    logger.debug(logCtx, "DEBUG [ws-service] Received event from Kafka");
+    logger.info(
+      logCtx,
+      "DEBUG [ws-service] Kafka message received by consumer",
+    );
 
     switch (eventType) {
       case SessionEventTypes.SESSION_CREATED:
@@ -65,7 +74,7 @@ export class SessionEventsConsumer {
           logCtx,
           "DEBUG [ws-service] Handling SESSION_STARTED event",
         );
-        this.onSessionStarted(payload);
+        this.onSessionStarted(payload, message.timestamp);
         break;
 
       case SessionEventTypes.SESSION_NEXT_QUESTION:
@@ -73,7 +82,7 @@ export class SessionEventsConsumer {
           logCtx,
           "DEBUG [ws-service] Handling SESSION_NEXT_QUESTION event",
         );
-        this.onNextQuestion(payload);
+        this.onNextQuestion(payload, message.timestamp);
         break;
 
       case SessionEventTypes.SESSION_ENDED:
@@ -119,21 +128,27 @@ export class SessionEventsConsumer {
 
   /**
    * @param {import("common-contracts").SessionStartedEventPayload} payload
+   * @param {number} timestamp
    * @returns {void}
    */
-  onSessionStarted(payload) {
+  onSessionStarted(payload, timestamp) {
     const sessionId = payload?.session_id;
     if (!sessionId) {
       return;
     }
 
-    logger.info({ sessionId }, "Broadcasting session start to all clients");
+    setSessionActivatedAt(sessionId, timestamp);
+    logger.info(
+      { sessionId, timestamp },
+      "Broadcasting session start to all clients",
+    );
 
     /** @type {import("common-websocket").ServerToClientMessage} */
     const message = {
       type: messageType.SESSION_STARTED,
       payload: {
         sessionId,
+        activated_at: timestamp,
       },
     };
 
@@ -142,15 +157,20 @@ export class SessionEventsConsumer {
 
   /**
    * @param {import("common-contracts").SessionNextQuestionEventPayload} payload
+   * @param {number} timestamp
    * @returns {void}
    */
-  onNextQuestion(payload) {
+  onNextQuestion(payload, timestamp) {
     const sessionId = payload?.session_id;
     if (!sessionId) {
       return;
     }
 
-    logger.info({ sessionId }, "Broadcasting next question to all clients");
+    setSessionActivatedAt(sessionId, timestamp);
+    logger.info(
+      { sessionId, timestamp },
+      "Broadcasting next question to all clients",
+    );
 
     /** @type {import("common-websocket").ServerToClientMessage} */
     const message = {
@@ -158,6 +178,7 @@ export class SessionEventsConsumer {
       payload: {
         sessionId,
         question_id: payload.question_id,
+        activated_at: timestamp,
       },
     };
 
@@ -211,7 +232,8 @@ export class SessionEventsConsumer {
       "DEBUG [ws-service] Processing participant event for broadcast",
     );
 
-    if (!sessionId || !participantId || !nickname) {
+    const isOnline = wsMessageType === messageType.USER_ONLINE;
+    if (!sessionId || !participantId || (isOnline && !nickname)) {
       logger.warn(
         { payload },
         "DEBUG [ws-service] Missing required fields in participant event payload",
@@ -228,6 +250,11 @@ export class SessionEventsConsumer {
     } else {
       removeParticipant(sessionId, participantId);
     }
+
+    // Fallback: If we don't have participants for this session (e.g. service restart),
+    // we should ideally fetch them from ms-session. For now, we at least ensure
+    // the list is initialized so the broadcast has a chance to reach the new participant.
+    initSessionParticipants(sessionId);
 
     // If the participant has an active websocket connection on this service,
     // prefer to use the existing socket handlers so the local socket context
@@ -262,7 +289,7 @@ export class SessionEventsConsumer {
 
     if (!handledLocally) {
       logger.info(
-        { sessionId, participantId, nickname },
+        { sessionId, participantId, nickname, wsMessageType },
         "DEBUG [ws-service] Broadcasting participant event to session sockets",
       );
 
@@ -275,6 +302,21 @@ export class SessionEventsConsumer {
           role: payload.role || undefined,
         },
       };
+
+      const sockets = getSessionSockets(sessionId);
+      const list = getParticipants(sessionId);
+      logger.debug(
+        {
+          sessionId,
+          socketCount: sockets.size,
+          participantCount: list.length,
+          participants: list.map((p) => ({
+            id: p.participant_id,
+            role: p.role,
+          })),
+        },
+        "DEBUG [ws-service] Broadcasting to session sockets",
+      );
 
       broadcastToSession(sessionId, participantMessage, null);
     }

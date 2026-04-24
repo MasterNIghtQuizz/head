@@ -13,10 +13,12 @@ export declare const SessionStatus: {
   FINISHED: "FINISHED";
 };
 
-export type ParticipantRolesType = "moderator" | "user";
+export type ParticipantRolesType = "moderator" | "user" | "HOST" | "PLAYER";
 export declare const ParticipantRoles: {
   MODERATOR: "moderator";
   USER: "user";
+  HOST: "HOST";
+  PLAYER: "PLAYER";
 };
 
 export interface CreateSessionRequest {
@@ -55,7 +57,9 @@ export interface GetSessionResponse {
   host_id: string | null;
   participants: Participant[];
   activated_at?: number | null;
+  has_answered?: boolean;
 }
+
 
 export interface StartSessionRequest {}
 

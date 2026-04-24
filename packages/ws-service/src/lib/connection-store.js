@@ -2,10 +2,12 @@ import logger from "../logger.js";
 
 /** @type {Map<string, import("ws").WebSocket>} */
 const clients = new Map();
-/** @type {Map<import("ws").WebSocket, import("common-websocket").SocketContext>} */
-const socketContexts = new Map();
+/** @type {WeakMap<import("ws").WebSocket, import("common-websocket").SocketContext>} */
+const socketContexts = new WeakMap();
 /** @type {Map<string, Array<{ participant_id: string, nickname: string, role: string | null }>>} */
 const sessionParticipants = new Map();
+/** @type {Map<string, NodeJS.Timeout>} */
+const pendingDepartures = new Map();
 
 /**
  * @param {string} userId
@@ -15,9 +17,9 @@ const sessionParticipants = new Map();
 function add(userId, ws) {
   const existingSocket = clients.get(userId);
   if (existingSocket && existingSocket !== ws) {
-    socketContexts.delete(existingSocket);
     existingSocket.close(1008, "another_connection_opened");
   }
+
   clients.set(userId, ws);
 }
 
@@ -29,14 +31,12 @@ function add(userId, ws) {
 function remove(userId, ws) {
   const existingSocket = clients.get(userId);
   if (!existingSocket) {
-    socketContexts.delete(ws);
     return;
   }
 
   if (existingSocket === ws) {
     clients.delete(userId);
   }
-  socketContexts.delete(ws);
 }
 
 /**
@@ -90,11 +90,31 @@ function setSocketSession(ws, sessionId) {
 function getSessionSockets(sessionId) {
   const participants = getParticipants(sessionId);
   const sockets = new Set();
+  const allAuthenticatedUserIds = Array.from(clients.keys());
+
+  logger.debug(
+    {
+      sessionId,
+      participantCount: participants.length,
+      participantsInRoom: participants.map((p) => p.participant_id),
+      allConnectedUserIds: allAuthenticatedUserIds,
+    },
+    "DEBUG [getSessionSockets] Analyzing session sockets",
+  );
 
   for (const p of participants) {
     const ws = clients.get(p.participant_id);
     if (ws) {
       sockets.add(ws);
+    } else {
+      logger.warn(
+        {
+          participantId: p.participant_id,
+          nickname: p.nickname,
+          sessionId,
+        },
+        "DEBUG [getSessionSockets] Participant has no active socket",
+      );
     }
   }
 
@@ -132,13 +152,34 @@ function addParticipant(sessionId, participant) {
     (p) => p.participant_id === participant.participant_id,
   );
   if (existingIndex !== -1) {
-    list[existingIndex] = { ...list[existingIndex], ...participant };
+    const existing = list[existingIndex];
+    // Don't overwrite a real nickname with "Anonymous"
+    const isNewAnonymous =
+      participant.nickname.toLowerCase() === "anonymous" ||
+      participant.nickname.toLowerCase() === "anonymous";
+    const finalNickname =
+      isNewAnonymous &&
+      existing.nickname &&
+      existing.nickname.toLowerCase() !== "anonymous"
+        ? existing.nickname
+        : participant.nickname;
+
+    list[existingIndex] = {
+      ...existing,
+      ...participant,
+      nickname: finalNickname,
+    };
     logger.debug(
-      { sessionId, participantId: participant.participant_id },
+      {
+        sessionId,
+        participantId: participant.participant_id,
+        nickname: finalNickname,
+      },
       "Updated participant in session list",
     );
     return true;
   }
+
   list.push(participant);
   logger.info(
     {
@@ -184,11 +225,55 @@ function getParticipants(sessionId) {
 }
 
 /**
+ * @param {string} userId
+ * @returns {string | null}
+ */
+function findNicknameFallback(userId) {
+  for (const list of sessionParticipants.values()) {
+    const p = list.find((item) => item.participant_id === userId);
+    if (p && p.nickname && p.nickname.toLowerCase() !== "anonymous") {
+      return p.nickname;
+    }
+  }
+  return null;
+}
+
+/**
  * Delete participants list for a session.
  * @param {string} sessionId
  */
 function deleteParticipants(sessionId) {
   sessionParticipants.delete(sessionId);
+}
+
+/**
+ * @param {import("ws").WebSocket} ws
+ * @returns {void}
+ */
+function deleteSocketContext(ws) {
+  socketContexts.delete(ws);
+}
+
+/**
+ * @param {string} userId
+ * @param {NodeJS.Timeout} timeoutId
+ */
+export function registerPendingDeparture(userId, timeoutId) {
+  clearPendingDeparture(userId);
+  pendingDepartures.set(userId, timeoutId);
+}
+
+/**
+ * @param {string} userId
+ */
+export function clearPendingDeparture(userId) {
+  const existing = pendingDepartures.get(userId);
+  if (existing) {
+    clearTimeout(existing);
+    pendingDepartures.delete(userId);
+    return true;
+  }
+  return false;
 }
 
 export {
@@ -198,6 +283,7 @@ export {
   clients,
   setSocketContext,
   getSocketContext,
+  deleteSocketContext,
   setSocketSession,
   getSessionSockets,
   initSessionParticipants,
@@ -205,4 +291,5 @@ export {
   removeParticipant,
   getParticipants,
   deleteParticipants,
+  findNicknameFallback,
 };

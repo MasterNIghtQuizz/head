@@ -45,6 +45,7 @@ export class SessionController extends BaseController {
     return reply.code(200).send(session);
   }
 
+
   /**
    * @param {import('fastify').FastifyRequest} request
    * @param {import('fastify').FastifyReply} reply
@@ -246,6 +247,8 @@ ApplyMethodDecorators(SessionController, "getSession", [
               },
             },
           },
+          activated_at: { type: "integer", nullable: true },
+          has_answered: { type: "boolean" },
         },
       },
       401: ErrorResponse,
@@ -256,6 +259,7 @@ ApplyMethodDecorators(SessionController, "getSession", [
   UseGameToken(),
   Get("/"),
 ]);
+
 
 ApplyMethodDecorators(SessionController, "startSession", [
   Schema({

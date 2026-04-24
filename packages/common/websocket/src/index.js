@@ -15,6 +15,7 @@ export const messageType = {
   SESSION_ENDED: "session_ended",
   SESSION_DELETED: "session_deleted",
   SESSION_NEXT_QUESTION: "session_next_question",
+  PARTICIPANTS_UPDATE: "participants_update",
   ERROR: "error",
 };
 

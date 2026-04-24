@@ -23,16 +23,14 @@ export function hookAccessToken(options) {
       return;
     }
 
-    const token = isWebSocketRequest
-      ? /** @type {string | undefined} */ (request.query?.["access-token"])
-      : /** @type {string | undefined} */ (request.headers["access-token"]);
-
-    if (isWebSocketRequest && token) {
-      logger.info(
-        { url: request.url, hasToken: !!token },
-        "Authenticating WebSocket request via query parameter",
-      );
+    if (isWebSocketRequest) {
+      done();
+      return;
     }
+
+    const token = /** @type {string | undefined} */ (
+      request.headers["access-token"]
+    );
 
     if (request.routeOptions?.config?.useGameToken) {
       done();

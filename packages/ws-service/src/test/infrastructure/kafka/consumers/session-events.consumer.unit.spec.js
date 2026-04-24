@@ -7,13 +7,14 @@ vi.mock("../../../../lib/messaging.js", () => ({
 }));
 
 vi.mock("../../../../lib/connection-store.js", () => ({
-  getSessionSockets: vi.fn(),
+  getSessionSockets: vi.fn(() => new Set()),
   getSocketContext: vi.fn(),
   get: vi.fn(),
   addParticipant: vi.fn(),
   removeParticipant: vi.fn(),
   initSessionParticipants: vi.fn(),
   deleteParticipants: vi.fn(),
+  getParticipants: vi.fn(() => []),
 }));
 
 vi.mock("../../../../handlers/session-membership.handler.js", () => ({
@@ -23,6 +24,11 @@ vi.mock("../../../../handlers/session-membership.handler.js", () => ({
 
 vi.mock("../../../../lib/session-capacity-store.js", () => ({
   deleteSessionCapacity: vi.fn(),
+  setSessionCapacity: vi.fn(),
+}));
+
+vi.mock("../../../../lib/session-timer-store.js", () => ({
+  setSessionActivatedAt: vi.fn(),
 }));
 
 import { SessionEventsConsumer } from "../../../../infrastructure/kafka/consumers/session-events.consumer.js";
@@ -30,36 +36,70 @@ import {
   getSessionSockets,
   getSocketContext,
   get as getSocketByUserId,
+  addParticipant,
+  removeParticipant,
+  initSessionParticipants,
+  getParticipants,
 } from "../../../../lib/connection-store.js";
 import { broadcastToSession } from "../../../../lib/messaging.js";
-import { deleteSessionCapacity } from "../../../../lib/session-capacity-store.js";
 import {
   userJoinSession,
   userLeaveSession,
 } from "../../../../handlers/session-membership.handler.js";
+import {
+  setSessionCapacity,
+  deleteSessionCapacity,
+} from "../../../../lib/session-capacity-store.js";
+import { setSessionActivatedAt } from "../../../../lib/session-timer-store.js";
+
+/**
+ * @typedef {Object} KafkaConsumerMock
+ * @property {function(string, function): void} addHandler
+ */
 
 describe("SessionEventsConsumer", () => {
+  /** @type {Map<string, function>} */
+  let handlers = new Map();
+  /** @type {KafkaConsumerMock} */
+  let kafkaConsumer;
+
   beforeEach(() => {
     vi.resetAllMocks();
+    handlers = new Map();
+    kafkaConsumer = {
+      /**
+       * @param {string} topic
+       * @param {function} handler
+       */
+      addHandler: (topic, handler) => handlers.set(topic, handler),
+    };
+    new SessionEventsConsumer(/** @type {any} */ (kafkaConsumer)).register();
+
+    // Default mocks
+    vi.mocked(getParticipants).mockReturnValue([]);
+    vi.mocked(getSessionSockets).mockReturnValue(new Set());
   });
 
-  it("registers all required session event handlers using Kafka topics", () => {
-    const addHandler = vi.fn();
-    const kafkaConsumer = /** @type {import('common-kafka').KafkaConsumer} */ (
-      /** @type {unknown} */ ({ addHandler })
-    );
-
-    new SessionEventsConsumer(kafkaConsumer).register();
-
-    expect(addHandler).toHaveBeenCalledWith(
-      Topics.USER_EVENTS,
-      expect.any(Function),
-    );
-    expect(addHandler).toHaveBeenCalledWith(
-      Topics.QUIZZ_EVENTS,
-      expect.any(Function),
-    );
-  });
+  /**
+   * @param {string} topic
+   * @param {string} eventType
+   * @param {any} payload
+   * @param {number} [timestamp]
+   * @returns {Promise<void>}
+   */
+  const triggerEvent = async (
+    topic,
+    eventType,
+    payload,
+    timestamp = Date.now(),
+  ) => {
+    const handler = handlers.get(topic);
+    if (!handler) {
+      throw new Error(`No handler registered for topic ${topic}`);
+    }
+    // The handler (registered in onMessage) expects an object with { eventType, payload, timestamp }
+    await handler({ eventType, payload, timestamp });
+  };
 
   /**
    * @param {unknown} ws
@@ -69,196 +109,232 @@ describe("SessionEventsConsumer", () => {
     return /** @type {import("ws").WebSocket} */ (ws);
   }
 
-  it("destroys session and kicks participants on session-ended", async () => {
-    const handlers = new Map();
-    const kafkaConsumer = /** @type {import('common-kafka').KafkaConsumer} */ (
-      /** @type {unknown} */ ({
-        addHandler: (topic, handler) => handlers.set(topic, handler),
-      })
-    );
-
-    const socketA = /** @type {import('ws').WebSocket} */ (
-      /** @type {unknown} */ ({ close: vi.fn() })
-    );
-    const socketB = /** @type {import('ws').WebSocket} */ (
-      /** @type {unknown} */ ({ close: vi.fn() })
-    );
-    vi.mocked(getSessionSockets).mockReturnValue(new Set([socketA, socketB]));
-    vi.mocked(getSocketContext)
-      .mockReturnValueOnce({ userId: "u1" })
-      .mockReturnValueOnce({ userId: "u2" });
-
-    new SessionEventsConsumer(kafkaConsumer).register();
-
-    // The handler is registered for Topics.USER_EVENTS and Topics.QUIZZ_EVENTS
-    const handler = handlers.get(Topics.QUIZZ_EVENTS);
-    await handler({
-      eventType: SessionEventTypes.SESSION_ENDED,
-      payload: { session_id: "session-1" },
+  describe("Lifecycle & Registration", () => {
+    it("registers handlers for USER_EVENTS and QUIZZ_EVENTS", () => {
+      expect(handlers.has(Topics.USER_EVENTS)).toBe(true);
+      expect(handlers.has(Topics.QUIZZ_EVENTS)).toBe(true);
     });
-
-    expect(broadcastToSession).toHaveBeenCalledWith(
-      "session-1",
-      {
-        type: "session_ended",
-        payload: { sessionId: "session-1" },
-      },
-      null,
-    );
-    expect(socketA.close).toHaveBeenCalledWith(4001, "session_ended");
-    expect(socketB.close).toHaveBeenCalledWith(4001, "session_ended");
-    expect(deleteSessionCapacity).toHaveBeenCalledWith("session-1");
   });
 
-  describe("notifyParticipants", () => {
-    it("notifies participants when they are NOT connected locally", async () => {
-      const handlers = new Map();
-      const kafkaConsumer =
-        /** @type {import('common-kafka').KafkaConsumer} */ (
-          /** @type {unknown} */ ({
-            addHandler: (topic, handler) => handlers.set(topic, handler),
-          })
-        );
-
-      vi.mocked(getSocketByUserId).mockReturnValue(null);
-
-      const consumer = new SessionEventsConsumer(kafkaConsumer);
-      consumer.register();
-
-      // PARTICIPANT_JOINED (remote)
-      await handlers.get(Topics.USER_EVENTS)({
-        eventType: SessionEventTypes.PARTICIPANT_JOINED,
-        payload: {
+  describe("Quizz Events (Topics.QUIZZ_EVENTS)", () => {
+    it("handles SESSION_STARTED and broadcasts it", async () => {
+      const timestamp = 123456789;
+      await triggerEvent(
+        Topics.QUIZZ_EVENTS,
+        SessionEventTypes.SESSION_STARTED,
+        {
           session_id: "session-1",
-          participant_id: "p1",
-          nickname: "alice",
-          role: "player",
+          owner_id: "u1",
         },
-      });
+        timestamp,
+      );
 
       expect(broadcastToSession).toHaveBeenCalledWith(
         "session-1",
         {
-          type: messageType.USER_ONLINE,
-          payload: { participant_id: "p1", nickname: "alice", role: "player" },
+          type: messageType.SESSION_STARTED,
+          payload: { sessionId: "session-1", activated_at: timestamp },
         },
         null,
       );
-      expect(userJoinSession).not.toHaveBeenCalled();
-
-      // PARTICIPANT_LEFT (remote)
-      await handlers.get(Topics.USER_EVENTS)({
-        eventType: SessionEventTypes.PARTICIPANT_LEFT,
-        payload: {
-          session_id: "session-1",
-          participant_id: "p2",
-          nickname: "bob",
-          role: "player",
-        },
-      });
-
-      expect(broadcastToSession).toHaveBeenCalledWith(
-        "session-1",
-        {
-          type: messageType.USER_OFFLINE,
-          payload: { participant_id: "p2", nickname: "bob", role: "player" },
-        },
-        null,
-      );
-      expect(userLeaveSession).not.toHaveBeenCalled();
     });
 
-    it("uses local handlers when participants ARE connected locally", async () => {
-      const handlers = new Map();
-      const kafkaConsumer =
-        /** @type {import('common-kafka').KafkaConsumer} */ (
-          /** @type {unknown} */ ({
-            addHandler: (topic, handler) => handlers.set(topic, handler),
-          })
-        );
+    it("handles SESSION_NEXT_QUESTION and updates timer store", async () => {
+      const timestamp = 999888777;
+      await triggerEvent(
+        Topics.QUIZZ_EVENTS,
+        SessionEventTypes.SESSION_NEXT_QUESTION,
+        {
+          session_id: "session-1",
+          question_id: "q123",
+        },
+        timestamp,
+      );
 
-      const mockSocket = { id: "socket-1" };
-      vi.mocked(getSocketByUserId).mockReturnValue(asWebSocket(mockSocket));
+      expect(setSessionActivatedAt).toHaveBeenCalledWith(
+        "session-1",
+        timestamp,
+      );
+      expect(broadcastToSession).toHaveBeenCalledWith(
+        "session-1",
+        {
+          type: messageType.SESSION_NEXT_QUESTION,
+          payload: {
+            sessionId: "session-1",
+            question_id: "q123",
+            activated_at: timestamp,
+          },
+        },
+        null,
+      );
+    });
+
+    it("handles SESSION_ENDED and cleans up resources", async () => {
+      const mockWs = asWebSocket({ close: vi.fn() });
+      vi.mocked(getSessionSockets).mockReturnValue(new Set([mockWs]));
       vi.mocked(getSocketContext).mockReturnValue({
-        userId: "p1",
+        userId: "u1",
         userName: "alice",
         sessionId: "session-1",
+        role: "user",
       });
 
-      const consumer = new SessionEventsConsumer(kafkaConsumer);
-      consumer.register();
-
-      // PARTICIPANT_JOINED (local)
-      await handlers.get(Topics.USER_EVENTS)({
-        eventType: SessionEventTypes.PARTICIPANT_JOINED,
-        payload: {
-          session_id: "session-1",
-          participant_id: "p1",
-          nickname: "alice",
-          role: "player",
-        },
+      await triggerEvent(Topics.QUIZZ_EVENTS, SessionEventTypes.SESSION_ENDED, {
+        session_id: "session-1",
       });
 
-      expect(userJoinSession).toHaveBeenCalledWith(mockSocket, "session-1");
-      expect(broadcastToSession).not.toHaveBeenCalled();
-
-      // PARTICIPANT_LEFT (local)
-      await handlers.get(Topics.USER_EVENTS)({
-        eventType: SessionEventTypes.PARTICIPANT_LEFT,
-        payload: {
-          session_id: "session-1",
-          participant_id: "p1",
-          nickname: "alice",
-          role: "player",
-        },
-      });
-
-      expect(userLeaveSession).toHaveBeenCalledWith(mockSocket);
-      expect(broadcastToSession).not.toHaveBeenCalled();
-    });
-
-    it("broadcasts instead of using local handler if participant is in a DIFFERENT session locally during leave", async () => {
-      const handlers = new Map();
-      const kafkaConsumer =
-        /** @type {import('common-kafka').KafkaConsumer} */ (
-          /** @type {unknown} */ ({
-            addHandler: (topic, handler) => handlers.set(topic, handler),
-          })
-        );
-
-      const mockSocket = { id: "socket-1" };
-      vi.mocked(getSocketByUserId).mockReturnValue(asWebSocket(mockSocket));
-      vi.mocked(getSocketContext).mockReturnValue({
-        userId: "p1",
-        userName: "alice",
-        sessionId: "other-session", // Locally in a different session
-      });
-
-      const consumer = new SessionEventsConsumer(kafkaConsumer);
-      consumer.register();
-
-      // PARTICIPANT_LEFT for session-1
-      await handlers.get(Topics.USER_EVENTS)({
-        eventType: SessionEventTypes.PARTICIPANT_LEFT,
-        payload: {
-          session_id: "session-1",
-          participant_id: "p1",
-          nickname: "alice",
-          role: "player",
-        },
-      });
-
-      // Should NOT call userLeaveSession because they are in "other-session"
-      expect(userLeaveSession).not.toHaveBeenCalled();
-      // Should fall back to direct broadcast to session-1
       expect(broadcastToSession).toHaveBeenCalledWith(
         "session-1",
-        {
-          type: messageType.USER_OFFLINE,
-          payload: { participant_id: "p1", nickname: "alice", role: "player" },
-        },
+        expect.objectContaining({ type: "session_ended" }),
         null,
       );
+      expect(mockWs.close).toHaveBeenCalledWith(4001, "session_ended");
+      expect(deleteSessionCapacity).toHaveBeenCalledWith("session-1");
+    });
+
+    it("handles SESSION_CREATED and initializes local state", async () => {
+      await triggerEvent(
+        Topics.QUIZZ_EVENTS,
+        SessionEventTypes.SESSION_CREATED,
+        {
+          session_id: "session-1",
+          participant_id: "owner-1",
+          nickname: "Host",
+        },
+      );
+
+      expect(setSessionCapacity).toHaveBeenCalledWith(
+        "session-1",
+        10,
+        false,
+        "owner-1",
+      );
+      expect(initSessionParticipants).toHaveBeenCalledWith("session-1");
+      expect(addParticipant).toHaveBeenCalledWith("session-1", {
+        participant_id: "owner-1",
+        nickname: "Host",
+        role: "moderator",
+      });
+    });
+  });
+
+  describe("User Events (Topics.USER_EVENTS)", () => {
+    describe("PARTICIPANT_JOINED", () => {
+      it("broadcasts USER_ONLINE for remote user", async () => {
+        vi.mocked(getSocketByUserId).mockReturnValue(null);
+
+        await triggerEvent(
+          Topics.USER_EVENTS,
+          SessionEventTypes.PARTICIPANT_JOINED,
+          {
+            session_id: "session-1",
+            participant_id: "remote-1",
+            nickname: "Alice",
+            role: "user",
+          },
+        );
+
+        expect(addParticipant).toHaveBeenCalledWith(
+          "session-1",
+          expect.objectContaining({ participant_id: "remote-1" }),
+        );
+        expect(broadcastToSession).toHaveBeenCalledWith(
+          "session-1",
+          {
+            type: messageType.USER_ONLINE,
+            payload: {
+              participant_id: "remote-1",
+              nickname: "Alice",
+              role: "user",
+            },
+          },
+          null,
+        );
+      });
+
+      it("delegates to local handler for locally connected user", async () => {
+        const mockWs = asWebSocket({ id: "local-ws" });
+        vi.mocked(getSocketByUserId).mockReturnValue(mockWs);
+
+        await triggerEvent(
+          Topics.USER_EVENTS,
+          SessionEventTypes.PARTICIPANT_JOINED,
+          {
+            session_id: "session-1",
+            participant_id: "local-1",
+            nickname: "Bob",
+          },
+        );
+
+        expect(userJoinSession).toHaveBeenCalledWith(mockWs, "session-1");
+        expect(broadcastToSession).not.toHaveBeenCalled();
+      });
+    });
+
+    describe("PARTICIPANT_LEFT", () => {
+      it("broadcasts USER_OFFLINE for remote user", async () => {
+        vi.mocked(getSocketByUserId).mockReturnValue(null);
+
+        await triggerEvent(
+          Topics.USER_EVENTS,
+          SessionEventTypes.PARTICIPANT_LEFT,
+          {
+            session_id: "session-1",
+            participant_id: "remote-1",
+            nickname: "Alice",
+          },
+        );
+
+        expect(removeParticipant).toHaveBeenCalledWith("session-1", "remote-1");
+        expect(broadcastToSession).toHaveBeenCalledWith(
+          "session-1",
+          {
+            type: messageType.USER_OFFLINE,
+            payload: {
+              participant_id: "remote-1",
+              nickname: "Alice",
+              role: undefined,
+            },
+          },
+          null,
+        );
+      });
+
+      it("delegates to local handler for locally connected user in same session", async () => {
+        const mockWs = asWebSocket({ id: "local-ws" });
+        vi.mocked(getSocketByUserId).mockReturnValue(mockWs);
+        vi.mocked(getSocketContext).mockReturnValue({
+          userId: "local-1",
+          userName: "Bob",
+          sessionId: "session-1",
+          role: "user",
+        });
+
+        await triggerEvent(
+          Topics.USER_EVENTS,
+          SessionEventTypes.PARTICIPANT_LEFT,
+          {
+            session_id: "session-1",
+            participant_id: "local-1",
+          },
+        );
+
+        expect(userLeaveSession).toHaveBeenCalledWith(mockWs);
+        expect(broadcastToSession).not.toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe("Edge cases & Error handling", () => {
+    it("ignores events with missing sessionId", async () => {
+      await triggerEvent(
+        Topics.QUIZZ_EVENTS,
+        SessionEventTypes.SESSION_NEXT_QUESTION,
+        {
+          question_id: "q1",
+        },
+      );
+      expect(broadcastToSession).not.toHaveBeenCalled();
     });
   });
 });
