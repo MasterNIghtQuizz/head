@@ -182,27 +182,6 @@ ApplyMethodDecorators(SessionController, "getSession", [
           session_id: { type: "string" },
           status: { type: "string" },
           current_question_id: { type: "string", nullable: true },
-          current_question: {
-            type: "object",
-            nullable: true,
-            properties: {
-              id: { type: "string" },
-              label: { type: "string" },
-              type: { type: "string" },
-              timer_seconds: { type: "integer" },
-              choices: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    id: { type: "string" },
-                    text: { type: "string" },
-                    is_correct: { type: "boolean" },
-                  },
-                },
-              },
-            },
-          },
           quizz_id: { type: "string" },
           public_key: { type: "string" },
           host_id: { type: "string" },
@@ -299,10 +278,10 @@ ApplyMethodDecorators(SessionController, "getCurrentQuestion", [
         type: "object",
         nullable: true,
         properties: {
-          id: { type: "string" },
+          question_id: { type: "string" },
           label: { type: "string" },
           type: { type: "string" },
-          timer_seconds: { type: "integer" },
+          timer_seconds: { type: "number" },
           choices: {
             type: "array",
             items: {
@@ -310,8 +289,16 @@ ApplyMethodDecorators(SessionController, "getCurrentQuestion", [
               properties: {
                 id: { type: "string" },
                 text: { type: "string" },
-                is_correct: { type: "boolean" },
               },
+            },
+          },
+          current_buzzer: {
+            type: "object",
+            nullable: true,
+            properties: {
+              id: { type: "string" },
+              username: { type: "string" },
+              pressed_at: { type: "string" },
             },
           },
         },

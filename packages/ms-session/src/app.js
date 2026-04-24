@@ -23,6 +23,8 @@ import { ParticipantService } from "./modules/session/services/participant.servi
 import { ParticipantController } from "./modules/session/controllers/participant.controller.js";
 import { ValkeyRepository } from "common-valkey";
 import { TestingController } from "./modules/session/controllers/testing.controller.js";
+import { BuzzerRepository } from "./modules/session/infra/repositories/buzzer.repository.js";
+import { FeedBuzzerConsumer } from "./modules/session/infra/consumers/feed-buzzer.consumer.js";
 
 export async function createServer() {
   const fastify = Fastify({
@@ -166,11 +168,22 @@ export async function createServer() {
     valkeyRepository,
   );
 
+  const buzzerRepository = new BuzzerRepository(valkey);
+
+  if (kafkaConsumer) {
+    const feedBuzzerConsumer = new FeedBuzzerConsumer(
+      kafkaConsumer,
+      buzzerRepository,
+    );
+    feedBuzzerConsumer.register();
+  }
+
   const sessionService = new SessionService(
     kafkaProducer,
     sessionRepository,
     participantRepository,
     valkeyRepository,
+    buzzerRepository,
   );
   ControllerFactory.register(fastify, SessionController, [sessionService]);
 
@@ -180,6 +193,7 @@ export async function createServer() {
     participantRepository,
     valkeyRepository,
     sessionService,
+    buzzerRepository,
   );
   ControllerFactory.register(fastify, ParticipantController, [
     participantService,

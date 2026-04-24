@@ -2,11 +2,15 @@ import { BaseService } from "common-core";
 import { JoinSessionResponseDto } from "../contracts/session.dto.js";
 import { ParticipantEntity } from "../core/entities/participant.entity.js";
 import {
-  SESSION_INVALID_STATUS,
   SESSION_NOT_FOUND,
+  SESSION_INVALID_STATUS,
   QUESTION_TIMED_OUT,
   MISSING_CHOICE_IDS,
   INVALID_CHOICE_IDS,
+  QUEUE_SYNCHRONIZING,
+  UNAUTHORIZED_HOST,
+  WRONG_BUZZER_CANDIDATE,
+  NO_BUZZER_FOUND,
 } from "../errors/session.errors.js";
 import {
   QuestionType,
@@ -20,6 +24,7 @@ import { config } from "../../../config.js";
 import { randomUUID } from "node:crypto";
 import logger from "common-logger";
 import { call } from "common-axios";
+import { BadRequestError } from "common-errors";
 
 export class ParticipantService extends BaseService {
   /** @type {import('../core/ports/session.repository.js').ISessionRepository} */
@@ -40,6 +45,7 @@ export class ParticipantService extends BaseService {
    * @param {import('../core/ports/participant.repository.js').IParticipantRepository} participantRepository
    * @param {import("common-valkey").ValkeyRepository} valkeyRepository
    * @param {import('./session.service.js').SessionService} sessionService
+   * @param {import('../infra/repositories/buzzer.repository.js').BuzzerRepository} buzzerRepository
    */
   constructor(
     kafkaProducer,
@@ -47,6 +53,7 @@ export class ParticipantService extends BaseService {
     participantRepository,
     valkeyRepository,
     sessionService,
+    buzzerRepository,
   ) {
     super();
     this.sessionRepository = sessionRepository;
@@ -54,6 +61,7 @@ export class ParticipantService extends BaseService {
     this.participantRepository = participantRepository;
     this.valkeyRepository = valkeyRepository;
     this.sessionService = sessionService;
+    this.buzzerRepository = buzzerRepository;
   }
 
   /**
@@ -270,7 +278,12 @@ export class ParticipantService extends BaseService {
     }
 
     if (question.type === QuestionType.BUZZER) {
-      logger.info({ sessionId, participantId }, "Buzzer question submitted");
+      logger.info(
+        { sessionId, participantId },
+        "Handling buzzer submit for question",
+      );
+      await this._handleBuzzerSubmit(session, participantId);
+      return;
     } else {
       const validChoiceIds = question.choiceIds || [];
 
@@ -295,6 +308,7 @@ export class ParticipantService extends BaseService {
         const payload = {
           sessionId,
           participantId,
+          questionId: session.currentQuestionId ?? "",
           choiceId,
           submittedAt: new Date().toISOString(),
         };
@@ -307,14 +321,18 @@ export class ParticipantService extends BaseService {
       }),
     );
 
-    if (question.type === "buzzer" && (!choiceIds || choiceIds.length === 0)) {
+    if (
+      question.type === QuestionType.BUZZER &&
+      (!choiceIds || choiceIds.length === 0)
+    ) {
       if (this.kafkaProducer) {
         /** @type {import('common-contracts').QuizResponseSubmittedEventPayload} */
         const payload = {
           sessionId,
           participantId,
+          questionId: session.currentQuestionId ?? "",
           choiceId: null,
-          type: "buzzer",
+          type: QuestionType.BUZZER,
           submittedAt: new Date().toISOString(),
         };
         await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
@@ -334,5 +352,170 @@ export class ParticipantService extends BaseService {
       },
       "Response submitted and published to Kafka",
     );
+  }
+
+  /**
+   * @param {Object} params
+   * @param {string} params.sessionId
+   * @param {string} params.hostId
+   * @param {string} params.participantId
+   * @param {boolean} params.isCorrect
+   * @returns {Promise<void>}
+   */
+  async answerBuzzer({ sessionId, hostId, participantId, isCorrect }) {
+    const session = await this.sessionRepository.find(sessionId);
+    if (!session) {
+      throw SESSION_NOT_FOUND(sessionId);
+    }
+
+    const hostParticipant = await this.participantRepository.find(hostId);
+    if (
+      !hostParticipant ||
+      hostParticipant.role !== ParticipantRoles.HOST ||
+      hostParticipant.sessionId !== sessionId
+    ) {
+      throw UNAUTHORIZED_HOST();
+    }
+
+    let currentBuzzer = null;
+    try {
+      currentBuzzer = await this.buzzerRepository.peek(sessionId);
+
+      if (!currentBuzzer) {
+        throw NO_BUZZER_FOUND(sessionId);
+      }
+
+      if (currentBuzzer.participantId !== participantId) {
+        throw WRONG_BUZZER_CANDIDATE(
+          currentBuzzer.participantId,
+          participantId,
+        );
+      }
+    } catch (err) {
+      if (err instanceof BadRequestError) {
+        throw err;
+      }
+      logger.error(
+        { err, sessionId },
+        "Valkey DOWN: Proceeding with answer validation without queue consistency check",
+      );
+    }
+
+    let username = currentBuzzer ? currentBuzzer.username : "";
+    if (!username) {
+      const participant = await this.participantRepository.find(participantId);
+      username = participant ? participant.nickname : "Unknown";
+    }
+
+    if (isCorrect) {
+      try {
+        await this.buzzerRepository.clear(sessionId);
+      } catch (err) {
+        logger.error({ err, sessionId }, "Failed to clear buzzer queue");
+      }
+    } else {
+      try {
+        await this.buzzerRepository.pop(sessionId);
+      } catch (err) {
+        logger.error({ err, sessionId }, "Failed to pop buzzer from queue");
+      }
+    }
+
+    if (this.kafkaProducer) {
+      /** @type {import('common-contracts').BuzzerAnswerSubmittedEventPayload} */
+      const payload = {
+        sessionId,
+        participantId,
+        username,
+        isCorrect,
+        timestamp: new Date().toISOString(),
+      };
+
+      await this.kafkaProducer.publish(
+        SessionEventTypes.BUZZER_ANSWER_SUBMITTED,
+        payload,
+      );
+    }
+
+    logger.info(
+      { sessionId, participantId, isCorrect },
+      "Buzzer answer submitted and processed",
+    );
+  }
+
+  /**
+   * @param {string} sessionId
+   * @returns {Promise<import('common-contracts').UserPressedBuzzerEventPayload | null>}
+   */
+  async getCurrentBuzzer(sessionId) {
+    try {
+      return await this.buzzerRepository.peek(sessionId);
+    } catch (err) {
+      logger.error({ err, sessionId }, "Failed to get current buzzer");
+      throw QUEUE_SYNCHRONIZING();
+    }
+  }
+
+  /**
+   * @param {string} sessionId
+   * @returns {Promise<void>}
+   */
+  async resetBuzzerQueue(sessionId) {
+    try {
+      await this.buzzerRepository.clear(sessionId);
+      logger.info({ sessionId }, "Buzzer queue reset");
+    } catch (err) {
+      logger.error({ err, sessionId }, "Failed to reset buzzer queue");
+      throw QUEUE_SYNCHRONIZING();
+    }
+  }
+
+  /**
+   * @param {import('../core/entities/session.entity.js').SessionEntity} session
+   * @param {string} participantId
+   * @returns {Promise<void>}
+   */
+  async _handleBuzzerSubmit(session, participantId) {
+    const participant = await this.participantRepository.find(participantId);
+    if (!participant) {
+      logger.warn(
+        { sessionId: session.id, participantId },
+        "Participant not found in buzzer submit",
+      );
+      return;
+    }
+
+    /**@type {import('common-contracts').UserPressedBuzzerEventPayload} */
+    const payload = {
+      sessionId: session.id,
+      participantId,
+      username: participant.nickname,
+      questionId: session.currentQuestionId ?? "",
+      pressedAt: String(Date.now()),
+    };
+
+    if (this.kafkaProducer) {
+      await this.kafkaProducer.publish(
+        SessionEventTypes.FEED_BUZZER_QUEUE,
+        payload,
+      );
+      logger.info(
+        { sessionId: session.id, participantId },
+        "Buzzer event published to Kafka FEED_BUZZER_QUEUE",
+      );
+    } else {
+      try {
+        await this.buzzerRepository.push(session.id, payload);
+        logger.info(
+          { sessionId: session.id, participantId },
+          "Buzzer event pushed directly to buzzer repository",
+        );
+      } catch (err) {
+        logger.error(
+          { err, sessionId: session.id, participantId },
+          "Failed to push buzzer event directly",
+        );
+      }
+    }
   }
 }

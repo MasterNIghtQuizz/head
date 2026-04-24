@@ -49,16 +49,14 @@ export class SessionMapper {
   /**
    * @param {SessionEntity} entity
    * @param {ParticipantDto[]} participants
-   * @param {import("common-contracts").FullQuestionResponse | null} currentQuestion
    * @return {GetSessionResponseDto} dto
    */
-  static toDto(entity, participants = [], currentQuestion = null) {
+  static toDto(entity, participants = []) {
     const dto = new GetSessionResponseDto({
       session_id: entity.id,
       public_key: entity.publicKey,
       status: entity.status,
       current_question_id: entity.currentQuestionId,
-      current_question: currentQuestion,
       quizz_id: entity.quizzId,
       host_id: entity.hostId,
       participants: participants,
