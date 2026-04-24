@@ -60,12 +60,20 @@ export class SessionEventsConsumer {
         await this.onSessionCreated(payload);
         break;
 
+      case SessionEventTypes.SESSION_STARTED:
+        logger.info(
+          logCtx,
+          "DEBUG [ws-service] Handling SESSION_STARTED event",
+        );
+        this.onSessionStarted(payload);
+        break;
+
       case SessionEventTypes.SESSION_NEXT_QUESTION:
         logger.info(
           logCtx,
           "DEBUG [ws-service] Handling SESSION_NEXT_QUESTION event",
         );
-        // Intentionally left empty for now.
+        this.onNextQuestion(payload);
         break;
 
       case SessionEventTypes.SESSION_ENDED:
@@ -104,6 +112,34 @@ export class SessionEventsConsumer {
       default:
         logger.warn(logCtx, "DEBUG [ws-service] Unknown event type received");
     }
+  }
+
+  /**
+   * @param {import("common-contracts").SessionStartedEventPayload} payload
+   */
+  onSessionStarted(payload) {
+    const sessionId = payload?.session_id;
+    if (!sessionId) return;
+
+    logger.info({ sessionId }, "Broadcasting session start to all clients");
+    broadcastToSession(sessionId, {
+      type: messageType.SESSION_STARTED,
+      payload: { sessionId, ...payload }
+    });
+  }
+
+  /**
+   * @param {import("common-contracts").SessionNextQuestionEventPayload} payload
+   */
+  onNextQuestion(payload) {
+    const sessionId = payload?.session_id;
+    if (!sessionId) return;
+
+    logger.info({ sessionId }, "Broadcasting next question to all clients");
+    broadcastToSession(sessionId, {
+      type: "session_next_question", // Assuming this is the convention if not in messageType
+      payload: { sessionId, ...payload }
+    });
   }
 
   /**

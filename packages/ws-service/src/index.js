@@ -89,10 +89,29 @@ wss.on(
   ) /** @param {import("ws").WebSocket} ws  @param {import("http").IncomingMessage} req */ => {
     wsConnectionsActive.inc({ service: "ws-service" });
     const connectedUser = userConnect(ws, req);
+
+    logger.info({
+      msg: "New WS connection attempt",
+      url: req.url,
+      headers: req.headers,
+      success: !!connectedUser,
+      user: connectedUser
+        ? { id: connectedUser.userId, name: connectedUser.userName }
+        : "unauthorized",
+    });
+
     if (!connectedUser) {
       wsConnectionsActive.dec({ service: "ws-service" });
+      ws.close(1008, "Authentication failed");
       return;
     }
+
+    ws.on("error", (err) => {
+      logger.error(
+        { err, userId: connectedUser.userId },
+        "WebSocket error occurred for user",
+      );
+    });
 
     ws.on("message", (rawMessage) => {
       const parsedMessage = parseClientMessage(rawMessage);

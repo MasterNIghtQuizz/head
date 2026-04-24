@@ -55,6 +55,7 @@ export interface GetSessionResponse {
   quizz_id: string | null;
   host_id: string | null;
   participants: Participant[];
+  activated_at?: number | null;
 }
 
 export interface StartSessionRequest {}

@@ -212,20 +212,18 @@ export async function createServer() {
     websocket: true,
     preHandler: async (request, _reply) => {
       const url = new URL(request.url, `http://${request.hostname}`);
-      url.searchParams.delete("access-token");
-      request.raw.url = url.pathname + url.search;
+      
+      logger.info({
+        msg: "WS Upgrade Request",
+        url: request.url,
+        headers: request.headers,
+        hasUser: !!request.user,
+        userId: request.user?.userId || request.user?.participantId,
+      });
 
-      logger.info(
-        {
-          method: request.method,
-          url: request.url,
-          hasUser: !!request.user,
-          userId: request.user?.userId || request.user?.participantId,
-          role: request.user?.role,
-          isFastifyRequest: !!request.log,
-        },
-        "Proxying WebSocket request with user context",
-      );
+      url.searchParams.delete("access-token");
+      url.searchParams.delete("game-token");
+      request.raw.url = url.pathname + url.search;
 
       const userId = request.user?.participantId || request.user?.userId;
       if (userId) {
@@ -236,6 +234,13 @@ export async function createServer() {
         // @ts-ignore
         request.headers["x-user-role"] = request.user.role;
       }
+
+      logger.info({
+        msg: "WS Proxied",
+        finalUrl: request.raw.url,
+        userId,
+        target: config.services.websocket
+      });
     },
   });
 

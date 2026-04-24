@@ -113,6 +113,7 @@ export class GetSessionResponseDto {
     this.quizz_id = data.quizz_id;
     this.host_id = data.host_id;
     this.participants = data.participants;
+    this.activated_at = data.activated_at;
   }
 }
 

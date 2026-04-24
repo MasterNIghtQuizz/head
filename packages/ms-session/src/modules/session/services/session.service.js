@@ -220,7 +220,7 @@ export class SessionService extends BaseService {
         throw SESSION_NOT_FOUND(sessionId);
       }
 
-      const [participants, currentQuestion] = await Promise.all([
+      const [participants, currentQuestion, activatedAt] = await Promise.all([
         this.participantRepository.findBySessionId(sessionId),
         session.currentQuestionId
           ? this.getCurrentQuestion(sessionId, headers).catch((err) => {
@@ -231,12 +231,14 @@ export class SessionService extends BaseService {
               return null;
             })
           : Promise.resolve(null),
+        this.valkeyRepository.get(`session:${sessionId}:question_activated_at`),
       ]);
 
       return SessionMapper.toDto(
         session,
         participants.map((p) => ParticipantMapper.toDto(p)),
         currentQuestion,
+        activatedAt,
       );
     } catch (error) {
       const err = /** @type {import('common-errors').BaseError} */ (error);
