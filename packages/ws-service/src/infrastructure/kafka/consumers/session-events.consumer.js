@@ -106,7 +106,10 @@ export class SessionEventsConsumer {
         break;
 
       case SessionEventTypes.QUIZ_RESPONSE_SUBMITTED:
-        // Intentionally left empty for now.
+        logger.info(
+          logCtx,
+          "DEBUG [ws-service] Handling QUIZ_RESPONSE_SUBMITTED event",
+        );
         break;
 
       default:
@@ -116,30 +119,49 @@ export class SessionEventsConsumer {
 
   /**
    * @param {import("common-contracts").SessionStartedEventPayload} payload
+   * @returns {void}
    */
   onSessionStarted(payload) {
     const sessionId = payload?.session_id;
-    if (!sessionId) return;
+    if (!sessionId) {
+      return;
+    }
 
     logger.info({ sessionId }, "Broadcasting session start to all clients");
-    broadcastToSession(sessionId, {
+
+    /** @type {import("common-websocket").ServerToClientMessage} */
+    const message = {
       type: messageType.SESSION_STARTED,
-      payload: { sessionId, ...payload }
-    });
+      payload: {
+        sessionId,
+      },
+    };
+
+    broadcastToSession(sessionId, message, null);
   }
 
   /**
    * @param {import("common-contracts").SessionNextQuestionEventPayload} payload
+   * @returns {void}
    */
   onNextQuestion(payload) {
     const sessionId = payload?.session_id;
-    if (!sessionId) return;
+    if (!sessionId) {
+      return;
+    }
 
     logger.info({ sessionId }, "Broadcasting next question to all clients");
-    broadcastToSession(sessionId, {
-      type: "session_next_question", // Assuming this is the convention if not in messageType
-      payload: { sessionId, ...payload }
-    });
+
+    /** @type {import("common-websocket").ServerToClientMessage} */
+    const message = {
+      type: messageType.SESSION_NEXT_QUESTION,
+      payload: {
+        sessionId,
+        question_id: payload.question_id,
+      },
+    };
+
+    broadcastToSession(sessionId, message, null);
   }
 
   /**
@@ -175,17 +197,17 @@ export class SessionEventsConsumer {
 
   /**
    * @param {import("common-contracts").ParticipantJoinedEventPayload | import("common-contracts").ParticipantLeftEventPayload} payload
-   * @param {typeof messageType.USER_ONLINE | typeof messageType.USER_OFFLINE} eventType
+   * @param {import("common-websocket").messageType['USER_ONLINE'] | import("common-websocket").messageType['USER_OFFLINE']} wsMessageType
    * @returns {void}
    */
-  notifyParticipants(payload, eventType) {
+  notifyParticipants(payload, wsMessageType) {
     const sessionId = payload?.session_id;
     const participantId = payload?.participant_id;
     const nickname = payload?.nickname;
     const role = payload?.role;
 
     logger.info(
-      { sessionId, participantId, nickname, eventType },
+      { sessionId, participantId, nickname, wsMessageType },
       "DEBUG [ws-service] Processing participant event for broadcast",
     );
 
@@ -197,7 +219,7 @@ export class SessionEventsConsumer {
       return;
     }
 
-    if (eventType === messageType.USER_ONLINE) {
+    if (wsMessageType === messageType.USER_ONLINE) {
       addParticipant(sessionId, {
         participant_id: participantId,
         nickname,
@@ -215,14 +237,12 @@ export class SessionEventsConsumer {
     let handledLocally = false;
 
     try {
-      if (eventType === messageType.USER_ONLINE && participantSocket) {
-        // Participant joined — use server-side join handler to update context
-        // and broadcast via the normal path.
+      if (wsMessageType === messageType.USER_ONLINE && participantSocket) {
         userJoinSession(participantSocket, sessionId);
         handledLocally = true;
       }
 
-      if (eventType === messageType.USER_OFFLINE && participantSocket) {
+      if (wsMessageType === messageType.USER_OFFLINE && participantSocket) {
         // Participant left — use server-side leave handler to update context
         // and broadcast via the normal path, but only if they are actually
         // locally in the session they are leaving.
@@ -248,7 +268,7 @@ export class SessionEventsConsumer {
       broadcastToSession(
         sessionId,
         {
-          type: eventType,
+          type: wsMessageType,
           payload: {
             userId: participantId,
             userName: nickname,

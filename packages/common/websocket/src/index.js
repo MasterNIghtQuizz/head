@@ -14,6 +14,7 @@ export const messageType = {
   MESSAGE_NOT_DELIVERED: "message_not_delivered",
   SESSION_ENDED: "session_ended",
   SESSION_DELETED: "session_deleted",
+  SESSION_NEXT_QUESTION: "session_next_question",
   ERROR: "error",
 };
 

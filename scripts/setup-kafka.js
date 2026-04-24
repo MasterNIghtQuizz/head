@@ -31,7 +31,7 @@ async function run() {
     logger.info("Successfully ensured all topics exist.");
   } catch (error) {
     logger.error({ error }, "Failed to setup Kafka topics");
-    process.exit(1);
+    throw error;
   }
 }
 

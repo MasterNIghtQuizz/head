@@ -38,7 +38,6 @@ import {
   setSocketSession,
   getParticipants,
   addParticipant,
-  removeParticipant,
 } from "../../lib/connection-store.js";
 import { broadcastToSession } from "../../lib/messaging.js";
 import {
@@ -87,7 +86,9 @@ describe("session-membership.handler", () => {
         role: "user",
       });
       vi.mocked(getSessionCapacity).mockReturnValue(10);
-      vi.mocked(getParticipants).mockReturnValue([{ participant_id: "u1" }]);
+      vi.mocked(getParticipants).mockReturnValue([
+        { participant_id: "u1", nickname: "alice", role: "user" },
+      ]);
 
       const result = userJoinSession(ws, "session-1");
 
