@@ -270,8 +270,8 @@ export class SessionEventsConsumer {
         {
           type: wsMessageType,
           payload: {
-            userId: participantId,
-            userName: nickname,
+            participant_id: participantId,
+            nickname: nickname,
             role: payload.role,
           },
         },
