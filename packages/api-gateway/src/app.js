@@ -129,7 +129,7 @@ export async function createServer() {
         "script-src 'self'",
         "script-src-attr 'none'",
         "style-src 'self' https: 'unsafe-inline'",
-        "connect-src 'self' ws: wss: http://localhost:* ws://localhost:* https://*.nightquizz.com wss://*.nightquizz.com",
+        "connect-src 'self' ws: wss: http://localhost:* ws://localhost:* https://*.nightquizz.com wss://*.nightquizz.com https://*.cyrus-ag.com wss://*.cyrus-ag.com",
         "upgrade-insecure-requests",
       ].join("; ");
       reply.header("Content-Security-Policy", csp);

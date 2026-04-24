@@ -46,9 +46,8 @@ function userConnect(ws, req) {
       try {
         const payloadPart = token.split(".")[1];
         if (payloadPart) {
-          const payload = JSON.parse(
-            Buffer.from(payloadPart, "base64").toString(),
-          );
+          const base64 = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
+          const payload = JSON.parse(Buffer.from(base64, "base64").toString());
           userId = payload.participantId || payload.userId;
           role = payload.role;
           sessionId = payload.sessionId || sessionId;
