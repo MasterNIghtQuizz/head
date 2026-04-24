@@ -29,5 +29,12 @@ export const MISSING_CHOICE_IDS = () =>
   new BadRequestError("Missing choiceIds for this question type");
 
 /** @param {string[]} ids */
+/** @param {string[]} ids */
 export const INVALID_CHOICE_IDS = (ids) =>
   new BadRequestError(`Invalid choiceIds submitted: ${ids.join(", ")}`);
+
+/** @param {string} participantId @param {string} questionId */
+export const ALREADY_RESPONDED = (participantId, questionId) =>
+  new ConflictError(
+    `Participant ${participantId} already responded to question ${questionId}`,
+  );

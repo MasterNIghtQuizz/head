@@ -107,8 +107,13 @@ export function handleJoinSessionMessage(ws, payload) {
   /** @type {import("common-websocket").ServerToClientMessage} */
   const joinedMessage = {
     type: messageType.JOINED_SESSION,
-    payload: { sessionId: updatedUser.sessionId },
+    payload: {
+      sessionId: updatedUser.sessionId,
+      participants: updatedUser.participants,
+      activated_at: updatedUser.activated_at,
+    },
   };
+
   ws.send(JSON.stringify(joinedMessage));
 }
 

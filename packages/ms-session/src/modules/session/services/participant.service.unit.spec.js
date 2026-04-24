@@ -4,7 +4,12 @@ import {
   createSessionEntity,
   createParticipantEntity,
 } from "./test-helpers.js";
-import { SessionStatus, SessionEventTypes } from "common-contracts";
+import {
+  SessionStatus,
+  SessionEventTypes,
+  ParticipantRoles,
+} from "common-contracts";
+
 import { TokenService } from "common-auth";
 import { call } from "common-axios";
 import {
@@ -12,6 +17,7 @@ import {
   SESSION_INVALID_STATUS,
   QUESTION_TIMED_OUT,
   INVALID_CHOICE_IDS,
+  ALREADY_RESPONDED,
 } from "../errors/session.errors.js";
 
 vi.mock("common-axios");
@@ -157,6 +163,12 @@ describe("ParticipantService unit tests", () => {
       quizzId: "quiz1",
     });
 
+    beforeEach(() => {
+      vi.mocked(participantRepositoryMock.find).mockResolvedValue(
+        createParticipantEntity({ id: "p1", role: ParticipantRoles.PLAYER }),
+      );
+    });
+
     it("should successfully submit response", async () => {
       vi.mocked(sessionRepositoryMock.find).mockResolvedValue(session);
       vi.mocked(valkeyRepositoryMock.get).mockImplementation(
@@ -239,6 +251,45 @@ describe("ParticipantService unit tests", () => {
         service.submitResponse({ ...defaultParams, choiceIds: ["wrong"] }),
       ).rejects.toThrow(INVALID_CHOICE_IDS(["wrong"]).message);
     });
+
+    it("should throw ALREADY_RESPONDED if participant already answered", async () => {
+      vi.mocked(sessionRepositoryMock.find).mockResolvedValue(session);
+      vi.mocked(valkeyRepositoryMock.get).mockImplementation(
+        async (/** @type {string} */ key) => {
+          if (key.includes("responded")) {
+            return "true";
+          }
+          return null;
+        },
+      );
+
+      await expect(service.submitResponse(defaultParams)).rejects.toThrow(
+        ALREADY_RESPONDED("p1", "q1").message,
+      );
+    });
+    it("should throw QUESTION_TIMED_OUT if activated_at is missing from Valkey", async () => {
+      vi.mocked(sessionRepositoryMock.find).mockResolvedValue(session);
+      vi.mocked(valkeyRepositoryMock.get).mockImplementation(
+        async (/** @type {string} */ key) => {
+          if (key.includes("validation")) {
+            return {
+              id: "q1",
+              type: "single",
+              timer_seconds: 10,
+              choiceIds: ["c1"],
+            };
+          }
+          if (key.includes("question_activated_at")) {
+            return null;
+          } // Missing
+          return null;
+        },
+      );
+
+      await expect(service.submitResponse(defaultParams)).rejects.toThrow(
+        QUESTION_TIMED_OUT().message,
+      );
+    });
   });
 
   describe("submitResponse Resilience", () => {
@@ -252,10 +303,16 @@ describe("ParticipantService unit tests", () => {
       const questionMetadata = { id: "q1", type: "single", timer_seconds: 10 };
       const choiceIds = ["c1"];
 
-      vi.mocked(sessionRepositoryMock.find).mockResolvedValue(session);
-      vi.mocked(valkeyRepositoryMock.get).mockRejectedValue(
-        new Error("Valkey Down"),
+      vi.mocked(participantRepositoryMock.find).mockResolvedValue(
+        createParticipantEntity({ id: "p1", role: ParticipantRoles.PLAYER }),
       );
+      vi.mocked(sessionRepositoryMock.find).mockResolvedValue(session);
+      vi.mocked(valkeyRepositoryMock.get).mockImplementation(async (key) => {
+        if (key.includes("question_activated_at")) {
+          return Date.now();
+        }
+        throw new Error("Valkey Down");
+      });
       vi.mocked(call).mockImplementation(async (cfg) => {
         if (cfg.url.includes("/choices/ids")) {
           return choiceIds;

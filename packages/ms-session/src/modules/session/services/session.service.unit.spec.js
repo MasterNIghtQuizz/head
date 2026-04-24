@@ -8,7 +8,9 @@ import {
   SessionStatus,
   ParticipantRoles,
   SessionEventTypes,
+  Topics,
 } from "common-contracts";
+
 import { call } from "common-axios";
 import { CryptoService } from "common-crypto";
 import { TokenService } from "common-auth";
@@ -114,10 +116,12 @@ describe("SessionService unit tests", () => {
         expect.any(Object),
         3600,
       );
-      expect(valkeyRepositoryMock.set).toHaveBeenCalledWith(
-        `question:qu1:full`,
-        expect.any(Question),
-        3600,
+      expect(kafkaProducerMock.publish).toHaveBeenCalledWith(
+        Topics.QUIZZ_EVENTS,
+        expect.objectContaining({
+          eventType: SessionEventTypes.SESSION_CREATED,
+          payload: expect.objectContaining({ session_id: "s1" }),
+        }),
       );
       expect(result.session_id).toBe(session.id);
       expect(result.game_token).toBe("game-tok");
@@ -148,7 +152,7 @@ describe("SessionService unit tests", () => {
         participants,
       );
 
-      const result = await service.getSession("s1");
+      const result = await service.getSession("s1", "p1");
 
       expect(result.session_id).toBe("s1");
       expect(result.participants).toHaveLength(1);
@@ -156,7 +160,7 @@ describe("SessionService unit tests", () => {
 
     it("should throw SESSION_NOT_FOUND if session not exists", async () => {
       vi.mocked(sessionRepositoryMock.find).mockResolvedValue(null);
-      await expect(service.getSession("s1")).rejects.toThrow(
+      await expect(service.getSession("s1", "")).rejects.toThrow(
         SESSION_NOT_FOUND("s1").message,
       );
     });
@@ -185,8 +189,11 @@ describe("SessionService unit tests", () => {
         expect.any(Number),
       );
       expect(kafkaProducerMock.publish).toHaveBeenCalledWith(
-        SessionEventTypes.SESSION_STARTED,
-        expect.objectContaining({ session_id: "s1" }),
+        Topics.QUIZZ_EVENTS,
+        expect.objectContaining({
+          eventType: SessionEventTypes.SESSION_STARTED,
+          payload: expect.objectContaining({ session_id: "s1" }),
+        }),
       );
     });
 
@@ -256,8 +263,11 @@ describe("SessionService unit tests", () => {
         status: SessionStatus.FINISHED,
       });
       expect(kafkaProducerMock.publish).toHaveBeenCalledWith(
-        SessionEventTypes.SESSION_ENDED,
-        expect.objectContaining({ session_id: "s1" }),
+        Topics.QUIZZ_EVENTS,
+        expect.objectContaining({
+          eventType: SessionEventTypes.SESSION_ENDED,
+          payload: expect.objectContaining({ session_id: "s1" }),
+        }),
       );
     });
   });

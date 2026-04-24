@@ -58,14 +58,16 @@ export class SessionController extends BaseController {
   async getSession(request, reply) {
     const payload = this._getInternalPayload(request);
     logger.info({ payload }, "Generated internal token payload");
-    const sessionId = payload.sessionId;
+    const { sessionId, participantId } = payload;
     if (!sessionId) {
       throw new UnauthorizedError("Missing session id");
     }
     const session = await this.sessionService.getSession(
       sessionId,
+      participantId || "",
       request.headers,
     );
+
     return reply.code(200).send(session);
   }
 
@@ -217,8 +219,11 @@ ApplyMethodDecorators(SessionController, "getSession", [
               },
             },
           },
+          activated_at: { type: "integer", nullable: true },
+          has_answered: { type: "boolean" },
         },
       },
+
       401: { type: "object", properties: { message: { type: "string" } } },
       404: { type: "object", properties: { message: { type: "string" } } },
       500: { type: "object", properties: { message: { type: "string" } } },

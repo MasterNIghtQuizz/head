@@ -206,13 +206,23 @@ describe("incoming-message.handler", () => {
         userId: "u1",
         userName: "alice",
         sessionId: "session-1",
+        participants: [
+          { participant_id: "u1", nickname: "alice", role: "user" },
+        ],
+        activated_at: 123456,
       });
 
       handleJoinSessionMessage(asWebSocket(ws), { sessionId: "session-1" });
 
       expect(lastSentMessage(ws)).toEqual({
         type: messageType.JOINED_SESSION,
-        payload: { sessionId: "session-1" },
+        payload: {
+          sessionId: "session-1",
+          participants: [
+            { participant_id: "u1", nickname: "alice", role: "user" },
+          ],
+          activated_at: 123456,
+        },
       });
     });
   });

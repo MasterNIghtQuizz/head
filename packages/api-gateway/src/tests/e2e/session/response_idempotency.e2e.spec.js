@@ -5,70 +5,70 @@ import { seedDatabase } from "../utils/test-utils.js";
 import { UserRole } from "common-auth";
 import crypto from "node:crypto";
 
-describe("Session Resilience E2E", () => {
+describe("Session E2E - Response Idempotency", () => {
   let app;
-  let token;
+  let hostToken;
   let hostId;
 
   beforeAll(async () => {
-    try {
-      await seedDatabase();
-    } catch {
-      console.warn("Infra down");
-    }
+    await seedDatabase();
   });
 
   beforeEach(async () => {
     app = await createServer();
     hostId = `host-${crypto.randomUUID()}`;
+
     const tokenRes = await app.inject({
       method: "POST",
       url: "/helpers/access-token",
       payload: { userId: hostId, role: UserRole.USER },
     });
-    token = tokenRes.json().token;
+    hostToken = tokenRes.json().token;
   });
 
-  it("should return 400 when submitting response for expired question", async () => {
+  it("should block duplicate responses and maintain status after refresh", async () => {
+    // 1. Setup Quiz
     const quizRes = await app.inject({
       method: "POST",
       url: "/quizzes",
-      headers: { "access-token": token },
-      payload: { title: "Resilience Quiz" },
+      headers: { "access-token": hostToken },
+      payload: { title: "Idempotency Quiz" },
     });
     const quizId = quizRes.json().id;
 
-    const questionRes = await app.inject({
+    const q1Res = await app.inject({
       method: "POST",
       url: "/questions",
-      headers: { "access-token": token },
+      headers: { "access-token": hostToken },
       payload: {
         quiz_id: quizId,
-        label: "Q1",
+        label: "Question 1",
         type: "single",
         order_index: 0,
-        timer_seconds: 1,
+        timer_seconds: 10,
       },
     });
-    const questionId = questionRes.json().id;
+    const q1Id = q1Res.json().id;
 
     const choiceRes = await app.inject({
       method: "POST",
       url: "/choices",
-      headers: { "access-token": token },
-      payload: { question_id: questionId, text: "A", is_correct: true },
+      headers: { "access-token": hostToken },
+      payload: { question_id: q1Id, text: "Choice A", is_correct: true },
     });
     const choiceId = choiceRes.json().id;
 
+    // 2. Setup Session
     const createSessionRes = await app.inject({
       method: "POST",
       url: "/sessions",
-      headers: { "access-token": token },
+      headers: { "access-token": hostToken },
       payload: { quiz_id: quizId },
     });
-    const { public_key: publicKey, game_token: hostGameToken } = createSessionRes.json();
- 
-    // Join as player to get a PLAYER token
+    const { public_key: publicKey, game_token: hostGameToken } =
+      createSessionRes.json();
+
+    // 3. Player Joins
     const joinRes = await app.inject({
       method: "POST",
       url: "/sessions/join",
@@ -79,22 +79,39 @@ describe("Session Resilience E2E", () => {
     });
     const playerGameToken = joinRes.json().game_token;
 
+    // 4. Start Session
     await app.inject({
       method: "POST",
       url: "/sessions/start",
       headers: { "game-token": hostGameToken },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
-    const submitRes = await app.inject({
+    // 5. Submit First Response (Success)
+    const submit1Res = await app.inject({
       method: "POST",
       url: "/sessions/submit/",
       headers: { "game-token": playerGameToken },
       payload: { choiceIds: [choiceId] },
     });
+    expect(submit1Res.statusCode).toBe(206);
 
-    expect(submitRes.statusCode).toBe(400);
-    expect(submitRes.json().message).toContain("timed out");
+    // 6. Submit Second Response (Conflict)
+    const submit2Res = await app.inject({
+      method: "POST",
+      url: "/sessions/submit/",
+      headers: { "game-token": playerGameToken },
+      payload: { choiceIds: [choiceId] },
+    });
+    expect(submit2Res.statusCode).toBe(409);
+    expect(submit2Res.json().message).toContain("already responded");
+
+    // 7. Fetch Session - Check has_answered
+    const getSessionRes = await app.inject({
+      method: "GET",
+      url: "/sessions/",
+      headers: { "game-token": playerGameToken },
+    });
+    expect(getSessionRes.statusCode).toBe(200);
+    expect(getSessionRes.json().has_answered).toBe(true);
   });
 });

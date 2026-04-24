@@ -7,6 +7,7 @@ import {
   QUESTION_TIMED_OUT,
   MISSING_CHOICE_IDS,
   INVALID_CHOICE_IDS,
+  ALREADY_RESPONDED,
 } from "../errors/session.errors.js";
 import {
   QuestionType,
@@ -16,7 +17,9 @@ import {
   Topics,
 } from "common-contracts";
 import { TokenService, TokenType, UserRole } from "common-auth";
+import { ConflictError, ForbiddenError } from "common-errors";
 import { config } from "../../../config.js";
+
 import { randomUUID } from "node:crypto";
 import logger from "common-logger";
 import { call } from "common-axios";
@@ -183,20 +186,58 @@ export class ParticipantService extends BaseService {
       throw SESSION_NOT_FOUND(sessionId);
     }
 
+    const participant = await this.participantRepository.find(participantId);
+    if (!participant || participant.role !== ParticipantRoles.PLAYER) {
+      throw new ForbiddenError("Only players can submit responses");
+    }
+
     if (session.status !== SessionStatus.QUESTION_ACTIVE) {
       throw SESSION_INVALID_STATUS(sessionId);
     }
 
+    const questionId = session.currentQuestionId;
+    if (!questionId) {
+      throw new Error(
+        `Critical: currentQuestionId is null for session ${sessionId} in status ${session.status}`,
+      );
+    }
+    const responseCacheKey = `session:${sessionId}:question:${questionId}:participant:${participantId}:responded`;
+
+    try {
+      const alreadyResponded =
+        await this.valkeyRepository.get(responseCacheKey);
+      if (alreadyResponded) {
+        logger.warn(
+          { sessionId, participantId, questionId },
+          "Participant already responded to this question (Redis check)",
+        );
+        throw ALREADY_RESPONDED(participantId, questionId);
+      }
+    } catch (err) {
+      if (err instanceof ConflictError) {
+        throw err;
+      }
+      logger.error(
+        { err, sessionId, participantId },
+        "Valkey error during duplicate response check, continuing...",
+      );
+    }
+
     // eslint-disable-next-line prefer-const
     let [questionData, activatedAt] = await Promise.all([
-      this.valkeyRepository.get(
-        `question:${session.currentQuestionId}:validation`,
-      ),
-      this.valkeyRepository.get(`session:${sessionId}:question_activated_at`),
-    ]).catch((err) => {
-      logger.error({ err }, "Valkey error in submitResponse");
-      return [null, null];
-    });
+      this.valkeyRepository
+        .get(`question:${session.currentQuestionId}:validation`)
+        .catch((err) => {
+          logger.error({ err }, "Valkey error fetching question validation");
+          return null;
+        }),
+      this.valkeyRepository
+        .get(`session:${sessionId}:question_activated_at`)
+        .catch((err) => {
+          logger.error({ err }, "Valkey error fetching activation time");
+          return null;
+        }),
+    ]);
 
     if (!questionData) {
       logger.info(
@@ -256,22 +297,32 @@ export class ParticipantService extends BaseService {
 
     const question = questionData;
 
-    if (activatedAt && question.timer_seconds) {
+    if (question.timer_seconds) {
+      if (!activatedAt) {
+        logger.error(
+          { sessionId, questionId },
+          "Activation time missing from Valkey while trying to validate timer. Blocking response for safety.",
+        );
+        throw QUESTION_TIMED_OUT();
+      }
       const now = Date.now();
       const limit = Number(activatedAt) + question.timer_seconds * 1000;
       if (now > limit) {
         throw QUESTION_TIMED_OUT();
       }
-    } else if (question.timer_seconds) {
-      logger.warn(
-        { sessionId },
-        "Activation time missing, skipping timer validation (potential Valkey failure)",
-      );
     }
 
     if (question.type === QuestionType.BUZZER) {
       logger.info({ sessionId, participantId }, "Buzzer question submitted");
     } else {
+      if (
+        question.type === QuestionType.SINGLE &&
+        choiceIds &&
+        choiceIds.length > 1
+      ) {
+        throw INVALID_CHOICE_IDS(choiceIds);
+      }
+
       const validChoiceIds = question.choiceIds || [];
 
       if (!choiceIds || choiceIds.length === 0) {
@@ -286,6 +337,9 @@ export class ParticipantService extends BaseService {
         throw INVALID_CHOICE_IDS(invalidChoiceIds);
       }
     }
+
+    await this.valkeyRepository.set(responseCacheKey, "true", 3600);
+
     await Promise.all(
       (choiceIds || []).map(async (choiceId) => {
         if (!this.kafkaProducer) {
@@ -295,9 +349,11 @@ export class ParticipantService extends BaseService {
         const payload = {
           sessionId,
           participantId,
+          questionId,
           choiceId,
           submittedAt: new Date().toISOString(),
         };
+
         await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
           eventId: randomUUID(),
           timestamp: Date.now(),
@@ -307,13 +363,17 @@ export class ParticipantService extends BaseService {
       }),
     );
 
-    if (question.type === "buzzer" && (!choiceIds || choiceIds.length === 0)) {
+    if (
+      question.type === QuestionType.BUZZER &&
+      (!choiceIds || choiceIds.length === 0)
+    ) {
       if (this.kafkaProducer) {
         /** @type {import('common-contracts').QuizResponseSubmittedEventPayload} */
         const payload = {
           sessionId,
           participantId,
           choiceId: null,
+          questionId,
           type: "buzzer",
           submittedAt: new Date().toISOString(),
         };

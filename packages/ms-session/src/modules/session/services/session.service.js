@@ -19,6 +19,7 @@ import { config } from "../../../config.js";
 import { TokenService, TokenType, UserRole } from "common-auth";
 import { UnauthorizedError } from "common-errors";
 import { Topics } from "common-contracts";
+import { randomUUID } from "node:crypto";
 
 export class SessionService extends BaseService {
   /** @type {import('../core/ports/session.repository.js').ISessionRepository} */
@@ -209,10 +210,11 @@ export class SessionService extends BaseService {
 
   /**
    * @param {string} sessionId
+   * @param {string} participantId
    * @param {import("http").IncomingHttpHeaders} [headers={}]
    * @returns {Promise<import('../contracts/session.dto.js').GetSessionResponseDto>}
    */
-  async getSession(sessionId, headers = {}) {
+  async getSession(sessionId, participantId, headers = {}) {
     try {
       const session = await this.sessionRepository.find(sessionId);
       if (!session) {
@@ -234,11 +236,21 @@ export class SessionService extends BaseService {
         this.valkeyRepository.get(`session:${sessionId}:question_activated_at`),
       ]);
 
+      const hasAnswered =
+        session.currentQuestionId && participantId
+          ? await this.valkeyRepository
+              .get(
+                `session:${sessionId}:question:${session.currentQuestionId}:participant:${participantId}:responded`,
+              )
+              .catch(() => null)
+          : null;
+
       return SessionMapper.toDto(
         session,
         participants.map((p) => ParticipantMapper.toDto(p)),
         currentQuestion,
-        activatedAt,
+        activatedAt ? Number(activatedAt) : null,
+        !!hasAnswered,
       );
     } catch (error) {
       const err = /** @type {import('common-errors').BaseError} */ (error);
@@ -361,7 +373,7 @@ export class SessionService extends BaseService {
         /** @type {import('common-contracts').SessionStartedEventPayload} */
         const startedPayload = { session_id: session.id };
         await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
-          eventId: crypto.randomUUID(),
+          eventId: randomUUID(),
           timestamp: Date.now(),
           eventType: SessionEventTypes.SESSION_STARTED,
           payload: startedPayload,
@@ -373,7 +385,7 @@ export class SessionService extends BaseService {
           question_id: questionId,
         };
         await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
-          eventId: crypto.randomUUID(),
+          eventId: randomUUID(),
           timestamp: Date.now(),
           eventType: SessionEventTypes.SESSION_NEXT_QUESTION,
           payload: nextQuestionPayload,
@@ -504,7 +516,7 @@ export class SessionService extends BaseService {
           question_id: questionId,
         };
         await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
-          eventId: crypto.randomUUID(),
+          eventId: randomUUID(),
           timestamp: Date.now(),
           eventType: SessionEventTypes.SESSION_NEXT_QUESTION,
           payload,
@@ -538,7 +550,7 @@ export class SessionService extends BaseService {
         /** @type {import('common-contracts').SessionEndedEventPayload} */
         const payload = { session_id: session.id };
         await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
-          eventId: crypto.randomUUID(),
+          eventId: randomUUID(),
           timestamp: Date.now(),
           eventType: SessionEventTypes.SESSION_ENDED,
           payload,
@@ -586,7 +598,7 @@ export class SessionService extends BaseService {
         /** @type {import('common-contracts').SessionDeletedEventPayload} */
         const payload = { session_id: sessionId };
         await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
-          eventId: crypto.randomUUID(),
+          eventId: randomUUID(),
           timestamp: Date.now(),
           eventType: SessionEventTypes.SESSION_DELETED,
           payload,

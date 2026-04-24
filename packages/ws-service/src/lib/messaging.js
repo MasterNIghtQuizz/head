@@ -1,3 +1,4 @@
+import logger from "../logger.js";
 import {
   clients,
   getSessionSockets,
@@ -51,6 +52,7 @@ function sendMessageToUser(senderId, message, receiverId) {
  */
 function broadcastToSession(sessionId, message, excludeUserId) {
   const sockets = getSessionSockets(sessionId);
+  let recipientCount = 0;
 
   for (const socket of sockets) {
     const socketContext = getSocketContext(socket);
@@ -59,7 +61,13 @@ function broadcastToSession(sessionId, message, excludeUserId) {
       continue;
     }
     socket.send(JSON.stringify(message));
+    recipientCount++;
   }
+
+  logger.debug(
+    { sessionId, type: message.type, recipientCount, excludeUserId },
+    "Broadcast to session complete",
+  );
 }
 
 export { broadcast, broadcastToSession, sendMessageToUser };
