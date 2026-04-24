@@ -226,22 +226,7 @@ export async function createServer() {
   await fastify.register(proxy, {
     upstream: config.services.websocket,
     prefix: "/ws",
-    proxyPayloads: false,
     websocket: true,
-    replyOptions: {
-      rewriteRequestHeaders: (request, headers) => {
-        const {
-          "access-token": _at,
-          "game-token": _gt,
-          authorization: _auth,
-          ...rest
-        } = headers;
-        return rest;
-      },
-    },
-    preHandler: async (_request) => {
-      // We keep the tokens in the URL so the backend can decode them if headers are missing
-    },
   });
 
   if (!fastify.hasContentTypeParser("application/json")) {
