@@ -115,7 +115,18 @@ export class CryptoService {
    * @param {string} text
    * @returns {string}
    */
+  /**
+   * @param {string} text
+   * @returns {string}
+   */
   static sha256Hash(text) {
     return crypto.createHash("sha256").update(text).digest("hex");
+  }
+
+  /**
+   * @returns {void}
+   */
+  static clearCache() {
+    this._keyCache.clear();
   }
 }

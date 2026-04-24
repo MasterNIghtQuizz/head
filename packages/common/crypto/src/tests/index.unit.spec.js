@@ -11,6 +11,7 @@ vi.mock("node:fs");
 describe("CryptoService Unit Tests (Guard/Hook Unit Test)", () => {
   beforeEach(() => {
     mockLogger(vi);
+    CryptoService.clearCache();
   });
 
   afterEach(() => {
