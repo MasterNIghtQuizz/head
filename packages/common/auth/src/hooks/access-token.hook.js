@@ -9,7 +9,8 @@ import { UnauthorizedError } from "common-errors";
 export function hookAccessToken(options) {
   return function accessTokenHook(request, reply, done) {
     const isWebSocketRequest =
-      request.url?.startsWith("/ws") && request.headers.upgrade === "websocket";
+      request.url?.startsWith("/ws") &&
+      request.headers.upgrade?.toLowerCase() === "websocket";
     if (
       request.routeOptions?.config?.isPublic ||
       request.url.endsWith("/metrics") ||

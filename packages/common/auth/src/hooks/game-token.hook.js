@@ -9,7 +9,8 @@ import { UnauthorizedError } from "common-errors";
 export function hookGameToken(options) {
   return function gameTokenHook(request, _reply, done) {
     const isWebSocketRequest =
-      request.url?.startsWith("/ws") && request.headers.upgrade === "websocket";
+      request.url?.startsWith("/ws") &&
+      request.headers.upgrade?.toLowerCase() === "websocket";
 
     if (request.routeOptions?.config?.isPublic) {
       done();
