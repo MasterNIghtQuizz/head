@@ -9,10 +9,9 @@ import { URL } from "node:url";
  */
 export function hookGameToken(options) {
   return function gameTokenHook(request, _reply, done) {
+    const isWebSocketRequest = request.url?.startsWith("/ws");
     const upgradeHeader = request.headers.upgrade || "";
-    const isWebSocketRequest =
-      request.url?.startsWith("/ws") &&
-      upgradeHeader.toLowerCase() === "websocket";
+    const isWebSocketUpgrade = upgradeHeader.toLowerCase() === "websocket";
 
     if (request.routeOptions?.config?.isPublic) {
       done();
@@ -23,18 +22,23 @@ export function hookGameToken(options) {
       ? /** @type {string | undefined} */ (request.query?.["game-token"])
       : /** @type {string | undefined} */ (request.headers["game-token"]);
 
+    // If request.query is not yet populated (onRequest hook), parse it manually
     if (isWebSocketRequest && !token) {
       try {
         const url = new URL(request.url, "http://localhost");
-        logger.info({ url }, "Parsed game token from URL");
         token = url.searchParams.get("game-token") || undefined;
-      } catch (error) {
-        logger.error({ error }, "Failed to parse game token from URL");
+      } catch (e) {
+        // Fallback
       }
     }
 
     if (!token) {
-      if (isWebSocketRequest || request.routeOptions?.config?.useGameToken) {
+      if (isWebSocketRequest) {
+        done();
+        return;
+      }
+
+      if (request.routeOptions?.config?.useGameToken) {
         logger.warn({ url: request.url }, "Missing game-token header");
         return done(new UnauthorizedError("Missing game-token header"));
       }
@@ -54,6 +58,14 @@ export function hookGameToken(options) {
       }
       done();
     } catch (error) {
+      if (isWebSocketRequest) {
+        logger.warn(
+          { url: request.url, error },
+          "Invalid game token on WS handshake",
+        );
+        done();
+        return;
+      }
       logger.warn({ url: request.url, error }, "Invalid game token");
       return done(new UnauthorizedError("Invalid or expired game token"));
     }

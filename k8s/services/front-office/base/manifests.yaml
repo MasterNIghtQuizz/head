@@ -41,13 +41,19 @@ spec:
           env:
             - name: COREPACK_HOME
               value: "/tmp/corepack"
+            - name: INTERNAL_API_URL
+              value: "http://api-gateway"
             - name: NEXT_PUBLIC_API_URL
               value: "http://api-gateway"
           volumeMounts:
             - name: tmp
               mountPath: /tmp
+            - name: next-cache
+              mountPath: /app/.next/cache
       volumes:
         - name: tmp
+          emptyDir: {}
+        - name: next-cache
           emptyDir: {}
 ---
 apiVersion: v1
