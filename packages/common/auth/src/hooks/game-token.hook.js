@@ -26,6 +26,7 @@ export function hookGameToken(options) {
     if (isWebSocketRequest && !token) {
       try {
         const url = new URL(request.url, "http://localhost");
+        logger.info({ url }, "Parsed game token from URL");
         token = url.searchParams.get("game-token") || undefined;
       } catch (error) {
         logger.error({ error }, "Failed to parse game token from URL");
