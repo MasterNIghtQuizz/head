@@ -46,42 +46,35 @@ describe("hookGameToken (Guard/Hook Unit Test)", () => {
     expect(error.message).toBe("Missing game-token header");
   });
 
-  it("should call done(error) if websocket handshake is missing game-token query parameter", async () => {
+  it("should call done() without error if websocket handshake is missing game-token (delegating to service)", async () => {
     const { request, reply, done, fastify } = createExecutionContext();
     request.url = "/ws/session";
     request.headers = { upgrade: "websocket" };
     request.query = {};
-    const loggerSpy = vi.spyOn(logger, "warn");
 
     await hook.call(fastify, request, reply, done);
 
-    expect(loggerSpy).toHaveBeenCalled();
-    expect(done).toHaveBeenCalledWith(expect.any(UnauthorizedError));
-    const error = (done as unknown as Mock).mock.calls[0][0];
-    expect(error.message).toBe("Missing game-token header");
+    expect(done).toHaveBeenCalledWith();
+    expect(request.gameTokenPayload).toBeUndefined();
   });
 
-  it("should call done(error) if game token is invalid or expired", async () => {
-    const { request, reply, done, fastify } = createExecutionContext({
-      "game-token": "invalid.token",
+  it("should call done() without error for invalid token on WS (delegating rejection to service)", async () => {
+    const { request, reply, done, fastify } = createExecutionContext();
+    request.url = "/ws/session";
+    request.headers = { upgrade: "websocket", "game-token": "invalid.token" };
+
+    vi.spyOn(CryptoService, "verify").mockImplementation(() => {
+      throw new Error("Invalid signature");
     });
-    const cryptoSpy = vi
-      .spyOn(CryptoService, "verify")
-      .mockImplementation(() => {
-        throw new Error("Invalid signature");
-      });
     const loggerSpy = vi.spyOn(logger, "warn");
 
     await hook.call(fastify, request, reply, done);
 
-    expect(cryptoSpy).toHaveBeenCalledWith(
-      "invalid.token",
-      options.publicKeyPath,
+    expect(loggerSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      "Invalid game token on WS handshake"
     );
-    expect(loggerSpy).toHaveBeenCalled();
-    expect(done).toHaveBeenCalledWith(expect.any(UnauthorizedError));
-    const error = (done as unknown as Mock).mock.calls[0][0];
-    expect(error.message).toBe("Invalid or expired game token");
+    expect(done).toHaveBeenCalledWith();
   });
 
   it("should append gameTokenPayload and user to request and call done() if token is valid", async () => {
