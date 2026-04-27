@@ -1,6 +1,7 @@
 import { CryptoService } from "common-crypto";
 import logger from "common-logger";
 import { UnauthorizedError } from "common-errors";
+import { URL } from "node:url";
 
 /**
  * @param {import('../types.d.ts').AuthHookOptions} options
@@ -8,18 +9,28 @@ import { UnauthorizedError } from "common-errors";
  */
 export function hookGameToken(options) {
   return function gameTokenHook(request, _reply, done) {
+    const upgradeHeader = request.headers.upgrade || "";
     const isWebSocketRequest =
       request.url?.startsWith("/ws") &&
-      request.headers.upgrade?.toLowerCase() === "websocket";
+      upgradeHeader.toLowerCase() === "websocket";
 
     if (request.routeOptions?.config?.isPublic) {
       done();
       return;
     }
 
-    const token = isWebSocketRequest
+    let token = isWebSocketRequest
       ? /** @type {string | undefined} */ (request.query?.["game-token"])
       : /** @type {string | undefined} */ (request.headers["game-token"]);
+
+    if (isWebSocketRequest && !token) {
+      try {
+        const url = new URL(request.url, "http://localhost");
+        token = url.searchParams.get("game-token") || undefined;
+      } catch (error) {
+        logger.error({ error }, "Failed to parse game token from URL");
+      }
+    }
 
     if (!token) {
       if (isWebSocketRequest || request.routeOptions?.config?.useGameToken) {
