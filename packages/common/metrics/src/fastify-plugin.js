@@ -26,7 +26,7 @@ const EXCLUDED_PATHS = new Set(["/metrics", "/health", "/documentation"]);
  */
 export function createMetricsPlugin({ serviceName, enabled = true }) {
   /**
-   * @param {import('fastify').FastifyInstance} fastify
+   * @param {import('fastify').FastifyInstance<any, any, any, any, any>} fastify
    * @returns {Promise<void>}
    */
   async function plugin(fastify) {

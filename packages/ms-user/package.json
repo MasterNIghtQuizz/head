@@ -24,6 +24,7 @@
     "common-swagger": "workspace:*",
     "common-valkey": "workspace:*",
     "fastify": "^5.6.2",
+    "fastify-plugin": "^5.1.0",
     "joi": "^18.0.2",
     "pg": "^8.13.3",
     "reflect-metadata": "^0.2.2",
