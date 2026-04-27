@@ -24,12 +24,14 @@ export class ResponseService extends BaseService {
    * @param {import('../core/ports/response.repository.js').ResponseRepository} responseRepository
    * @param {import('common-valkey').ValkeyRepository} valkeyRepository
    * @param {import('../../../infrastructure/clients/quiz.client.js').QuizClient} quizClient
+   * @param {import('../../../infrastructure/clients/session.client.js').SessionClient} sessionClient
    */
-  constructor(responseRepository, valkeyRepository, quizClient) {
+  constructor(responseRepository, valkeyRepository, quizClient, sessionClient) {
     super();
     this.responseRepository = responseRepository;
     this.valkeyRepository = valkeyRepository;
     this.quizClient = quizClient;
+    this.sessionClient = sessionClient
   }
 
   /**
@@ -53,7 +55,7 @@ export class ResponseService extends BaseService {
     );
 
     if (!questionId) {
-      await this.handleQuizNotFound(event.sessionId);
+      await this.handleQuizNotFound(event.sessionId, event.participantId);
       questionId = await this.valkeyRepository.get(
         `currentSessionQuestion:${event.sessionId}`,
       );
@@ -97,6 +99,7 @@ export class ResponseService extends BaseService {
           responseEntity.sessionId,
           responseEntity.questionId,
           responseEntity.choiceId,
+          responseEntity.participantId,
         );
         responseEntity.update({ isCorrect });
       } catch {
@@ -199,6 +202,8 @@ export class ResponseService extends BaseService {
    */
   async clearSession(sessionId) {
     await this.responseRepository.deleteBySessionId(sessionId);
+    await this.valkeyRepository.del(`sessionQuizId:${sessionId}`);
+    await this.valkeyRepository.del(`currentSessionQuestion:${sessionId}`);
     logger.info({ sessionId }, "Session responses cleared");
   }
 
@@ -280,21 +285,21 @@ export class ResponseService extends BaseService {
       questionId,
       3600,
     );
-    logger.info({ sessionId, questionId }, "Current question advanced");
   }
 
   /**
    * @param {string} sessionId
    * @param {string} questionId
    * @param {string | null} choiceId
+   * @param {string} participantId
    * @returns {Promise<boolean>}
    */
-  async getIsCorrectFromCache(sessionId, questionId, choiceId) {
+  async getIsCorrectFromCache(sessionId, questionId, choiceId, participantId) {
     logger.info("entering getIsCorrectFromCache() and getting quizId from cache");
     let quizId = await this.valkeyRepository.get(`sessionQuizId:${sessionId}`);
     if (!quizId) {
       logger.info("getIsCorrectFromCache : quizId not found in cache, trying to recover from handleQuizNotFound()");
-      const cached = await this.handleQuizNotFound(sessionId);
+      const cached = await this.handleQuizNotFound(sessionId, participantId);
       quizId = cached
         ? /** @type {string} */ (cached)
         : await this.valkeyRepository.get(`sessionQuizId:${sessionId}`);
@@ -307,7 +312,7 @@ export class ResponseService extends BaseService {
 
     if (!cached) {
       logger.warn("getIsCorrectFromCache: quizz not found, trying to recover from handleQuizNotFound()")
-      cached = await this.handleQuizNotFound(sessionId);
+      cached = await this.handleQuizNotFound(sessionId, participantId);
       if (!cached) {
         throw new Error(ResponseError.QUIZ_NOT_FOUND);
       }
@@ -332,11 +337,56 @@ export class ResponseService extends BaseService {
     return choice.is_correct;
   }
 
+  getSessionToken(participantId, sessionId) {
+    const payload = {
+      userId: participantId,
+      participantId,
+      sessionId,
+      type: TokenType.INTERNAL,
+      source: "ms-response",
+    };
+
+    return CryptoService.sign(payload, this.getKey(), {
+      expiresIn: "30s",
+    });
+  }
+
   /**
    * @param {string} _sessionId
+   * @param {string} participantID
+   * @param {import('node:http').IncomingHttpHeaders} [headers]
    * @returns {Promise<string | null>}
    */
-  async handleQuizNotFound(_sessionId) {
-    return null;
+  async handleQuizNotFound(_sessionId, participantID, headers = {}) {
+    const internalToken = this.getSessionToken(participantID, _sessionId);
+    const sessionRequestHeaders = {
+      ...headers,
+      "internal-token": internalToken,
+    };
+
+    let session;
+    try {
+      session = await this.sessionClient.getSession(
+        sessionRequestHeaders,
+      );
+    } catch (error) {
+      throw error;
+    }
+
+    await this.fetchQuizz(session.quizz_id, session.host_id, headers);
+
+    await this.valkeyRepository.set(
+      `sessionQuizId:${_sessionId}`,
+      session.quizz_id,
+      3600,
+    );
+
+    await this.valkeyRepository.set(
+      `currentSessionQuestion:${_sessionId}`,
+      session.current_question_id,
+      3600,
+    );
+
+    return session.quizz_id;
   }
 }

@@ -3,15 +3,13 @@ import { config } from "../../config.js";
 
 export class SessionClient {
   /**
-   * @param {string} sessionId
    * @param {import('node:http').IncomingHttpHeaders} [headers]
-   * @returns {Promise<import('common-contracts').Quizz>}
+   * @returns {Promise<import('common-contracts').GetSessionResponse>}
    */
-  async getSession(sessionId, headers) {
+  async getSession(headers) {
     return call({
-      url: `${config.services.session.baseUrl}/quizzes/get-full`,
+      url: `${config.services.session.baseUrl}/sessions/`,
       method: "GET",
-      data: { sessionId },
       headers,
     });
   }

@@ -133,8 +133,6 @@ export class ResponseEventsConsumer {
    * @returns {Promise<void>}
    */
   async onAnswerSubmitted(payload, logCtx) {
-    logger.debug({ ...logCtx, payload }, "Executing onAnswerSubmitted");
-
     const { error, value } = CreateResponseRequestDto.validate(payload);
     if (error) {
       logger.warn(

@@ -3,8 +3,8 @@ import Joi from "joi";
 export class CreateResponseRequestDto {
   /** @type {string} */
   participantId;
-  // /** @type {string} */
-  // questionId;
+  /** @type {string} */
+  questionId;
   /** @type {string} */
   sessionId;
   /** @type {string|null} */
@@ -39,7 +39,7 @@ export class CreateResponseRequestDto {
   static validate(data) {
     const schema = Joi.object({
       participantId: Joi.string().uuid().required(),
-      //questionId: Joi.string().uuid().required(),
+      questionId: Joi.string().uuid().required(),
       sessionId: Joi.string().uuid().required(),
       latencyMs: Joi.number().integer().min(0).optional(),
       submittedAt: Joi.date().iso().optional(),
