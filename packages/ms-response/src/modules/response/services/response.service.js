@@ -365,13 +365,9 @@ export class ResponseService extends BaseService {
     };
 
     let session;
-    try {
-      session = await this.sessionClient.getSession(
-        sessionRequestHeaders,
-      );
-    } catch (error) {
-      throw error;
-    }
+    session = await this.sessionClient.getSession(
+      sessionRequestHeaders,
+    );
 
     await this.fetchQuizz(session.quizz_id, session.host_id, headers);
 
