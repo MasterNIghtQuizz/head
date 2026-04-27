@@ -40,24 +40,31 @@ export async function createServer() {
     createMetricsPlugin({ serviceName: "ms-session", enabled: metricsEnabled }),
   );
 
-  fastify.addContentTypeParser(
-    "application/json",
-    { parseAs: "string" },
-    (req, body, done) => {
-      if (!body || body.toString().trim() === "") {
-        done(null, {});
-        return;
-      }
-      try {
-        const json = JSON.parse(body.toString());
-        done(null, json);
-      } catch (err) {
-        const error = /** @type {import('common-errors').BaseError} */ (err);
-        error.statusCode = 400;
-        done(error);
-      }
-    },
-  );
+  const jsonParser = (
+    /** @type {import('fastify').FastifyRequest} */ _req,
+    /** @type {string | Buffer} */ body,
+    /** @type {(err: Error | null, body?: unknown) => void} */ done,
+  ) => {
+    if (!body || body.toString().trim() === "") {
+      done(null, {});
+      return;
+    }
+    try {
+      const json = JSON.parse(body.toString());
+      done(null, json);
+    } catch (err) {
+      const error = /** @type {import('common-errors').BaseError} */ (err);
+      error.statusCode = 400;
+      done(error);
+    }
+  };
+
+  try {
+    fastify.addContentTypeParser("application/json", { parseAs: "string" }, jsonParser);
+  } catch (e) {
+    fastify.removeContentTypeParser("application/json");
+    fastify.addContentTypeParser("application/json", { parseAs: "string" }, jsonParser);
+  }
 
   fastify.addHook("onRequest", async (request) => {
     if (

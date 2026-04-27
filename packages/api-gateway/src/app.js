@@ -65,26 +65,39 @@ export async function createServer() {
     }
   });
 
-  fastify.addContentTypeParser(
-    "application/json",
-    { parseAs: "string" },
-    // @ts-ignore
-    (req, body, done) => {
-      if (!body || body.toString().trim() === "") {
-        done(null, {});
-        return;
-      }
-      try {
-        const json = JSON.parse(body.toString());
-        done(null, json);
-      } catch (err) {
-        const error = /** @type {import('common-errors').BaseError} */ (err);
-        error.statusCode = 400;
-        done(error);
-      }
-    },
-  );
+  const jsonParser = (
+    /** @type {import('fastify').FastifyRequest} */ _req,
+    /** @type {string | Buffer} */ body,
+    /** @type {(err: Error | null, body?: unknown) => void} */ done,
+  ) => {
+    if (!body || body.toString().trim() === "") {
+      done(null, {});
+      return;
+    }
+    try {
+      const json = JSON.parse(body.toString());
+      done(null, json);
+    } catch (err) {
+      const error = /** @type {import('common-errors').BaseError} */ (err);
+      error.statusCode = 400;
+      done(error);
+    }
+  };
 
+  try {
+    fastify.addContentTypeParser(
+      "application/json",
+      { parseAs: "string" },
+      jsonParser,
+    );
+  } catch {
+    fastify.removeContentTypeParser("application/json");
+    fastify.addContentTypeParser(
+      "application/json",
+      { parseAs: "string" },
+      jsonParser,
+    );
+  }
   fastify.addHook("onRequest", async (request) => {
     if (
       (request.method === "POST" || request.method === "PUT") &&
@@ -223,34 +236,15 @@ export async function createServer() {
     }
   });
 
-  await fastify.register(proxy, {
-    upstream: config.services.websocket,
-    prefix: "/ws",
-    websocket: true,
+  await fastify.register(async (instance) => {
+    await instance.register(proxy, {
+      upstream: config.services.websocket,
+      prefix: "/ws",
+      websocket: true,
+    });
   });
 
-  if (!fastify.hasContentTypeParser("application/json")) {
-    fastify.addContentTypeParser(
-      "application/json",
-      { parseAs: "string" },
-      // @ts-ignore
-      (req, body, done) => {
-        if (!body || body.toString().trim() === "") {
-          done(null, {});
-          return;
-        }
-        try {
-          const json = JSON.parse(body.toString());
-          done(null, json);
-        } catch (err) {
-          const error = /** @type {import('common-errors').BaseError} */ (err);
-          error.statusCode = 400;
-          done(error);
-        }
-      },
-    );
-  }
-  const metricsEnabled = /** @type {{ enabled: boolean }} */ (
+  const metricsEnabled = /** @type { { enabled: boolean } } */ (
     Config.get("metrics")
   ).enabled;
   await fastify.register(
