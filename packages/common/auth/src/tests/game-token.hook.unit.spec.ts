@@ -48,7 +48,7 @@ describe("hookGameToken (Guard/Hook Unit Test)", () => {
 
   it("should call done() without error if websocket handshake is missing game-token (delegating to service)", async () => {
     const { request, reply, done, fastify } = createExecutionContext();
-    request.url = "/ws/session";
+    Object.defineProperty(request, "url", { value: "/ws/session" });
     request.headers = { upgrade: "websocket" };
     request.query = {};
 
@@ -60,7 +60,7 @@ describe("hookGameToken (Guard/Hook Unit Test)", () => {
 
   it("should call done() without error for invalid token on WS (delegating rejection to service)", async () => {
     const { request, reply, done, fastify } = createExecutionContext();
-    request.url = "/ws/session?game-token=invalid.token";
+    Object.defineProperty(request, "url", { value: "/ws/session?game-token=invalid.token" });
     request.headers = { upgrade: "websocket" };
     request.query = { "game-token": "invalid.token" };
 
