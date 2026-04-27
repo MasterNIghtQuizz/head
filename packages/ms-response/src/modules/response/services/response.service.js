@@ -363,9 +363,8 @@ export class ResponseService extends BaseService {
       ...headers,
       "internal-token": internalToken,
     };
-
-    let session;
-    session = await this.sessionClient.getSession(
+    
+    const session = await this.sessionClient.getSession(
       sessionRequestHeaders,
     );
 
