@@ -7,7 +7,7 @@ import path from "node:path";
 import { config } from "../../../config.js";
 
 describe("User E2E Tests", () => {
-  /** @type {import('fastify').FastifyInstance<any, any, any, any>} */
+  /** @type {import('../types/fastify.js').AppInstance<any, any, any, any>} */
   let app;
   /** @type {string} */
   let adminToken;

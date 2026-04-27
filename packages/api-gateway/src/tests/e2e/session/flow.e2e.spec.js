@@ -6,7 +6,7 @@ import { UserRole } from "common-auth";
 import crypto from "node:crypto";
 
 describe("Session E2E (real) - host flow", () => {
-  /** @type {import("fastify").FastifyInstance} */
+  /** @type {import("fastify").FastifyInstance<any, any, any, any, any>} */
   let app;
   /** @type {string} */
   let token;

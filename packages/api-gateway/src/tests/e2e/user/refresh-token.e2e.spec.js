@@ -4,7 +4,7 @@ import { seedDatabase } from "../utils/test-utils.js";
 import { UserRole } from "common-auth";
 
 describe("Refresh Token E2E Tests", () => {
-  /** @type {import('fastify').FastifyInstance<any, any, any, any>} */
+  /** @type {import('../types/fastify.js').AppInstance<any, any, any, any>} */
   let app;
   /** @type {string} */
   let refreshToken;

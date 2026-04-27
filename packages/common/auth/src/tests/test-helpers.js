@@ -5,7 +5,7 @@ import { vi } from "vitest";
  * @property {import('fastify').FastifyRequest} request
  * @property {import('fastify').FastifyReply} reply
  * @property {import('vitest').Mock} done
- * @property {import('fastify').FastifyInstance} fastify
+ * @property {import('fastify').FastifyInstance<any, any, any, any, any>} fastify
  */
 
 /**
@@ -41,7 +41,7 @@ export function createExecutionContext(
 
   const done = vi.fn();
 
-  const fastify = /** @type {import('fastify').FastifyInstance} */ (
+  const fastify = /** @type {import('fastify').FastifyInstance<any, any, any, any, any>} */ (
     /** @type {unknown} */ ({})
   );
 

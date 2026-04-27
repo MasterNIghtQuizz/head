@@ -3,7 +3,7 @@ import { MetadataKeys } from "./decorators/index.js";
 
 export class ControllerFactory {
   /**
-   * @param {import('fastify').FastifyInstance} fastify
+   * @param {import('fastify').FastifyInstance<any, any, any, any, any>} fastify
    * @param {any} ControllerClass
    * @param {any[]} [deps=[]]
    * @returns {void}

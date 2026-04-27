@@ -5,7 +5,7 @@ import { seedDatabase } from "../utils/test-utils.js";
 import { UserRole } from "common-auth";
 
 describe("Technical User Flow E2E Tests", () => {
-  /** @type {import('fastify').FastifyInstance<any, any, any, any>} */
+  /** @type {import('../types/fastify.js').AppInstance<any, any, any, any>} */
   let app;
 
   beforeAll(async () => {
