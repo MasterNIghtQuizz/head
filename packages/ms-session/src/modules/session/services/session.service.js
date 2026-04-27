@@ -380,7 +380,7 @@ export class SessionService extends BaseService {
         });
 
         /** @type {import('common-contracts').SessionNextQuestionEventPayload} */
-        const nextQuestionPayload = {
+        const payload = {
           session_id: session.id,
           question_id: questionId,
         };
@@ -388,7 +388,7 @@ export class SessionService extends BaseService {
           eventId: randomUUID(),
           timestamp: Date.now(),
           eventType: SessionEventTypes.SESSION_NEXT_QUESTION,
-          payload: nextQuestionPayload,
+          payload,
         });
       }
     } catch (error) {
