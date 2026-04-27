@@ -60,8 +60,9 @@ describe("hookGameToken (Guard/Hook Unit Test)", () => {
 
   it("should call done() without error for invalid token on WS (delegating rejection to service)", async () => {
     const { request, reply, done, fastify } = createExecutionContext();
-    request.url = "/ws/session";
-    request.headers = { upgrade: "websocket", "game-token": "invalid.token" };
+    request.url = "/ws/session?game-token=invalid.token";
+    request.headers = { upgrade: "websocket" };
+    request.query = { "game-token": "invalid.token" };
 
     vi.spyOn(CryptoService, "verify").mockImplementation(() => {
       throw new Error("Invalid signature");
