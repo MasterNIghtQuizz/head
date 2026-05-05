@@ -380,37 +380,38 @@ export class ParticipantService extends BaseService {
       question.type === QuestionType.BUZZER &&
       (!choiceIds || choiceIds.length === 0)
     ) {
-    if (
-      question.type === QuestionType.BUZZER &&
-      (!choiceIds || choiceIds.length === 0)
-    ) {
-      if (this.kafkaProducer) {
-        /** @type {import('common-contracts').QuizResponseSubmittedEventPayload} */
-        const payload = {
+      if (
+        question.type === QuestionType.BUZZER &&
+        (!choiceIds || choiceIds.length === 0)
+      ) {
+        if (this.kafkaProducer) {
+          /** @type {import('common-contracts').QuizResponseSubmittedEventPayload} */
+          const payload = {
+            sessionId,
+            participantId,
+            questionId: session.currentQuestionId ?? "",
+            choiceId: null,
+            type: QuestionType.BUZZER,
+            submittedAt: new Date().toISOString(),
+          };
+          await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
+            eventId: randomUUID(),
+            timestamp: Date.now(),
+            eventType: SessionEventTypes.QUIZ_RESPONSE_SUBMITTED,
+            payload,
+          });
+        }
+      }
+      logger.info(
+        {
           sessionId,
           participantId,
-          questionId: session.currentQuestionId ?? "",
-          choiceId: null,
-          type: QuestionType.BUZZER,
-          submittedAt: new Date().toISOString(),
-        };
-        await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
-          eventId: randomUUID(),
-          timestamp: Date.now(),
-          eventType: SessionEventTypes.QUIZ_RESPONSE_SUBMITTED,
-          payload,
-        });
-      }
+          questionId: session.currentQuestionId,
+          choiceCount: (choiceIds || []).length,
+        },
+        "Response submitted and published to Kafka",
+      );
     }
-    logger.info(
-      {
-        sessionId,
-        participantId,
-        questionId: session.currentQuestionId,
-        choiceCount: (choiceIds || []).length,
-      },
-      "Response submitted and published to Kafka",
-    );
   }
 
   /**

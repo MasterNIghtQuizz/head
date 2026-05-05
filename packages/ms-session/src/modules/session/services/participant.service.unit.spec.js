@@ -9,7 +9,6 @@ import {
   SessionEventTypes,
   ParticipantRoles,
   QuestionType,
-  ParticipantRoles,
 } from "common-contracts";
 
 import { TokenService } from "common-auth";

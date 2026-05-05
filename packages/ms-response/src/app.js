@@ -37,7 +37,7 @@ export async function createServer() {
   await fastify.register(servicesPlugin);
 
   await fastify.register(kafkaPlugin, {
-    responseService: fastify.responseService
+    responseService: fastify.responseService,
   });
 
   await fastify.register(apiPlugin);
@@ -45,6 +45,6 @@ export async function createServer() {
   return {
     fastify,
     kafkaConsumer: fastify.kafkaConsumer,
-    valkeyService: fastify.valkeyService
+    valkeyService: fastify.valkeyService,
   };
 }

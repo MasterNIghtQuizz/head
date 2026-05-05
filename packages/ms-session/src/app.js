@@ -3,24 +3,11 @@ import logger from "./logger.js";
 import { registerSwagger } from "common-swagger";
 import { createMetricsPlugin } from "common-metrics";
 import { Config } from "common-config";
-import { SessionController } from "./modules/session/controllers/session.controller.js";
-import { SessionService } from "./modules/session/services/session.service.js";
-import {
-  createKafkaClient,
-  KafkaProducer,
-  KafkaConsumer,
-  KafkaAdmin,
-} from "common-kafka";
-import { SessionEventTypes } from "common-contracts";
-import { SessionLoggerDemo } from "./demo/session-logger.demo.js";
-import { TypeOrmSessionRepository } from "./modules/session/infra/persistence/typeorm-session.repository.js";
-import { TypeOrmParticipantRepository } from "./modules/session/infra/persistence/typeorm-participant.repository.js";
-import { ParticipantService } from "./modules/session/services/participant.service.js";
-import { ParticipantController } from "./modules/session/controllers/participant.controller.js";
-import { ValkeyRepository } from "common-valkey";
-import { TestingController } from "./modules/session/controllers/testing.controller.js";
-import { BuzzerRepository } from "./modules/session/infra/repositories/buzzer.repository.js";
-import { FeedBuzzerConsumer } from "./modules/session/infra/consumers/feed-buzzer.consumer.js";
+import { registerApiHooks } from "./infrastructure/hooks/api.hook.js";
+import { kafkaPlugin } from "./infrastructure/plugins/kafka.plugin.js";
+import { servicesPlugin } from "./infrastructure/plugins/services.plugin.js";
+import { apiPlugin } from "./infrastructure/plugins/api.plugin.js";
+import { initDatabase } from "./database.js";
 
 export async function createServer() {
   const fastify = Fastify({
@@ -49,103 +36,13 @@ export async function createServer() {
 
   await initDatabase();
 
-  /** @type {KafkaProducer | null} */
-  let kafkaProducer = null;
-  /** @type {KafkaConsumer | null} */
-  let kafkaConsumer = null;
+  await fastify.register(kafkaPlugin, { metricsEnabled });
 
-  if (config.kafka.enabled) {
-    const kafkaClient = createKafkaClient({
-      clientId: "ms-session",
-      brokers: config.kafka.brokers,
-    });
-    const kafkaAdmin = new KafkaAdmin(kafkaClient);
-    try {
-      await kafkaAdmin.ensureTopics(Object.values(SessionEventTypes));
-    } catch (error) {
-      logger.error(
-        { error },
-        "Failed to ensure Kafka topics. Service might fail during production or consumption.",
-      );
-    }
-
-    kafkaProducer = new KafkaProducer(kafkaClient);
-    try {
-      await kafkaProducer.connect();
-    } catch (error) {
-      logger.error(
-        { error },
-        "Kafka connection failed. Service will start without Kafka producer.",
-      );
-    }
-
-    kafkaConsumer = new KafkaConsumer(kafkaClient, {
-      groupId: "ms-session-demo-group",
-    });
-    const sessionLoggerDemo = new SessionLoggerDemo(kafkaConsumer);
-    sessionLoggerDemo.register();
-
-    try {
-      await kafkaConsumer.start();
-    } catch (error) {
-      logger.error(
-        { error },
-        "Kafka Consumer connection failed. Demo logger will not be active.",
-      );
-    }
-
-    if (metricsEnabled) {
-      const lagCollector = new KafkaLagCollector(kafkaClient, [
-        {
-          groupId: "ms-session-demo-group",
-          topics: Object.values(SessionEventTypes),
-        },
-      ]);
-      lagCollector.start();
-    }
-  }
-
-  const valkeyRepository = new ValkeyRepository(valkey);
-  const sessionRepository = new TypeOrmSessionRepository(
-    db.instance,
-    valkeyRepository,
-  );
-  const participantRepository = new TypeOrmParticipantRepository(
-    db.instance,
-    valkeyRepository,
-  );
-
-  const buzzerRepository = new BuzzerRepository(valkey);
-
-  if (kafkaConsumer) {
-    const feedBuzzerConsumer = new FeedBuzzerConsumer(
-      kafkaConsumer,
-      buzzerRepository,
-    );
-    feedBuzzerConsumer.register();
-  }
-
-  const sessionService = new SessionService(
-    kafkaProducer,
-    sessionRepository,
-    participantRepository,
-    valkeyRepository,
-    buzzerRepository,
-  );
-  ControllerFactory.register(fastify, SessionController, [sessionService]);
-
-  const participantService = new ParticipantService(
-    kafkaProducer,
-    sessionRepository,
-    participantRepository,
-    valkeyRepository,
-    sessionService,
-    buzzerRepository,
-  );
-  ControllerFactory.register(fastify, ParticipantController, [
-    participantService,
-  ]);
-  ControllerFactory.register(fastify, TestingController, []);
+  await fastify.register(servicesPlugin, {
+    kafkaProducer: fastify.kafkaProducer,
+    kafkaConsumer: fastify.kafkaConsumer,
+  });
+  await fastify.register(apiPlugin);
 
   return {
     fastify,
