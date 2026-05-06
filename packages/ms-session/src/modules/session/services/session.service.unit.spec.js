@@ -348,6 +348,7 @@ describe("SessionService unit tests", () => {
 
       expect(result).toEqual({
         question_id: "q1",
+        id: "q1",
         label: "Buzzer Question",
         type: QuestionType.BUZZER,
         timer_seconds: 15,
