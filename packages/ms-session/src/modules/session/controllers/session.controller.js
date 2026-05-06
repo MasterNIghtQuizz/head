@@ -232,6 +232,37 @@ ApplyMethodDecorators(SessionController, "getSession", [
           },
           activated_at: { type: "integer", nullable: true },
           has_answered: { type: "boolean" },
+          current_question: {
+            type: "object",
+            nullable: true,
+            properties: {
+              question_id: { type: "string" },
+              id: { type: "string" },
+              label: { type: "string" },
+              type: { type: "string" },
+              timer_seconds: { type: "number" },
+              choices: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    id: { type: "string" },
+                    text: { type: "string" },
+                    is_correct: { type: "boolean" },
+                  },
+                },
+              },
+              current_buzzer: {
+                type: "object",
+                nullable: true,
+                properties: {
+                  id: { type: "string" },
+                  username: { type: "string" },
+                  pressed_at: { type: "number" },
+                },
+              },
+            },
+          },
         },
       },
 
@@ -316,6 +347,7 @@ ApplyMethodDecorators(SessionController, "getCurrentQuestion", [
         nullable: true,
         properties: {
           question_id: { type: "string" },
+          id: { type: "string" },
           label: { type: "string" },
           type: { type: "string" },
           timer_seconds: { type: "number" },
@@ -326,6 +358,7 @@ ApplyMethodDecorators(SessionController, "getCurrentQuestion", [
               properties: {
                 id: { type: "string" },
                 text: { type: "string" },
+                is_correct: { type: "boolean" },
               },
             },
           },
@@ -335,7 +368,7 @@ ApplyMethodDecorators(SessionController, "getCurrentQuestion", [
             properties: {
               id: { type: "string" },
               username: { type: "string" },
-              pressed_at: { type: "string" },
+              pressed_at: { type: "number" },
             },
           },
         },
