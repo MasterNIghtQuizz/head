@@ -2,7 +2,8 @@ export declare const config: {
   env: string;
   port: number;
   logger: Record<string, unknown>;
-  postgres: Record<string, any>;
+  postgres: import('common-database').DatabaseConfig;
+
   kafka: {
     brokers: string[];
     enabled: boolean;

@@ -4,7 +4,8 @@ export interface CreateResponseRequest {
   sessionId: string;
   choiceId?: string | null;
   isCorrect?: boolean | null;
-  latencyMs: number;
+  latencyMs: number | null;
+  submittedAt?: Date;
 }
 
 export interface AnswerEvent {
@@ -37,3 +38,17 @@ export interface ResponseProps {
   isCorrect: boolean | null;
   submittedAt: Date;
 }
+
+export interface GetSessionResponsesResponse extends Array<Response> {}
+export interface GetParticipantResponsesResponse extends Array<Response> {}
+export interface GetQuestionResponsesResponse extends Array<Response> {}
+
+export interface StartSessionRequest {
+  quizzID: string;
+  hostId: string;
+}
+
+export interface EndSessionRequest {
+  sessionId: string;
+}
+

@@ -1,25 +1,11 @@
-import { 
-  FastifyInstance, 
-  RawServerDefault, 
-  RawRequestDefaultExpression, 
-  RawReplyDefaultExpression, 
-  FastifyTypeProviderDefault 
-} from "fastify";
-import { Logger } from "pino";
-import { UserService } from "../modules/user/services/user.service.js";
-import { KafkaProducer } from "common-kafka";
+import { UserService } from '../modules/user/services/user.service.js';
+import { ValkeyService } from 'common-valkey';
 
-declare module "fastify" {
+declare module 'fastify' {
   interface FastifyInstance {
     userService: UserService;
-    kafkaProducer: KafkaProducer | null;
+    valkeyService: ValkeyService;
+    kafkaProducer: import('common-kafka').KafkaProducer | null;
   }
+  export type AppInstance = FastifyInstance;
 }
-
-export type AppInstance = FastifyInstance<
-  RawServerDefault,
-  RawRequestDefaultExpression<RawServerDefault>,
-  RawReplyDefaultExpression<RawServerDefault>,
-  Logger,
-  FastifyTypeProviderDefault
->;

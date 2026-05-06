@@ -49,7 +49,7 @@ export class SessionMapper {
   /**
    * @param {SessionEntity} entity
    * @param {ParticipantDto[]} participants
-   * @param {import("common-contracts").FullQuestionResponse | null} currentQuestion
+   * @param {import("common-contracts").GetCurrentQuestionResponse | null} currentQuestion
    * @param {number | null} [activatedAt=null]
    * @param {boolean} [hasAnswered=false]
    * @return {GetSessionResponseDto} dto
@@ -71,6 +71,7 @@ export class SessionMapper {
       participants: participants,
       activated_at: activatedAt,
       has_answered: hasAnswered,
+      current_question: currentQuestion,
     });
     return dto;
   }

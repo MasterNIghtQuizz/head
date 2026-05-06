@@ -54,7 +54,10 @@ describe("BuzzerRepository unit tests", () => {
       const entry = {
         sessionId,
         participantId: "user-1",
+        username: "user-1",
+        questionId: "q-1",
         choiceId: "choice-A",
+        pressedAt: Date.now(),
         submittedAt: new Date().toISOString(),
       };
       redisClientMock.rpush.mockResolvedValue(1);

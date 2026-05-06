@@ -8,6 +8,7 @@ export declare const config: {
     quizz: string;
     websocket: string;
     session: string;
+    response: string;
   };
   kafka: {
     brokers: string[];

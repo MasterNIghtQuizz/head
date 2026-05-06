@@ -671,6 +671,7 @@ __metadata:
     common-logger: "workspace:*"
     common-metrics: "workspace:*"
     common-monitoring: "workspace:*"
+    common-valkey: "workspace:*"
     common-websocket: "workspace:*"
     fastify: "npm:^5.0.0"
     joi: "npm:^18.0.2"

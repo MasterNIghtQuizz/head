@@ -87,7 +87,7 @@ export class UserController extends BaseController {
   }
 
   /**
-   * @param {import('fastify').FastifyRequest<{Params: {id: string}, Body: any}>} request
+   * @param {import('fastify').FastifyRequest<{Params: {id: string}, Body: import('common-contracts').UpdateUserRequest}>} request
    * @param {import('fastify').FastifyReply} reply
    */
   async updateUser(request, reply) {

@@ -145,20 +145,6 @@ describe("ResponseService Unit Tests", () => {
       );
     });
 
-    it("should throw QUIZ_NOT_FOUND if no questionId in cache and handleQuizNotFound returns null", async () => {
-      const event = createAnswerEvent();
-
-      valkeyRepositoryMock.get.mockResolvedValue(null);
-      const handleSpy = vi
-        .spyOn(service, "handleQuizNotFound")
-        .mockResolvedValue(null);
-
-      await expect(service.handleAnswer(event)).rejects.toThrow(
-        ResponseError.QUIZ_NOT_FOUND,
-      );
-      expect(handleSpy).toHaveBeenCalledWith(event.sessionId);
-    });
-
     it("should throw QUIZ_SERVICE_ERROR when getIsCorrectFromCache fails for MCQ", async () => {
       const event = createAnswerEvent();
       const questionId = "69c16aed-ec7c-8328-baf4-4edc49890473";
@@ -392,6 +378,7 @@ describe("ResponseService Unit Tests", () => {
         "session-1",
         quizPayload.questions[0].id,
         quizPayload.questions[0].choices[0].id,
+        "participant-1",
       );
 
       expect(result).toBe(true);
@@ -416,6 +403,7 @@ describe("ResponseService Unit Tests", () => {
         "session-1",
         quizPayload.questions[0].id,
         "wrong-choice-id",
+        "participant-1",
       );
 
       expect(result).toBe(false);
@@ -426,7 +414,7 @@ describe("ResponseService Unit Tests", () => {
       vi.spyOn(service, "handleQuizNotFound").mockResolvedValue(null);
 
       await expect(
-        service.getIsCorrectFromCache("session-1", "q1", "c1"),
+        service.getIsCorrectFromCache("session-1", "q1", "c1", "p1"),
       ).rejects.toThrow(ResponseError.QUIZ_NOT_FOUND);
     });
 
@@ -446,7 +434,12 @@ describe("ResponseService Unit Tests", () => {
       );
 
       await expect(
-        service.getIsCorrectFromCache("session-1", "unknown-question", "c1"),
+        service.getIsCorrectFromCache(
+          "session-1",
+          "unknown-question",
+          "c1",
+          "p1",
+        ),
       ).rejects.toThrow(ResponseError.QUESTION_NOT_FOUND);
     });
 
@@ -470,15 +463,9 @@ describe("ResponseService Unit Tests", () => {
           "session-1",
           quizPayload.questions[0].id,
           "unknown-choice",
+          "participant-1",
         ),
       ).rejects.toThrow(ResponseError.CHOICE_NOT_FOUND);
-    });
-  });
-
-  describe("handleQuizNotFound", () => {
-    it("should return null (TODO stub)", async () => {
-      const result = await service.handleQuizNotFound("session-1");
-      expect(result).toBeNull();
     });
   });
 

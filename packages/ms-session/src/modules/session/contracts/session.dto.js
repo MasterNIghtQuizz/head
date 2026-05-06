@@ -115,6 +115,7 @@ export class GetSessionResponseDto {
     this.participants = data.participants;
     this.activated_at = data.activated_at;
     this.has_answered = data.has_answered;
+    this.current_question = data.current_question;
   }
 }
 

@@ -82,7 +82,10 @@ export const config = {
   env: /** @type {string} */ (Config.get("app.env")),
   port: /** @type {number} */ (Config.get("app.port")),
   logger: /** @type {Record<string, unknown>} */ (Config.get("logger")),
-  postgres: /** @type {Record<string, any>} */ (Config.get("postgres")),
+  postgres: /** @type {import('common-database').DatabaseConfig} */ (
+    Config.get("postgres")
+  ),
+
   kafka: /** @type {{ brokers: string[], enabled: boolean }} */ (
     Config.get("kafka")
   ),

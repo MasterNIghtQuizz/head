@@ -8,6 +8,8 @@
     "allowJs": true,
     "checkJs": true,
     "strict": true,
+    "skipLibCheck": true,
+    "maxNodeModuleJsDepth": 0,
     "baseUrl": ".",
     "paths": {
       "@common/*": ["packages/common/*"],

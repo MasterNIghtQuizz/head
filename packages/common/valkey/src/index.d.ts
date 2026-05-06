@@ -22,4 +22,5 @@ export class ValkeyRepository {
   set(key: string, value: any, ttl?: number): Promise<void>;
   del(key: string): Promise<void>;
   delByPattern(pattern: string): Promise<void>;
+  publish(channel: string, message: string): Promise<void>;
 }

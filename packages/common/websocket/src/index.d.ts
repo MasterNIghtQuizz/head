@@ -23,6 +23,7 @@ export declare const messageType: {
   SESSION_NEXT_QUESTION: "session_next_question";
   SESSION_DELETED: "session_deleted";
   PARTICIPANTS_UPDATE: "participants_update";
+  SESSION_RESULTS_DISPLAYED: "session_results_displayed";
   ERROR: "error";
 };
 
@@ -124,6 +125,11 @@ export interface SessionIdPayload {
   sessionId: string;
 }
 
+export interface SessionResultsDisplayedPayload {
+  sessionId: string;
+  questionId: string;
+}
+
 
 
 export interface DeliveryPayload {
@@ -168,4 +174,9 @@ export type ServerToClientMessage =
     type: typeof messageType.SESSION_NEXT_QUESTION;
     payload: SessionNextQuestionPayload;
   }
+  | {
+    type: typeof messageType.SESSION_RESULTS_DISPLAYED;
+    payload: SessionResultsDisplayedPayload;
+  }
   | { type: typeof messageType.ERROR; payload: ErrorPayload };
+

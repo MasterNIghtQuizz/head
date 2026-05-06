@@ -21,7 +21,9 @@ const schema = Joi.object({
     quizz: Joi.string().uri().required(),
     websocket: Joi.string().uri().required(),
     session: Joi.string().uri().required(),
+    response: Joi.string().uri().required(),
   }).required(),
+
   auth: Joi.object({
     access: Joi.object({
       privateKeyPath: Joi.string().required(),
@@ -84,9 +86,10 @@ export const config = {
   frontendUrl: /** @type {string} */ (Config.get("app.frontendUrl")),
   logger: /** @type {Record<string, unknown>} */ (Config.get("logger")),
   services:
-    /** @type {{ user: string; quizz: string; session:string; websocket: string }} */ (
+    /** @type {{ user: string; quizz: string; session:string; websocket: string; response: string }} */ (
       Config.get("services")
     ),
+
   kafka: /** @type {{ brokers: string[] }} */ (Config.get("kafka")),
   auth: {
     access: {

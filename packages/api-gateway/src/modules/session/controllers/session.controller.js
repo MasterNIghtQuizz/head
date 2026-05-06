@@ -137,14 +137,43 @@ export class SessionController extends BaseController {
     );
     return reply.code(200).send({ message: "Buzzer answer processed" });
   }
+  /**
+   * @param {import('fastify').FastifyRequest} request
+   * @param {import('fastify').FastifyReply} reply
+   */
+  async showResults(request, reply) {
+    await this.sessionService.showResults(request.headers);
+    return reply.code(200).send({ message: "Results display triggered" });
+  }
 }
-
 const ErrorResponse = {
   type: "object",
   properties: {
     message: { type: "string" },
   },
 };
+ApplyMethodDecorators(SessionController, "showResults", [
+  Schema({
+    description:
+      "Trigger real-time result display for all participants in the session. Requires moderator role.",
+    tags: ["Session"],
+    security: [{ gameToken: [] }],
+    response: {
+      200: {
+        description: "Results display successfully triggered.",
+        type: "object",
+        properties: { message: { type: "string" } },
+      },
+      401: ErrorResponse,
+      403: ErrorResponse,
+      404: ErrorResponse,
+      500: ErrorResponse,
+    },
+  }),
+  UseGameToken(),
+  Roles([UserRole.ADMIN, UserRole.MODERATOR]),
+  Post("/show-results/"),
+]);
 
 ApplyMethodDecorators(SessionController, "createSession", [
   Schema({
@@ -241,6 +270,35 @@ ApplyMethodDecorators(SessionController, "getSession", [
           },
           activated_at: { type: "integer", nullable: true },
           has_answered: { type: "boolean" },
+          current_question: {
+            type: "object",
+            nullable: true,
+            properties: {
+              question_id: { type: "string" },
+              label: { type: "string" },
+              type: { type: "string" },
+              timer_seconds: { type: "number" },
+              choices: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    id: { type: "string" },
+                    text: { type: "string" },
+                  },
+                },
+              },
+              current_buzzer: {
+                type: "object",
+                nullable: true,
+                properties: {
+                  id: { type: "string" },
+                  username: { type: "string" },
+                  pressed_at: { type: "string" },
+                },
+              },
+            },
+          },
         },
       },
       401: ErrorResponse,
