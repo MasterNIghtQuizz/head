@@ -9,7 +9,7 @@ import {
   registerPendingDeparture,
   deleteParticipants,
 } from "../lib/connection-store.js";
-import { getSessionActivatedAt } from "../lib/session-timer-store.js";
+import { getSessionActivatedAt, deleteSessionTimer } from "../lib/session-timer-store.js";
 import { broadcastToSession } from "../lib/messaging.js";
 import {
   deleteSessionCapacity,
@@ -288,6 +288,7 @@ function handleSessionDeparture(sessionId, leavingUserId) {
 
       deleteParticipants(sessionId);
       deleteSessionCapacity(sessionId);
+      deleteSessionTimer(sessionId);
       return;
     }
 
@@ -350,10 +351,11 @@ function userLeaveSession(ws) {
   if (socketsLeft === 0) {
     logger.info(
       { sessionId: leftSessionId },
-      "Last user left, deleting session capacity",
+      "Last user left, deleting session data",
     );
     deleteSessionCapacity(leftSessionId);
-    removeParticipant(leftSessionId, updatedContext.userId);
+    deleteParticipants(leftSessionId);
+    deleteSessionTimer(leftSessionId);
   } else {
     handleSessionDeparture(leftSessionId, updatedContext.userId);
   }
