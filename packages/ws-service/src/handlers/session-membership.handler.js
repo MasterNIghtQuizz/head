@@ -7,8 +7,9 @@ import {
   getParticipants,
   clearPendingDeparture,
   registerPendingDeparture,
+  deleteParticipants,
 } from "../lib/connection-store.js";
-import { getSessionActivatedAt } from "../lib/session-timer-store.js";
+import { getSessionActivatedAt, deleteSessionTimer } from "../lib/session-timer-store.js";
 import { broadcastToSession } from "../lib/messaging.js";
 import {
   deleteSessionCapacity,
@@ -20,6 +21,7 @@ import {
   setSessionStarted,
 } from "../lib/session-capacity-store.js";
 import { UserRole } from "common-auth";
+import { ParticipantRoles } from "common-contracts";
 import { errorType, messageType, sessionState } from "common-websocket";
 import logger from "../logger.js";
 
@@ -260,26 +262,34 @@ function handleSessionDeparture(sessionId, leavingUserId) {
 
     const ownerId = getSessionOwnerId(sessionId);
     if (ownerId === leavingUserId) {
-      const startIndex = Math.floor(Math.random() * sockets.length);
-      let newOwnerId = null;
-      for (let i = 0; i < sockets.length; i += 1) {
-        const socket = sockets[(startIndex + i) % sockets.length];
-        const socketContext = getSocketContext(socket);
-        if (socketContext?.userId) {
-          newOwnerId = socketContext.userId;
-          break;
+      logger.info(
+        { sessionId, leavingUserId },
+        "Owner left, kicking everyone and deleting session",
+      );
+
+      /** @type {import("common-websocket").ServerToClientMessage} */
+      const lifecycleMessage = {
+        type: messageType.SESSION_DELETED,
+        payload: { sessionId },
+      };
+
+      broadcastToSession(sessionId, lifecycleMessage, null);
+
+      for (const socket of sockets) {
+        try {
+          socket.close(4001, "owner_left");
+        } catch (error) {
+          logger.warn(
+            { error, sessionId },
+            "Failed to close socket during owner departure kick",
+          );
         }
       }
 
-      if (newOwnerId) {
-        setSessionOwnerId(sessionId, newOwnerId);
-        /** @type {import("common-websocket").ServerToClientMessage} */
-        const ownerChangeMessage = {
-          type: messageType.SESSION_OWNER_CHANGED,
-          payload: { sessionId, ownerId: newOwnerId },
-        };
-        broadcastToSession(sessionId, ownerChangeMessage, null);
-      }
+      deleteParticipants(sessionId);
+      deleteSessionCapacity(sessionId);
+      deleteSessionTimer(sessionId);
+      return;
     }
 
     // Broadcast the offline message
@@ -341,10 +351,11 @@ function userLeaveSession(ws) {
   if (socketsLeft === 0) {
     logger.info(
       { sessionId: leftSessionId },
-      "Last user left, deleting session capacity",
+      "Last user left, deleting session data",
     );
     deleteSessionCapacity(leftSessionId);
-    removeParticipant(leftSessionId, updatedContext.userId);
+    deleteParticipants(leftSessionId);
+    deleteSessionTimer(leftSessionId);
   } else {
     handleSessionDeparture(leftSessionId, updatedContext.userId);
   }
