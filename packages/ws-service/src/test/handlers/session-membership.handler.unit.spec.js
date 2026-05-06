@@ -11,6 +11,7 @@ vi.mock("../../lib/connection-store.js", () => ({
   getParticipants: vi.fn(),
   clearPendingDeparture: vi.fn(),
   registerPendingDeparture: vi.fn(),
+  deleteParticipants: vi.fn(),
 }));
 
 vi.mock("../../lib/messaging.js", () => ({
@@ -19,6 +20,7 @@ vi.mock("../../lib/messaging.js", () => ({
 
 vi.mock("../../lib/session-timer-store.js", () => ({
   getSessionActivatedAt: vi.fn(),
+  deleteSessionTimer: vi.fn(),
 }));
 
 vi.mock("../../lib/session-capacity-store.js", () => ({

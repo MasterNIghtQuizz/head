@@ -57,3 +57,9 @@ export class InternalServerError extends BaseError {
     super(message, 500, metadata);
   }
 }
+
+export class RateLimitError extends BaseError {
+  constructor(message = "Too Many Requests", metadata = {}) {
+    super(message, 429, metadata);
+  }
+}

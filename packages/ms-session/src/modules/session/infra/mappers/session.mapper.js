@@ -66,7 +66,6 @@ export class SessionMapper {
       public_key: entity.publicKey,
       status: entity.status,
       current_question_id: entity.currentQuestionId,
-      current_question: currentQuestion,
       quizz_id: entity.quizzId,
       host_id: entity.hostId,
       participants: participants,

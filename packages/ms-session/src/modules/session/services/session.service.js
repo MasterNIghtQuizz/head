@@ -1,7 +1,10 @@
 import { BaseService, Question, Choice } from "common-core";
 import { CryptoService } from "common-crypto";
 import { SessionEntity } from "../core/entities/session.entity.js";
-import { CreateSessionResponseDto } from "../contracts/session.dto.js";
+import {
+  CreateSessionResponseDto,
+  GetCurrentQuestionResponseDto,
+} from "../contracts/session.dto.js";
 import {
   EMPTY_QUIZZ,
   QUIZZ_NOT_FOUND,
@@ -9,7 +12,11 @@ import {
   SESSION_NOT_FOUND,
 } from "../errors/session.errors.js";
 import { ParticipantEntity } from "../core/entities/participant.entity.js";
-import { ParticipantRoles, SessionStatus } from "common-contracts";
+import {
+  ParticipantRoles,
+  SessionStatus,
+  QuestionType,
+} from "common-contracts";
 import { SessionEventTypes } from "common-contracts/src/events.js";
 import logger from "../../../logger.js";
 import { SessionMapper } from "../infra/mappers/session.mapper.js";
@@ -30,24 +37,29 @@ export class SessionService extends BaseService {
   participantRepository;
   /** @type {import("common-valkey").ValkeyRepository} */
   valkeyRepository;
+  /** @type {import('../infra/repositories/buzzer.repository.js').BuzzerRepository} */
+  buzzerRepository;
 
   /**
    * @param {import('common-kafka').KafkaProducer | null} kafkaProducer
    * @param {import('../core/ports/session.repository.js').ISessionRepository} sessionRepository
    * @param {import('../core/ports/participant.repository.js').IParticipantRepository} participantRepository
    * @param {import("common-valkey").ValkeyRepository} valkeyRepository
+   * @param {import('../infra/repositories/buzzer.repository.js').BuzzerRepository} buzzerRepository
    */
   constructor(
     kafkaProducer,
     sessionRepository,
     participantRepository,
     valkeyRepository,
+    buzzerRepository,
   ) {
     super();
     this.sessionRepository = sessionRepository;
     this.kafkaProducer = kafkaProducer;
     this.participantRepository = participantRepository;
     this.valkeyRepository = valkeyRepository;
+    this.buzzerRepository = buzzerRepository;
   }
 
   /**
@@ -350,10 +362,13 @@ export class SessionService extends BaseService {
         );
       }
 
-      await this.sessionRepository.update(session.id, {
-        status: SessionStatus.QUESTION_ACTIVE,
-        currentQuestionId: questionId,
-      });
+      await Promise.all([
+        this.sessionRepository.update(session.id, {
+          status: SessionStatus.QUESTION_ACTIVE,
+          currentQuestionId: questionId,
+        }),
+        this.buzzerRepository.clear(session.id),
+      ]);
 
       logger.info(
         { sessionId: session.id, questionId },
@@ -490,10 +505,13 @@ export class SessionService extends BaseService {
 
       const questionId = questionIds[currentIndex + 1];
 
-      await this.sessionRepository.update(session.id, {
-        status: SessionStatus.QUESTION_ACTIVE,
-        currentQuestionId: questionId,
-      });
+      await Promise.all([
+        this.sessionRepository.update(session.id, {
+          status: SessionStatus.QUESTION_ACTIVE,
+          currentQuestionId: questionId,
+        }),
+        this.buzzerRepository.clear(session.id),
+      ]);
 
       logger.info(
         { sessionId: session.id, questionId },
@@ -616,7 +634,7 @@ export class SessionService extends BaseService {
   /**
    * @param {string} sessionId
    * @param {import("http").IncomingHttpHeaders} headers
-   * @returns {Promise<import('common-core').Question | null>}
+   * @returns {Promise<import('../contracts/session.dto.js').GetCurrentQuestionResponseDto | null>}
    */
   async getCurrentQuestion(sessionId, headers) {
     try {
@@ -638,64 +656,60 @@ export class SessionService extends BaseService {
         `question:${session.currentQuestionId}:full`,
       );
 
+      /** @type {Question | null} */
+      let question = null;
+
       if (cachedFullQuestion) {
         logger.debug(
           { sessionId, questionId: session.currentQuestionId },
           "Current question retrieved from cache",
         );
-        return new Question(cachedFullQuestion);
-      }
-      logger.info(
-        { sessionId, questionId: session.currentQuestionId },
-        "Cache miss for current question, fetching from management service",
-      );
-
-      if (!session.quizzId) {
-        throw new Error(`Session ${sessionId} has no associated quiz ID`);
-      }
-
-      const quizData = await this._getQuizWithFallback(
-        session.quizzId,
-        internalToken || "",
-      ).catch((err) => {
-        logger.warn(
-          `Failed to fetch full quiz for session ${session.id} after fallback: `,
-          err,
-        );
-        return null;
-      });
-
-      if (quizData && quizData.questions) {
-        const questions = quizData.questions;
-        /** @type {Question[]} */
-        const questionIds = questions.map(
-          (/** @type {import('common-contracts').FullQuestionResponse} */ q) =>
-            q.id,
-        );
-        await this.valkeyRepository.set(
-          `session:${session.id}:questions:ids`,
-          questionIds,
-          3600,
+        question = new Question(cachedFullQuestion);
+      } else {
+        logger.info(
+          { sessionId, questionId: session.currentQuestionId },
+          "Cache miss for current question, fetching from management service",
         );
 
-        let targetQuestion = null;
-        await Promise.all(
-          questions.map(
-            async (
-              /** @type {import('common-contracts').FullQuestionResponse} */ q,
-            ) => {
+        if (!session.quizzId) {
+          throw new Error(`Session ${sessionId} has no associated quiz ID`);
+        }
+
+        const quizData = await this._getQuizWithFallback(
+          session.quizzId,
+          internalToken || "",
+        ).catch((err) => {
+          logger.warn(
+            `Failed to fetch full quiz for session ${session.id} after fallback: `,
+            err,
+          );
+          return null;
+        });
+
+        if (quizData && quizData.questions) {
+          const questions = quizData.questions;
+          const questionIds = questions.map((/** @type {any} */ q) => q.id);
+          await this.valkeyRepository.set(
+            `session:${session.id}:questions:ids`,
+            questionIds,
+            3600,
+          );
+
+          await Promise.all(
+            questions.map(async (/** @type {any} */ q) => {
               const validationData = {
                 id: q.id,
                 type: q.type,
                 timer_seconds: q.timer_seconds,
                 choiceIds: (q.choices || []).map(
-                  (/** @type {Choice} */ c) => c.id,
+                  (/** @type {any} */ c) => c.id,
                 ),
               };
               const fullQuestion = new Question({
                 ...q,
                 choices: (q.choices || []).map(
-                  ({ is_correct: _is_correct, ...rest }) => new Choice(rest),
+                  // eslint-disable-next-line no-unused-vars
+                  ({ is_correct, ...rest }) => new Choice(rest),
                 ),
               });
 
@@ -713,16 +727,72 @@ export class SessionService extends BaseService {
               ]);
 
               if (q.id === session.currentQuestionId) {
-                targetQuestion = fullQuestion;
+                question = fullQuestion;
               }
-            },
-          ),
-        );
-
-        return targetQuestion;
+            }),
+          );
+        }
       }
 
-      return null;
+      if (!question) {
+        return null;
+      }
+
+      /** @type {any} */
+      let currentBuzzer = null;
+      if (question.type === QuestionType.BUZZER) {
+        try {
+          const buzzerData = await this.buzzerRepository.peek(sessionId);
+          if (buzzerData) {
+            let pressedAt = buzzerData.pressedAt;
+            if (typeof pressedAt === "number") {
+              pressedAt = String(pressedAt);
+            } else if (typeof pressedAt === "string") {
+              if (!/^[0-9]+$/.test(pressedAt)) {
+                const parsed = Date.parse(pressedAt);
+                pressedAt = Number.isFinite(parsed)
+                  ? String(parsed)
+                  : pressedAt;
+              }
+            }
+
+            currentBuzzer = {
+              id: buzzerData.participantId,
+              username: buzzerData.username,
+              pressed_at: pressedAt,
+            };
+            logger.debug(
+              { sessionId, currentBuzzer },
+              "Current buzzer data retrieved successfully",
+            );
+          }
+        } catch {
+          logger.warn(
+            { sessionId },
+            "Valkey down during getCurrentQuestion, pinging host/WS for recovery",
+          );
+          if (this.kafkaProducer) {
+            await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
+              eventId: crypto.randomUUID(),
+              timestamp: Date.now(),
+              eventType: SessionEventTypes.PING_HOST_FOR_QUEUE,
+              payload: { sessionId },
+            });
+          }
+        }
+      }
+
+      return new GetCurrentQuestionResponseDto({
+        question_id: question.id,
+        label: question.label,
+        type: question.type,
+        timer_seconds: question.timer_seconds,
+        choices: question.choices.map((c) => ({
+          id: c.id,
+          text: c.text,
+        })),
+        current_buzzer: currentBuzzer,
+      });
     } catch (error) {
       const err = /** @type {import('common-errors').BaseError} */ (error);
       logger.error(

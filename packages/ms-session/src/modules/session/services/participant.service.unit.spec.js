@@ -8,6 +8,7 @@ import {
   SessionStatus,
   SessionEventTypes,
   ParticipantRoles,
+  QuestionType,
 } from "common-contracts";
 
 import { TokenService } from "common-auth";
@@ -18,6 +19,8 @@ import {
   QUESTION_TIMED_OUT,
   INVALID_CHOICE_IDS,
   ALREADY_RESPONDED,
+  UNAUTHORIZED_HOST,
+  NO_BUZZER_FOUND,
 } from "../errors/session.errors.js";
 
 vi.mock("common-axios");
@@ -29,6 +32,7 @@ vi.mock("common-auth");
  * @typedef {import('vitest').Mocked<import('common-valkey').ValkeyRepository>} ValkeyRepositoryMock
  * @typedef {import('vitest').Mocked<import('common-kafka').KafkaProducer>} KafkaProducerMock
  * @typedef {import('vitest').Mocked<import('./session.service.js').SessionService>} SessionServiceMock
+ * @typedef {import('vitest').Mocked<import('../infra/repositories/buzzer.repository.js').BuzzerRepository>} BuzzerRepositoryMock
  */
 
 describe("ParticipantService unit tests", () => {
@@ -44,6 +48,8 @@ describe("ParticipantService unit tests", () => {
   let kafkaProducerMock;
   /** @type {SessionServiceMock} */
   let sessionServiceMock;
+  /** @type {BuzzerRepositoryMock} */
+  let buzzerRepositoryMock;
 
   beforeEach(() => {
     // @ts-ignore
@@ -69,6 +75,15 @@ describe("ParticipantService unit tests", () => {
     // @ts-ignore
     sessionServiceMock = /** @type {SessionServiceMock} */ ({
       deleteSession: vi.fn(),
+      getCurrentQuestion: vi.fn(),
+    });
+    // @ts-ignore
+    buzzerRepositoryMock = /** @type {BuzzerRepositoryMock} */ ({
+      push: vi.fn(),
+      hasBuzzed: vi.fn(),
+      peek: vi.fn(),
+      pop: vi.fn(),
+      clear: vi.fn(),
     });
 
     service = new ParticipantService(
@@ -77,6 +92,7 @@ describe("ParticipantService unit tests", () => {
       participantRepositoryMock,
       valkeyRepositoryMock,
       sessionServiceMock,
+      buzzerRepositoryMock,
     );
   });
 
@@ -197,6 +213,7 @@ describe("ParticipantService unit tests", () => {
           payload: expect.objectContaining({
             sessionId: "s1",
             participantId: "p1",
+            questionId: "q1",
             choiceId: "c1",
             submittedAt: expect.any(String),
           }),
@@ -334,6 +351,213 @@ describe("ParticipantService unit tests", () => {
           eventType: SessionEventTypes.QUIZ_RESPONSE_SUBMITTED,
         }),
       );
+    });
+  });
+
+  describe("Buzzer logic", () => {
+    const sessionId = "s1";
+    const participantId = "p1";
+    const session = createSessionEntity({
+      id: sessionId,
+      status: SessionStatus.QUESTION_ACTIVE,
+      currentQuestionId: "q1",
+    });
+
+    describe("submitResponse (Buzzer)", () => {
+      it("should successfully delegate to _handleBuzzerSubmit when question type is buzzer", async () => {
+        vi.mocked(sessionRepositoryMock.find).mockResolvedValue(session);
+        vi.mocked(participantRepositoryMock.find).mockResolvedValue(
+          createParticipantEntity({ id: participantId, nickname: "nick" }),
+        );
+        vi.mocked(valkeyRepositoryMock.get).mockImplementation(async (key) => {
+          if (key.includes("validation")) {
+            return { id: "q1", type: QuestionType.BUZZER, timer_seconds: 10 };
+          }
+          if (key.includes("question_activated_at")) {
+            return Date.now();
+          }
+          return null;
+        });
+
+        await service.submitResponse({
+          sessionId,
+          participantId,
+          choiceIds: [],
+        });
+
+        expect(kafkaProducerMock.publish).toHaveBeenCalledWith(
+          SessionEventTypes.FEED_BUZZER_QUEUE,
+          expect.objectContaining({
+            sessionId,
+            participantId,
+            username: "nick",
+          }),
+        );
+      });
+    });
+
+    describe("_handleBuzzerSubmit", () => {
+      it("should publish to FEED_BUZZER_QUEUE", async () => {
+        vi.mocked(participantRepositoryMock.find).mockResolvedValue(
+          createParticipantEntity({ id: participantId, nickname: "nick" }),
+        );
+
+        await service._handleBuzzerSubmit(session, participantId);
+
+        expect(kafkaProducerMock.publish).toHaveBeenCalledWith(
+          SessionEventTypes.FEED_BUZZER_QUEUE,
+          expect.objectContaining({
+            sessionId,
+            participantId,
+            username: "nick",
+          }),
+        );
+        expect(buzzerRepositoryMock.push).not.toHaveBeenCalled();
+      });
+    });
+
+    describe("answerBuzzer", () => {
+      beforeEach(() => {
+        vi.mocked(participantRepositoryMock.find).mockResolvedValue(
+          createParticipantEntity({
+            id: "h1",
+            role: ParticipantRoles.HOST,
+            sessionId,
+          }),
+        );
+      });
+
+      it("should publish BUZZER_ANSWER_SUBMITTED and clear queue if correct", async () => {
+        const buzzer = {
+          sessionId,
+          participantId,
+          username: "nick",
+          questionId: "q1",
+          pressedAt: new Date().toISOString(),
+        };
+        vi.mocked(buzzerRepositoryMock.peek).mockResolvedValue(buzzer);
+        vi.mocked(sessionRepositoryMock.find).mockResolvedValue(
+          createSessionEntity({ id: sessionId, hostId: "some-user-id" }),
+        );
+
+        await service.answerBuzzer({
+          sessionId,
+          hostId: "h1",
+          participantId,
+          isCorrect: true,
+        });
+
+        expect(buzzerRepositoryMock.clear).toHaveBeenCalledWith(sessionId);
+        expect(kafkaProducerMock.publish).toHaveBeenCalledWith(
+          SessionEventTypes.BUZZER_ANSWER_SUBMITTED,
+          expect.objectContaining({
+            sessionId,
+            participantId,
+            isCorrect: true,
+          }),
+        );
+      });
+
+      it("should publish BUZZER_ANSWER_SUBMITTED and pop if incorrect", async () => {
+        const buzzer = {
+          sessionId,
+          participantId,
+          username: "nick",
+          questionId: "q1",
+          pressedAt: new Date().toISOString(),
+        };
+        vi.mocked(buzzerRepositoryMock.peek).mockResolvedValue(buzzer);
+        vi.mocked(sessionRepositoryMock.find).mockResolvedValue(
+          createSessionEntity({ id: sessionId, hostId: "some-user-id" }),
+        );
+
+        await service.answerBuzzer({
+          sessionId,
+          hostId: "h1",
+          participantId,
+          isCorrect: false,
+        });
+
+        expect(buzzerRepositoryMock.pop).toHaveBeenCalledWith(sessionId);
+        expect(kafkaProducerMock.publish).toHaveBeenCalledWith(
+          SessionEventTypes.BUZZER_ANSWER_SUBMITTED,
+          expect.objectContaining({
+            sessionId,
+            participantId,
+            isCorrect: false,
+          }),
+        );
+      });
+
+      it("should throw UNAUTHORIZED_HOST if hostId mismatch", async () => {
+        vi.mocked(sessionRepositoryMock.find).mockResolvedValue(
+          createSessionEntity({ id: sessionId, hostId: "some-user-id" }),
+        );
+        vi.mocked(participantRepositoryMock.find).mockResolvedValue(
+          createParticipantEntity({
+            id: "wrong",
+            role: ParticipantRoles.PLAYER,
+            sessionId,
+          }),
+        );
+
+        await expect(
+          service.answerBuzzer({
+            sessionId,
+            hostId: "wrong",
+            participantId,
+            isCorrect: true,
+          }),
+        ).rejects.toThrow(UNAUTHORIZED_HOST().message);
+      });
+
+      it("should throw error if participant mismatch", async () => {
+        const buzzer = {
+          sessionId,
+          participantId: "other",
+          username: "other",
+          questionId: "q1",
+          pressedAt: new Date().toISOString(),
+        };
+        vi.mocked(buzzerRepositoryMock.peek).mockResolvedValue(buzzer);
+        vi.mocked(sessionRepositoryMock.find).mockResolvedValue(
+          createSessionEntity({ id: sessionId, hostId: "some-user-id" }),
+        );
+
+        await expect(
+          service.answerBuzzer({
+            sessionId,
+            hostId: "h1",
+            participantId,
+            isCorrect: true,
+          }),
+        ).rejects.toThrow();
+      });
+    });
+
+    describe("getCurrentBuzzer", () => {
+      it("should return peeked buzzer", async () => {
+        const buzzer = {
+          sessionId,
+          participantId,
+          username: "u",
+          questionId: "q1",
+          pressedAt: "t",
+        };
+        vi.mocked(buzzerRepositoryMock.peek).mockResolvedValue(buzzer);
+
+        const result = await service.getCurrentBuzzer(sessionId);
+
+        expect(result).toEqual(buzzer);
+        expect(buzzerRepositoryMock.peek).toHaveBeenCalledWith(sessionId);
+      });
+    });
+
+    describe("resetBuzzerQueue", () => {
+      it("should clear buzzer repository", async () => {
+        await service.resetBuzzerQueue(sessionId);
+        expect(buzzerRepositoryMock.clear).toHaveBeenCalledWith(sessionId);
+      });
     });
   });
 });

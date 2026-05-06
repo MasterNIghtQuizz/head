@@ -45,7 +45,6 @@ export class SessionController extends BaseController {
     return reply.code(200).send(session);
   }
 
-
   /**
    * @param {import('fastify').FastifyRequest} request
    * @param {import('fastify').FastifyReply} reply
@@ -124,6 +123,19 @@ export class SessionController extends BaseController {
       request.headers,
     );
     return reply.code(206).send();
+  }
+
+  /**
+   * @param {import('fastify').FastifyRequest<{ Body: { participantId: string, isCorrect: boolean } }>} request
+   * @param {import('fastify').FastifyReply} reply
+   */
+  async answerBuzzer(request, reply) {
+    await this.sessionService.answerBuzzer(
+      request.body.participantId,
+      request.body.isCorrect,
+      request.headers,
+    );
+    return reply.code(200).send({ message: "Buzzer answer processed" });
   }
 }
 
@@ -210,26 +222,6 @@ ApplyMethodDecorators(SessionController, "getSession", [
             nullable: true,
             description: "ID of the currently active question, if any.",
           },
-          current_question: {
-            type: "object",
-            nullable: true,
-            properties: {
-              id: { type: "string" },
-              label: { type: "string" },
-              type: { type: "string" },
-              timer_seconds: { type: "integer" },
-              choices: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    id: { type: "string" },
-                    text: { type: "string" },
-                  },
-                },
-              },
-            },
-          },
           quizz_id: {
             type: "string",
             description: "ID of the quiz being played.",
@@ -259,7 +251,6 @@ ApplyMethodDecorators(SessionController, "getSession", [
   UseGameToken(),
   Get("/"),
 ]);
-
 
 ApplyMethodDecorators(SessionController, "startSession", [
   Schema({
@@ -436,10 +427,10 @@ ApplyMethodDecorators(SessionController, "getCurrentQuestion", [
         type: "object",
         nullable: true,
         properties: {
-          id: { type: "string" },
+          question_id: { type: "string" },
           label: { type: "string" },
           type: { type: "string" },
-          timer_seconds: { type: "integer" },
+          timer_seconds: { type: "number" },
           choices: {
             type: "array",
             items: {
@@ -448,6 +439,15 @@ ApplyMethodDecorators(SessionController, "getCurrentQuestion", [
                 id: { type: "string" },
                 text: { type: "string" },
               },
+            },
+          },
+          current_buzzer: {
+            type: "object",
+            nullable: true,
+            properties: {
+              id: { type: "string" },
+              username: { type: "string" },
+              pressed_at: { type: "string" },
             },
           },
         },
@@ -484,6 +484,41 @@ ApplyMethodDecorators(SessionController, "submitResponse", [
   }),
   UseGameToken(),
   Post("/submit/"),
+]);
+
+ApplyMethodDecorators(SessionController, "answerBuzzer", [
+  Schema({
+    description:
+      "Submit host decision for the current buzzer participant (correct/incorrect).",
+    tags: ["Session", "Buzzer"],
+    security: [{ gameToken: [] }],
+    body: {
+      type: "object",
+      required: ["participantId", "isCorrect"],
+      properties: {
+        participantId: { type: "string" },
+        isCorrect: { type: "boolean" },
+      },
+    },
+    response: {
+      200: {
+        description: "Buzzer answer processed successfully.",
+        type: "object",
+        properties: {
+          message: { type: "string", example: "Buzzer answer processed" },
+        },
+      },
+      400: ErrorResponse,
+      401: ErrorResponse,
+      403: ErrorResponse,
+      404: ErrorResponse,
+      409: ErrorResponse,
+      500: ErrorResponse,
+    },
+  }),
+  UseGameToken(),
+  Roles([UserRole.ADMIN, UserRole.MODERATOR]),
+  Post("/buzzer/answer/"),
 ]);
 
 Controller("/sessions")(SessionController);

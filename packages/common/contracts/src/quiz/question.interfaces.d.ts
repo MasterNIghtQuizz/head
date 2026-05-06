@@ -19,6 +19,7 @@ export interface QuestionResponse {
   type: string;
   order_index: number;
   timer_seconds: number;
+  choices?: ChoiceResponse[];
 }
 
 export interface FullQuestionResponse extends QuestionResponse {
