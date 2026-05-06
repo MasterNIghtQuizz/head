@@ -235,14 +235,14 @@ export class SessionService extends BaseService {
         this.participantRepository.findBySessionId(sessionId),
         session.currentQuestionId
           ? this.getCurrentQuestion(sessionId, headers, participantId).catch(
-              (err) => {
-                logger.warn(
-                  { sessionId, err: err.message },
-                  "Failed to fetch current question during getSession",
-                );
-                return null;
-              },
-            )
+            (err) => {
+              logger.warn(
+                { sessionId, err: err.message },
+                "Failed to fetch current question during getSession",
+              );
+              return null;
+            },
+          )
           : Promise.resolve(null),
         this.valkeyRepository.get(`session:${sessionId}:question_activated_at`),
       ]);
@@ -294,7 +294,10 @@ export class SessionService extends BaseService {
         throw new Error(`Session ${sessionId} has no associated quiz ID`);
       }
 
-      if (session.status !== SessionStatus.LOBBY) {
+      if (
+        session.status !== SessionStatus.LOBBY &&
+        session.status !== SessionStatus.CREATED
+      ) {
         logger.warn(
           `Session with id ${sessionId} is in invalid status ${session.status} for starting`,
         );
@@ -873,4 +876,5 @@ export class SessionService extends BaseService {
       logger.error({ sessionId, err: err.message }, "Error in showResults");
       throw err;
     }
+  }
 }
