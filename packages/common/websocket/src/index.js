@@ -1,3 +1,27 @@
+/**
+ * @typedef {Object} MessageType
+ * @property {"create_session"} CREATE_SESSION
+ * @property {"start_session"} START_SESSION
+ * @property {"join_session"} JOIN_SESSION
+ * @property {"leave_session"} LEAVE_SESSION
+ * @property {"chat_message"} CHAT_MESSAGE
+ * @property {"user_online"} USER_ONLINE
+ * @property {"user_offline"} USER_OFFLINE
+ * @property {"session_created"} SESSION_CREATED
+ * @property {"session_started"} SESSION_STARTED
+ * @property {"session_owner_changed"} SESSION_OWNER_CHANGED
+ * @property {"joined_session"} JOINED_SESSION
+ * @property {"message_delivered"} MESSAGE_DELIVERED
+ * @property {"message_not_delivered"} MESSAGE_NOT_DELIVERED
+ * @property {"session_ended"} SESSION_ENDED
+ * @property {"session_deleted"} SESSION_DELETED
+ * @property {"session_next_question"} SESSION_NEXT_QUESTION
+ * @property {"participants_update"} PARTICIPANTS_UPDATE
+ * @property {"session_results_displayed"} SESSION_RESULTS_DISPLAYED
+ * @property {"error"} ERROR
+ */
+
+/** @type {MessageType} */
 export const messageType = {
   CREATE_SESSION: "create_session",
   START_SESSION: "start_session",
@@ -16,6 +40,7 @@ export const messageType = {
   SESSION_DELETED: "session_deleted",
   SESSION_NEXT_QUESTION: "session_next_question",
   PARTICIPANTS_UPDATE: "participants_update",
+  SESSION_RESULTS_DISPLAYED: "session_results_displayed",
   ERROR: "error",
 };
 

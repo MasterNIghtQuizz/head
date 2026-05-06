@@ -355,7 +355,7 @@ describe("SessionService unit tests", () => {
         current_buzzer: {
           id: "p1",
           username: "nick",
-          pressed_at: "1000",
+          pressed_at: 1000,
         },
       });
       expect(buzzerRepositoryMock.peek).toHaveBeenCalledWith("s1");

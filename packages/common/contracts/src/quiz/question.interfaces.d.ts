@@ -1,4 +1,7 @@
+import { ChoiceResponse } from "./choice.interfaces.js";
+
 export interface CreateQuestionRequest {
+
   label: string;
   type: string;
   order_index: number;

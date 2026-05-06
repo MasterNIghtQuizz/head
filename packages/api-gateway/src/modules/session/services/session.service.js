@@ -156,4 +156,17 @@ export class SessionService extends BaseService {
       headers: /** @type {Record<string, string>} */ (headers),
     });
   }
+
+  /**
+   * @param {import("http").IncomingHttpHeaders} headers
+   * @returns {Promise<void>}
+   */
+  async showResults(headers) {
+    await call({
+      method: "POST",
+      url: `${config.services.session}/sessions/show-results/`,
+      data: {},
+      headers: /** @type {Record<string, string>} */ (headers),
+    });
+  }
 }

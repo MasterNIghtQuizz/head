@@ -56,7 +56,9 @@ export interface GetSessionResponse {
   participants: Participant[];
   activated_at?: number | null;
   has_answered?: boolean;
+  current_question?: GetCurrentQuestionResponse | null;
 }
+
 
 export interface GetCurrentQuestionResponse {
   question_id: string;

@@ -378,6 +378,7 @@ describe("ResponseService Unit Tests", () => {
         "session-1",
         quizPayload.questions[0].id,
         quizPayload.questions[0].choices[0].id,
+        "participant-1",
       );
 
       expect(result).toBe(true);
@@ -402,6 +403,7 @@ describe("ResponseService Unit Tests", () => {
         "session-1",
         quizPayload.questions[0].id,
         "wrong-choice-id",
+        "participant-1",
       );
 
       expect(result).toBe(false);
@@ -412,7 +414,7 @@ describe("ResponseService Unit Tests", () => {
       vi.spyOn(service, "handleQuizNotFound").mockResolvedValue(null);
 
       await expect(
-        service.getIsCorrectFromCache("session-1", "q1", "c1"),
+        service.getIsCorrectFromCache("session-1", "q1", "c1", "p1"),
       ).rejects.toThrow(ResponseError.QUIZ_NOT_FOUND);
     });
 
@@ -432,7 +434,12 @@ describe("ResponseService Unit Tests", () => {
       );
 
       await expect(
-        service.getIsCorrectFromCache("session-1", "unknown-question", "c1"),
+        service.getIsCorrectFromCache(
+          "session-1",
+          "unknown-question",
+          "c1",
+          "p1",
+        ),
       ).rejects.toThrow(ResponseError.QUESTION_NOT_FOUND);
     });
 
@@ -456,6 +463,7 @@ describe("ResponseService Unit Tests", () => {
           "session-1",
           quizPayload.questions[0].id,
           "unknown-choice",
+          "participant-1",
         ),
       ).rejects.toThrow(ResponseError.CHOICE_NOT_FOUND);
     });

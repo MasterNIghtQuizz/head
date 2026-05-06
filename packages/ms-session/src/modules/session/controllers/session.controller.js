@@ -128,17 +128,49 @@ export class SessionController extends BaseController {
    * @param {import('fastify').FastifyReply} reply
    */
   async getCurrentQuestion(request, reply) {
-    const { sessionId } = this._getInternalPayload(request);
+    const { sessionId, participantId } = this._getInternalPayload(request);
     if (!sessionId) {
       throw new UnauthorizedError("Missing session id");
     }
     const question = await this.sessionService.getCurrentQuestion(
       sessionId,
       request.headers,
+      participantId || "",
     );
     return reply.code(200).send(question);
   }
+
+  /**
+   * @param {import('fastify').FastifyRequest} request
+   * @param {import('fastify').FastifyReply} reply
+   */
+  async showResults(request, reply) {
+    const { sessionId } = this._getInternalPayload(request);
+    if (!sessionId) {
+      throw new UnauthorizedError("Missing session id");
+    }
+    await this.sessionService.showResults(sessionId);
+    return reply.code(200).send({ message: "Results display triggered" });
+  }
 }
+
+ApplyMethodDecorators(SessionController, "showResults", [
+  Schema({
+    description: "Trigger real-time result display for all participants.",
+    tags: ["Session"],
+    security: [{ internalToken: [] }],
+    response: {
+      200: {
+        type: "object",
+        properties: { message: { type: "string" } },
+      },
+      401: { type: "object", properties: { message: { type: "string" } } },
+      404: { type: "object", properties: { message: { type: "string" } } },
+      500: { type: "object", properties: { message: { type: "string" } } },
+    },
+  }),
+  Post("/show-results/"),
+]);
 
 ApplyMethodDecorators(SessionController, "createSession", [
   Schema({

@@ -10,13 +10,10 @@ import {
   QUIZZ_NOT_FOUND,
   SESSION_INVALID_STATUS,
   SESSION_NOT_FOUND,
+  QUESTION_NOT_FOUND,
 } from "../errors/session.errors.js";
 import { ParticipantEntity } from "../core/entities/participant.entity.js";
-import {
-  ParticipantRoles,
-  SessionStatus,
-  QuestionType,
-} from "common-contracts";
+import { ParticipantRoles, SessionStatus } from "common-contracts";
 import { SessionEventTypes } from "common-contracts/src/events.js";
 import logger from "../../../logger.js";
 import { SessionMapper } from "../infra/mappers/session.mapper.js";
@@ -238,12 +235,12 @@ export class SessionService extends BaseService {
         this.participantRepository.findBySessionId(sessionId),
         session.currentQuestionId
           ? this.getCurrentQuestion(sessionId, headers).catch((err) => {
-              logger.warn(
-                { sessionId, err: err.message },
-                "Failed to fetch current question during getSession",
-              );
-              return null;
-            })
+            logger.warn(
+              { sessionId, err: err.message },
+              "Failed to fetch current question during getSession",
+            );
+            return null;
+          })
           : Promise.resolve(null),
         this.valkeyRepository.get(`session:${sessionId}:question_activated_at`),
       ]);
@@ -251,10 +248,10 @@ export class SessionService extends BaseService {
       const hasAnswered =
         session.currentQuestionId && participantId
           ? await this.valkeyRepository
-              .get(
-                `session:${sessionId}:question:${session.currentQuestionId}:participant:${participantId}:responded`,
-              )
-              .catch(() => null)
+            .get(
+              `session:${sessionId}:question:${session.currentQuestionId}:participant:${participantId}:responded`,
+            )
+            .catch(() => null)
           : null;
 
       return SessionMapper.toDto(
@@ -634,9 +631,10 @@ export class SessionService extends BaseService {
   /**
    * @param {string} sessionId
    * @param {import("http").IncomingHttpHeaders} headers
+   * @param {string} [participantId]
    * @returns {Promise<import('../contracts/session.dto.js').GetCurrentQuestionResponseDto | null>}
    */
-  async getCurrentQuestion(sessionId, headers) {
+  async getCurrentQuestion(sessionId, headers, participantId = "") {
     try {
       const internalTokenHeader = headers["internal-token"];
       const internalToken = Array.isArray(internalTokenHeader)
@@ -725,41 +723,31 @@ export class SessionService extends BaseService {
                   3600,
                 ),
               ]);
-
-              if (q.id === session.currentQuestionId) {
-                question = fullQuestion;
-              }
             }),
           );
+
+          question = questions.find((q) => q.id === session.currentQuestionId);
         }
       }
 
       if (!question) {
-        return null;
+        throw QUESTION_NOT_FOUND(session.currentQuestionId);
       }
 
-      /** @type {any} */
+      const isModerator = participantId
+        ? session.hostId === participantId
+        : false;
       let currentBuzzer = null;
-      if (question.type === QuestionType.BUZZER) {
+
+      if (question.type === "buzzer") {
         try {
           const buzzerData = await this.buzzerRepository.peek(sessionId);
-          if (buzzerData) {
-            let pressedAt = buzzerData.pressedAt;
-            if (typeof pressedAt === "number") {
-              pressedAt = String(pressedAt);
-            } else if (typeof pressedAt === "string") {
-              if (!/^[0-9]+$/.test(pressedAt)) {
-                const parsed = Date.parse(pressedAt);
-                pressedAt = Number.isFinite(parsed)
-                  ? String(parsed)
-                  : pressedAt;
-              }
-            }
 
+          if (buzzerData) {
             currentBuzzer = {
               id: buzzerData.participantId,
               username: buzzerData.username,
-              pressed_at: pressedAt,
+              pressed_at: Number(buzzerData.pressedAt),
             };
             logger.debug(
               { sessionId, currentBuzzer },
@@ -787,9 +775,10 @@ export class SessionService extends BaseService {
         label: question.label,
         type: question.type,
         timer_seconds: question.timer_seconds,
-        choices: question.choices.map((c) => ({
+        choices: (question.choices || []).map((c) => ({
           id: c.id,
           text: c.text,
+          ...(isModerator ? { is_correct: c.is_correct } : {}),
         })),
         current_buzzer: currentBuzzer,
       });
@@ -846,6 +835,39 @@ export class SessionService extends BaseService {
         return cachedQuiz;
       }
 
+      throw err;
+    }
+  }
+
+  /**
+   * @param {string} sessionId
+   * @returns {Promise<void>}
+   */
+  async showResults(sessionId) {
+    try {
+      const session = await this.sessionRepository.find(sessionId);
+      if (!session) {
+        throw SESSION_NOT_FOUND(sessionId);
+      }
+
+      const channel = "ws:session:results";
+      const message = JSON.stringify({
+        eventType: "SESSION_RESULTS_DISPLAYED",
+        payload: {
+          sessionId,
+          questionId: session.currentQuestionId,
+        },
+      });
+
+      await this.valkeyRepository.publish(channel, message);
+
+      logger.info(
+        { sessionId, questionId: session.currentQuestionId },
+        "Results display triggered via Valkey",
+      );
+    } catch (error) {
+      const err = /** @type {import('common-errors').BaseError} */ (error);
+      logger.error({ sessionId, err: err.message }, "Error in showResults");
       throw err;
     }
   }

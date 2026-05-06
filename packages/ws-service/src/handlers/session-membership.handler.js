@@ -9,7 +9,10 @@ import {
   registerPendingDeparture,
   deleteParticipants,
 } from "../lib/connection-store.js";
-import { getSessionActivatedAt, deleteSessionTimer } from "../lib/session-timer-store.js";
+import {
+  getSessionActivatedAt,
+  deleteSessionTimer,
+} from "../lib/session-timer-store.js";
 import { broadcastToSession } from "../lib/messaging.js";
 import {
   deleteSessionCapacity,
@@ -17,11 +20,9 @@ import {
   getSessionOwnerId,
   getSessionState,
   setSessionCapacity,
-  setSessionOwnerId,
   setSessionStarted,
 } from "../lib/session-capacity-store.js";
 import { UserRole } from "common-auth";
-import { ParticipantRoles } from "common-contracts";
 import { errorType, messageType, sessionState } from "common-websocket";
 import logger from "../logger.js";
 

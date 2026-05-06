@@ -135,6 +135,7 @@ describe("SessionController unit tests", () => {
       expect(sessionServiceMock.getCurrentQuestion).toHaveBeenCalledWith(
         payload.sessionId,
         headers,
+        "",
       );
       expect(replyMock.code).toHaveBeenCalledWith(200);
       expect(replyMock.send).toHaveBeenCalledWith(questionData);

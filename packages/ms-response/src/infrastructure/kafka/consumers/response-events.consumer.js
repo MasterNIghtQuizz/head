@@ -170,7 +170,7 @@ export class ResponseEventsConsumer {
       {
         ...logCtx,
         sessionId: payload.session_id,
-        hostid :  payload.participant_id,
+        hostid: payload.participant_id,
         quizId: payload.quiz_id,
       },
       "Executing onSessionStarted",

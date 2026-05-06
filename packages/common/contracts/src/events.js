@@ -38,6 +38,7 @@ export const SessionEventTypes = /** @type {const} */ ({
   FEED_BUZZER_QUEUE: "feed-buzzer-queue",
   BUZZER_ANSWER_SUBMITTED: "buzzer-answer-submitted",
   PING_HOST_FOR_QUEUE: "ping-host-for-queue",
+  SESSION_RESULTS_DISPLAYED: "session-results-displayed",
 });
 
 /**

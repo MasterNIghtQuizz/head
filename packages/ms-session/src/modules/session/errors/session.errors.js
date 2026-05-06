@@ -65,9 +65,17 @@ export const QUEUE_SYNCHRONIZING = () =>
 export const UNAUTHORIZED_HOST = () =>
   new UnauthorizedError("Only the session host can perform this action");
 
-/** @param {string} expectedId
- * @param {string} actualId */
+/** @param {string} expectedId */
+/** @param {string} actualId */
 export const WRONG_BUZZER_CANDIDATE = (expectedId, actualId) =>
   new BadRequestError(
     `Wrong buzzer candidate. Expected ${expectedId} but got ${actualId}`,
   );
+
+/** @param {string} [id] */
+export const QUESTION_NOT_FOUND = (id) =>
+  new NotFoundError(`Question with id ${id} not found`);
+
+/** @param {string} [sessionId] */
+export const NO_ACTIVE_QUESTION = (sessionId) =>
+  new BadRequestError(`No active question found for session ${sessionId}`);

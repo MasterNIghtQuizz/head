@@ -58,3 +58,5 @@ export interface QuizIdsResponse {
 }
 
 export type Quizz = FullQuizResponse;
+export type Quiz = FullQuizResponse;
+

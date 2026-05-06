@@ -89,14 +89,19 @@ export class ResponseController extends BaseController {
    */
   async startSession(request, reply) {
     const { quizzID } = request.params;
-    const { hostId } = request.query;
+    const hostId = request.user?.userId || request.query.hostId;
 
-    logger.info({ quizzID }, "Fetching quiz data for session");
+    if (!hostId) {
+      return reply.code(400).send({ message: "Host ID is required" });
+    }
+
+    logger.info({ quizzID, hostId }, "Fetching quiz data for session");
 
     try {
       const quiz = await this.responseService.fetchQuizz(
         quizzID,
-        hostId,
+        /** @type {string} */ (hostId),
+
         request.headers,
       );
       return reply.send(quiz);
@@ -179,7 +184,89 @@ export class ResponseController extends BaseController {
       return reply.code(500).send({ message: ResponseErrorMessage.DEFAULT });
     }
   }
+  /**
+   * @param {import('fastify').FastifyRequest<{ Params: { sessionId: string } }>} request
+   * @param {import('fastify').FastifyReply} reply
+   */
+  async getLeaderboard(request, reply) {
+    const { sessionId } = request.params;
+    const result = await this.responseService.getLeaderboard(sessionId);
+    return reply.send(result);
+  }
 }
+
+ApplyMethodDecorators(ResponseController, "getLeaderboard", [
+  Schema({
+    description: "Get the leaderboard for a session",
+    tags: ["Response"],
+    params: {
+      type: "object",
+      required: ["sessionId"],
+      properties: { sessionId: { type: "string", format: "uuid" } },
+    },
+    response: {
+      200: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            participantId: { type: "string" },
+            score: { type: "number" },
+          },
+        },
+      },
+    },
+  }),
+  Get("/leaderboard/session/:sessionId"),
+]);
+
+/**
+ * @param {import('fastify').FastifyRequest<{ Params: { questionId: string }, Querystring: { sessionId: string } }>} request
+ * @param {import('fastify').FastifyReply} reply
+ */
+async function getQuestionStats(request, reply) {
+  const { questionId } = request.params;
+  const { sessionId } = request.query;
+  // @ts-ignore
+  const result = await this.responseService.getQuestionStats(
+    questionId,
+    sessionId,
+  );
+  return reply.send(result);
+}
+
+// @ts-ignore
+ResponseController.prototype.getQuestionStats = getQuestionStats;
+
+ApplyMethodDecorators(ResponseController, "getQuestionStats", [
+  Schema({
+    description: "Get statistics for a specific question",
+    tags: ["Response"],
+    params: {
+      type: "object",
+      required: ["questionId"],
+      properties: { questionId: { type: "string", format: "uuid" } },
+    },
+    querystring: {
+      type: "object",
+      required: ["sessionId"],
+      properties: { sessionId: { type: "string", format: "uuid" } },
+    },
+    response: {
+      200: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            choiceId: { type: "string" },
+            count: { type: "number" },
+          },
+        },
+      },
+    },
+  }),
+  Get("/stats/question/:questionId"),
+]);
 
 ApplyMethodDecorators(ResponseController, "addResponse", [
   Schema({

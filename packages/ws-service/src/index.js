@@ -23,6 +23,7 @@ import {
   parseClientMessage,
 } from "./handlers/incoming-message.handler.js";
 import { SessionEventsConsumer } from "./infrastructure/kafka/consumers/session-events.consumer.js";
+import { SessionNotificationsConsumer } from "./infrastructure/valkey/consumers/session-notifications.consumer.js";
 
 const { default: logger } = await import("./logger.js");
 
@@ -78,6 +79,13 @@ if (config.kafka.enabled) {
       "Kafka connection failed. Service will continue without event consumption.",
     );
   }
+}
+
+/** @type {SessionNotificationsConsumer | null} */
+let valkeyConsumer = null;
+if (config.valkey && config.valkey.enabled) {
+  valkeyConsumer = new SessionNotificationsConsumer(config.valkey);
+  valkeyConsumer.start();
 }
 
 const wss = new WebSocketServer({ server: fastify.server });
@@ -190,7 +198,7 @@ try {
   logger.info(`WebSocket service started on port ${config.port}`);
 } catch (err) {
   logger.error(err, "Failed to start Fastify server");
-  process.exit(1);
+  throw new Error("Startup failed", { cause: err });
 }
 
 let shuttingDown = false;
@@ -232,7 +240,17 @@ const shutdown = async (/** @type {string} */ signal) => {
     }
   }
 
+  if (valkeyConsumer) {
+    try {
+      await valkeyConsumer.stop();
+      logger.info("Valkey consumer stopped");
+    } catch (err) {
+      logger.error({ err }, "Error stopping Valkey consumer");
+    }
+  }
+
   logger.info("Shutdown complete. Exiting.");
+  // eslint-disable-next-line unicorn/no-process-exit
   process.exit(0);
 };
 

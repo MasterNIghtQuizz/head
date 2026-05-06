@@ -83,4 +83,17 @@ export class ValkeyRepository {
       );
     }
   }
+  /**
+   * @param {string} channel
+   * @param {string} message
+   * @returns {Promise<number>}
+   */
+  async publish(channel, message) {
+    try {
+      return await this.#valkeyService.client.publish(channel, message);
+    } catch (err) {
+      logger.warn({ err, channel }, "Valkey publish failed: degraded mode");
+      return 0;
+    }
+  }
 }

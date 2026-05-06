@@ -38,3 +38,17 @@ export interface ResponseProps {
   isCorrect: boolean | null;
   submittedAt: Date;
 }
+
+export interface GetSessionResponsesResponse extends Array<Response> {}
+export interface GetParticipantResponsesResponse extends Array<Response> {}
+export interface GetQuestionResponsesResponse extends Array<Response> {}
+
+export interface StartSessionRequest {
+  quizzID: string;
+  hostId: string;
+}
+
+export interface EndSessionRequest {
+  sessionId: string;
+}
+

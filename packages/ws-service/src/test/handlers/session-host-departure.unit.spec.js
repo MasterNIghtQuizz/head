@@ -78,7 +78,7 @@ describe("Host Departure Logic", () => {
     // Setup mocks
     vi.mocked(getSessionOwnerId).mockReturnValue(ownerId);
     vi.mocked(getSessionSockets).mockReturnValue(new Set([mockSocket]));
-    
+
     // Trigger host departure
     handleSessionDeparture(sessionId, ownerId);
 
@@ -90,9 +90,9 @@ describe("Host Departure Logic", () => {
       sessionId,
       expect.objectContaining({
         type: messageType.SESSION_DELETED,
-        payload: { sessionId }
+        payload: { sessionId },
       }),
-      null
+      null,
     );
 
     // 2. Check if remaining sockets were closed
@@ -112,7 +112,7 @@ describe("Host Departure Logic", () => {
     // Setup mocks
     vi.mocked(getSessionOwnerId).mockReturnValue(ownerId);
     vi.mocked(getSessionSockets).mockReturnValue(new Set([asWebSocket({})]));
-    
+
     // Trigger player departure
     handleSessionDeparture(sessionId, playerId);
 
@@ -123,7 +123,7 @@ describe("Host Departure Logic", () => {
     expect(broadcastToSession).not.toHaveBeenCalledWith(
       sessionId,
       expect.objectContaining({ type: messageType.SESSION_DELETED }),
-      expect.anything()
+      expect.anything(),
     );
 
     // Should broadcast USER_OFFLINE as usual
@@ -131,9 +131,9 @@ describe("Host Departure Logic", () => {
       sessionId,
       expect.objectContaining({
         type: messageType.USER_OFFLINE,
-        payload: { participant_id: playerId }
+        payload: { participant_id: playerId },
       }),
-      null
+      null,
     );
   });
 });

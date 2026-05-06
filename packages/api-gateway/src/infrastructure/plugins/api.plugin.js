@@ -11,6 +11,8 @@ import { ChoiceController } from "../../modules/quiz/controllers/choice.controll
 import { ChoiceService } from "../../modules/quiz/services/choice.service.js";
 import { SessionService } from "../../modules/session/services/session.service.js";
 import { SessionController } from "../../modules/session/controllers/session.controller.js";
+import { ResponseService } from "../../modules/response/services/response.service.js";
+import { ResponseController } from "../../modules/response/controllers/response.controller.js";
 
 /**
  * @param {import('../../types/fastify.d.ts').AppInstance} api
@@ -58,6 +60,9 @@ export async function apiPlugin(api) {
 
   const sessionService = new SessionService();
   ControllerFactory.register(api, SessionController, [sessionService]);
+
+  const responseService = new ResponseService();
+  ControllerFactory.register(api, ResponseController, [responseService]);
 
   api.get("/health", { config: { isPublic: true } }, async () => {
     return { status: "ok", service: "api-gateway" };

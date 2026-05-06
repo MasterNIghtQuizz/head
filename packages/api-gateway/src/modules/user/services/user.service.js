@@ -85,7 +85,7 @@ export class UserService extends BaseService {
 
   /**
    * @param {string} id
-   * @param {any} data
+   * @param {import('common-contracts').UpdateUserRequest} data
    * @param {string} internalToken
    * @returns {Promise<import('common-contracts').UserResponse>}
    */

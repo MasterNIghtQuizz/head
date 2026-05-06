@@ -17,6 +17,7 @@
     "common-logger": "workspace:*",
     "common-metrics": "workspace:*",
     "common-monitoring": "workspace:*",
+    "common-valkey": "workspace:*",
     "common-websocket": "workspace:*",
     "fastify": "^5.0.0",
     "joi": "^18.0.2",
