@@ -128,6 +128,7 @@ export class GetCurrentQuestionResponseDto {
    */
   constructor(data) {
     this.question_id = data.question_id;
+    this.id = data.question_id;
     this.label = data.label;
     this.type = data.type;
     this.timer_seconds = data.timer_seconds;

@@ -192,7 +192,7 @@ export class SessionService extends BaseService {
           "DEBUG [ms-session] Publishing SESSION_CREATED event to Kafka",
         );
         await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
-          eventId: crypto.randomUUID(),
+          eventId: randomUUID(),
           timestamp: Date.now(),
           eventType: SessionEventTypes.SESSION_CREATED,
           payload,
@@ -234,33 +234,35 @@ export class SessionService extends BaseService {
       const [participants, currentQuestion, activatedAt] = await Promise.all([
         this.participantRepository.findBySessionId(sessionId),
         session.currentQuestionId
-          ? this.getCurrentQuestion(sessionId, headers).catch((err) => {
-            logger.warn(
-              { sessionId, err: err.message },
-              "Failed to fetch current question during getSession",
-            );
-            return null;
-          })
+          ? this.getCurrentQuestion(sessionId, headers, participantId).catch(
+            (err) => {
+              logger.warn(
+                { sessionId, err: err.message },
+                "Failed to fetch current question during getSession",
+              );
+              return null;
+            },
+          )
           : Promise.resolve(null),
         this.valkeyRepository.get(`session:${sessionId}:question_activated_at`),
       ]);
 
       const hasAnswered =
         session.currentQuestionId && participantId
-          ? await this.valkeyRepository
-            .get(
-              `session:${sessionId}:question:${session.currentQuestionId}:participant:${participantId}:responded`,
-            )
-            .catch(() => null)
-          : null;
+          ? await this.valkeyRepository.get(
+            `session:${sessionId}:question:${session.currentQuestionId}:participant:${participantId}:answered`,
+          )
+          : false;
 
-      return SessionMapper.toDto(
+      const dto = SessionMapper.toDto(
         session,
         participants.map((p) => ParticipantMapper.toDto(p)),
         currentQuestion,
         activatedAt ? Number(activatedAt) : null,
         !!hasAnswered,
       );
+
+      return dto;
     } catch (error) {
       const err = /** @type {import('common-errors').BaseError} */ (error);
       logger.error(
@@ -284,80 +286,19 @@ export class SessionService extends BaseService {
 
       const session = await this.sessionRepository.find(sessionId);
       if (!session) {
-        logger.warn(`Session with id ${sessionId} not found`);
-        throw SESSION_NOT_FOUND();
-      }
-
-      if (!session.quizzId) {
-        throw new Error(`Session ${sessionId} has no associated quiz ID`);
-      }
-
-      if (session.status !== SessionStatus.LOBBY) {
-        logger.warn(
-          `Session with id ${sessionId} is in invalid status ${session.status} for starting`,
-        );
-        throw SESSION_INVALID_STATUS(sessionId);
+        throw SESSION_NOT_FOUND(sessionId);
       }
 
       const quiz = await this._getQuizWithFallback(
         session.quizzId,
         internalToken || "",
       );
-
-      const questions = quiz.questions;
-      if (!questions || !Array.isArray(questions) || questions.length === 0) {
-        logger.warn(`Quiz with id ${session.quizzId} has no questions`);
-        throw EMPTY_QUIZZ(session.quizzId);
+      if (!quiz || !quiz.questions || quiz.questions.length === 0) {
+        throw QUIZZ_NOT_FOUND(session.quizzId);
       }
 
-      const questionId = questions[0].id;
-
-      try {
-        const questionIds = questions.map((q) => q.id);
-        await this.valkeyRepository.set(
-          `session:${session.id}:questions:ids`,
-          questionIds,
-          3600,
-        );
-
-        await Promise.all(
-          questions.map(async (/** @type {Question} */ q) => {
-            const validationData = {
-              id: q.id,
-              type: q.type,
-              timer_seconds: q.timer_seconds,
-              choiceIds: (q.choices || []).map(
-                (/** @type {Choice} */ c) => c.id,
-              ),
-            };
-            const fullQuestion = new Question({
-              ...q,
-              choices: (q.choices || []).map(
-                // eslint-disable-next-line no-unused-vars
-                ({ is_correct, ...rest }) => new Choice(rest),
-              ),
-            });
-
-            await Promise.all([
-              this.valkeyRepository.set(
-                `question:${q.id}:validation`,
-                validationData,
-                3600,
-              ),
-              this.valkeyRepository.set(
-                `question:${q.id}:full`,
-                fullQuestion,
-                3600,
-              ),
-            ]);
-          }),
-        );
-      } catch (err) {
-        logger.error(
-          { err },
-          "Failed to pre-cache questions in Valkey during start",
-        );
-      }
+      const firstQuestion = quiz.questions[0];
+      const questionId = firstQuestion.id;
 
       await Promise.all([
         this.sessionRepository.update(session.id, {
@@ -367,39 +308,21 @@ export class SessionService extends BaseService {
         this.buzzerRepository.clear(session.id),
       ]);
 
-      logger.info(
-        { sessionId: session.id, questionId },
-        "Session started, first question activated",
+      await this.valkeyRepository.set(
+        `session:${sessionId}:question_activated_at`,
+        Date.now(),
+        3600,
       );
-
-      try {
-        await this.valkeyRepository.set(
-          `session:${session.id}:question_activated_at`,
-          Date.now(),
-        );
-      } catch (err) {
-        logger.error({ err }, "Failed to set question_activated_at in Valkey");
-      }
 
       if (this.kafkaProducer) {
         /** @type {import('common-contracts').SessionStartedEventPayload} */
-        const startedPayload = { session_id: session.id };
-        await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
-          eventId: randomUUID(),
-          timestamp: Date.now(),
-          eventType: SessionEventTypes.SESSION_STARTED,
-          payload: startedPayload,
-        });
-
-        /** @type {import('common-contracts').SessionNextQuestionEventPayload} */
         const payload = {
-          session_id: session.id,
-          question_id: questionId,
+          session_id: sessionId,
         };
         await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
           eventId: randomUUID(),
           timestamp: Date.now(),
-          eventType: SessionEventTypes.SESSION_NEXT_QUESTION,
+          eventType: SessionEventTypes.SESSION_STARTED,
           payload,
         });
       }
@@ -428,201 +351,72 @@ export class SessionService extends BaseService {
       if (!session) {
         throw SESSION_NOT_FOUND(sessionId);
       }
-      if (
-        session.status !== SessionStatus.QUESTION_ACTIVE &&
-        session.status !== SessionStatus.QUESTION_CLOSED
-      ) {
-        throw SESSION_INVALID_STATUS(sessionId);
-      }
 
-      const { quizzId } = session;
-      if (!quizzId) {
-        throw new Error(`Session ${sessionId} has no associated quiz ID`);
-      }
-
-      const cachedQuestionIds = await this.valkeyRepository.get(
-        `session:${session.id}:questions:ids`,
+      const quiz = await this._getQuizWithFallback(
+        session.quizzId,
+        internalToken || "",
       );
-      let questionIds;
-
-      if (cachedQuestionIds) {
-        questionIds = cachedQuestionIds;
-      } else {
-        const quizResponse = await call({
-          url: `${config.services.quizzManagement.baseUrl}/quizzes/get-ids`,
-          method: "POST",
-          data: { quizId: quizzId },
-          headers: {
-            "internal-token": internalToken || "",
-          },
-        }).catch((err) => {
-          logger.warn(
-            `Failed to fetch question IDs for quiz ${quizzId}: `,
-            err,
-          );
-          throw QUIZZ_NOT_FOUND(quizzId);
-        });
-        questionIds = quizResponse.questions.map(
-          (/** @type {import('common-contracts').FullQuestionResponse} */ q) =>
-            q.id,
-        );
-        try {
-          await this.valkeyRepository.set(
-            `session:${session.id}:questions:ids`,
-            questionIds,
-            3600,
-          );
-        } catch (err) {
-          logger.error({ err }, "Failed to set question IDs in Valkey");
-        }
-      }
-      if (
-        !questionIds ||
-        !Array.isArray(questionIds) ||
-        questionIds.length === 0
-      ) {
-        logger.warn(`Quiz with id ${session.quizzId} has no questions`);
-        throw EMPTY_QUIZZ(session.quizzId);
-      }
-
-      const currentIndex = questionIds.indexOf(session.currentQuestionId);
-      if (currentIndex === -1) {
-        logger.warn(
-          `Current question with id ${session.currentQuestionId} not found in quiz ${session.quizzId}`,
-        );
+      if (!quiz || !quiz.questions) {
         throw QUIZZ_NOT_FOUND(session.quizzId);
       }
-      if (currentIndex === questionIds.length - 1) {
-        logger.warn(
-          `No more questions available for quiz with id ${session.quizzId}`,
-        );
-        await this.endSession(sessionId);
-        return;
-      }
 
-      const questionId = questionIds[currentIndex + 1];
-
-      await Promise.all([
-        this.sessionRepository.update(session.id, {
-          status: SessionStatus.QUESTION_ACTIVE,
-          currentQuestionId: questionId,
-        }),
-        this.buzzerRepository.clear(session.id),
-      ]);
-
-      logger.info(
-        { sessionId: session.id, questionId },
-        "Advanced to next question",
+      const currentIndex = quiz.questions.findIndex(
+        (q) => q.id === session.currentQuestionId,
       );
 
-      try {
-        await this.valkeyRepository.set(
-          `session:${session.id}:question_activated_at`,
-          Date.now(),
-        );
-      } catch (err) {
-        logger.error({ err }, "Failed to set question_activated_at in Valkey");
-      }
-
-      if (this.kafkaProducer) {
-        /** @type {import('common-contracts').SessionNextQuestionEventPayload} */
-        const payload = {
-          session_id: session.id,
-          question_id: questionId,
-        };
-        await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
-          eventId: randomUUID(),
-          timestamp: Date.now(),
-          eventType: SessionEventTypes.SESSION_NEXT_QUESTION,
-          payload,
+      if (currentIndex === -1 || currentIndex === quiz.questions.length - 1) {
+        await this.sessionRepository.update(session.id, {
+          status: SessionStatus.FINISHED,
+          currentQuestionId: null,
         });
+
+        if (this.kafkaProducer) {
+          /** @type {import('common-contracts').SessionEndedEventPayload} */
+          const payload = {
+            session_id: sessionId,
+          };
+          await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
+            eventId: randomUUID(),
+            timestamp: Date.now(),
+            eventType: SessionEventTypes.SESSION_ENDED,
+            payload,
+          });
+        }
+      } else {
+        const nextQuestion = quiz.questions[currentIndex + 1];
+        const questionId = nextQuestion.id;
+
+        await Promise.all([
+          this.sessionRepository.update(session.id, {
+            currentQuestionId: questionId,
+          }),
+          this.buzzerRepository.clear(session.id),
+        ]);
+
+        await this.valkeyRepository.set(
+          `session:${sessionId}:question_activated_at`,
+          Date.now(),
+          3600,
+        );
+
+        if (this.kafkaProducer) {
+          /** @type {import('common-contracts').SessionNextQuestionEventPayload} */
+          const payload = {
+            session_id: sessionId,
+            question_id: questionId,
+          };
+          await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
+            eventId: randomUUID(),
+            timestamp: Date.now(),
+            eventType: SessionEventTypes.SESSION_NEXT_QUESTION,
+            payload,
+          });
+        }
       }
     } catch (error) {
       const err = /** @type {import('common-errors').BaseError} */ (error);
       logger.error(
         `Error in nextQuestion for session ${sessionId}: ${err.message}`,
-      );
-      throw err;
-    }
-  }
-
-  /**
-   * @param {string} sessionId
-   * @returns {Promise<void>}
-   */
-  async endSession(sessionId) {
-    try {
-      const session = await this.sessionRepository.find(sessionId);
-      if (!session) {
-        throw SESSION_NOT_FOUND();
-      }
-      await this.sessionRepository.update(session.id, {
-        status: SessionStatus.FINISHED,
-      });
-      logger.info({ sessionId: session.id }, "Session finished successfully");
-
-      if (this.kafkaProducer) {
-        /** @type {import('common-contracts').SessionEndedEventPayload} */
-        const payload = { session_id: session.id };
-        await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
-          eventId: randomUUID(),
-          timestamp: Date.now(),
-          eventType: SessionEventTypes.SESSION_ENDED,
-          payload,
-        });
-      }
-    } catch (error) {
-      const err = /** @type {import('common-errors').BaseError} */ (error);
-      logger.error(
-        `Error in endSession for session ${sessionId}: ${err.message}`,
-      );
-      throw err;
-    }
-  }
-
-  /**
-   * @param {string} sessionId
-   * @returns {Promise<void>}
-   */
-  async deleteSession(sessionId) {
-    try {
-      const session = await this.sessionRepository.find(sessionId);
-      if (!session) {
-        throw SESSION_NOT_FOUND();
-      }
-
-      const participants =
-        await this.participantRepository.findBySessionId(sessionId);
-      await Promise.all(
-        participants.map((p) => this.participantRepository.delete(p.id)),
-      );
-
-      await this.sessionRepository.delete(sessionId);
-      logger.info({ sessionId }, "Session deleted and cleaned up");
-
-      await Promise.all([
-        this.valkeyRepository.del(`session:${session.id}:questions:ids`),
-        this.valkeyRepository.del(
-          `session:${session.id}:question_activated_at`,
-        ),
-      ]).catch((err) =>
-        logger.error({ err }, "Failed to clear session cache during delete"),
-      );
-
-      if (this.kafkaProducer) {
-        /** @type {import('common-contracts').SessionDeletedEventPayload} */
-        const payload = { session_id: sessionId };
-        await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
-          eventId: randomUUID(),
-          timestamp: Date.now(),
-          eventType: SessionEventTypes.SESSION_DELETED,
-          payload,
-        });
-      }
-    } catch (error) {
-      const err = /** @type {import('common-errors').BaseError} */ (error);
-      logger.error(
-        `Error in deleteSession for session ${sessionId}: ${err.message}`,
       );
       throw err;
     }
@@ -761,7 +555,7 @@ export class SessionService extends BaseService {
           );
           if (this.kafkaProducer) {
             await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
-              eventId: crypto.randomUUID(),
+              eventId: randomUUID(),
               timestamp: Date.now(),
               eventType: SessionEventTypes.PING_HOST_FOR_QUEUE,
               payload: { sessionId },
@@ -772,6 +566,7 @@ export class SessionService extends BaseService {
 
       return new GetCurrentQuestionResponseDto({
         question_id: question.id,
+        id: question.id,
         label: question.label,
         type: question.type,
         timer_seconds: question.timer_seconds,
