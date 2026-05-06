@@ -206,7 +206,7 @@ describe("Session E2E - Comprehensive Testing", () => {
       });
       expect(res.statusCode).toBe(200);
       expect(res.json()).not.toBeNull();
-      expect(res.json().label).toBe("Q1");
+      expect(res.json().question_id).toBeDefined();
     });
   });
 

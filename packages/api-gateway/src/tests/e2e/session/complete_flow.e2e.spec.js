@@ -122,6 +122,8 @@ describe("Session E2E - Complete Game Flow", () => {
     });
     expect(q1CurrentRes.statusCode).toBe(200);
     const q1Data = q1CurrentRes.json();
+    expect(q1Data.question_id).toBe(q1Id);
+
     const correctChoiceId = q1Data.choices.find(
       (c) => c.text === "Correct 1",
     ).id;
@@ -149,8 +151,9 @@ describe("Session E2E - Complete Game Flow", () => {
       headers: { "game-token": playerTokens[3] },
     });
     expect(q2CurrentRes.statusCode).toBe(200);
-    expect(q2CurrentRes.json().id).toBe(q2Id);
     const q2Data = q2CurrentRes.json();
+    expect(q2Data.question_id).toBe(q2Id);
+
     const q2CorrectChoiceId = q2Data.choices[0].id;
 
     const lateSubmitRes = await app.inject({

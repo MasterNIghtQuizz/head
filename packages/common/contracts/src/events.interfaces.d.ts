@@ -64,6 +64,41 @@ export interface QuizResponseSubmittedEventPayload {
   type?: string;
 }
 
+export interface UserPressedBuzzerEventPayload {
+  sessionId: string;
+  participantId: string;
+  username: string;
+  questionId: string;
+  pressedAt: string;
+}
+
+export interface BuzzerNextPlayerEventPayload {
+  sessionId: string;
+  participantId: string | null;
+  questionId: string;
+  username: string | null;
+  pressedAt: string | null;
+}
+
+export interface BuzzerResponseValidatedEventPayload {
+  sessionId: string;
+  participantId: string;
+  username: string;
+  questionId: string;
+  validatedAt: string;
+}
+
+export interface BuzzerAnswerSubmittedEventPayload {
+  sessionId: string;
+  participantId: string;
+  username: string;
+  isCorrect: boolean;
+  timestamp: string;
+}
+
+export interface PingHostForQueueEventPayload {
+  sessionId: string;
+}
 
 export interface AnswerSubmittedEventPayload {
   sessionId: string;
@@ -90,7 +125,14 @@ export type KafkaEvent =
   | (BaseKafkaEvent & { eventType: typeof SessionEventTypes.SESSION_DELETED; payload: SessionDeletedEventPayload })
   | (BaseKafkaEvent & { eventType: typeof SessionEventTypes.PARTICIPANT_JOINED; payload: ParticipantJoinedEventPayload })
   | (BaseKafkaEvent & { eventType: typeof SessionEventTypes.PARTICIPANT_LEFT; payload: ParticipantLeftEventPayload })
-  | (BaseKafkaEvent & { eventType: typeof SessionEventTypes.QUIZ_RESPONSE_SUBMITTED; payload: QuizResponseSubmittedEventPayload });
+  | (BaseKafkaEvent & { eventType: typeof SessionEventTypes.QUIZ_RESPONSE_SUBMITTED; payload: QuizResponseSubmittedEventPayload })
+  | (BaseKafkaEvent & { eventType: typeof SessionEventTypes.USER_PRESSED_BUZZER; payload: UserPressedBuzzerEventPayload })
+  | (BaseKafkaEvent & { eventType: typeof SessionEventTypes.BUZZER_NEXT_PLAYER; payload: BuzzerNextPlayerEventPayload })
+  | (BaseKafkaEvent & { eventType: typeof SessionEventTypes.BUZZER_RESPONSE_VALIDATED; payload: BuzzerResponseValidatedEventPayload })
+  | (BaseKafkaEvent & { eventType: typeof SessionEventTypes.SESSION_QUESTION_RESOLVED; payload: SessionQuestionResolvedEventPayload })
+  | (BaseKafkaEvent & { eventType: typeof SessionEventTypes.FEED_BUZZER_QUEUE; payload: UserPressedBuzzerEventPayload })
+  | (BaseKafkaEvent & { eventType: typeof SessionEventTypes.BUZZER_ANSWER_SUBMITTED; payload: BuzzerAnswerSubmittedEventPayload })
+  | (BaseKafkaEvent & { eventType: typeof SessionEventTypes.PING_HOST_FOR_QUEUE; payload: PingHostForQueueEventPayload });
 
 export interface GenericKafkaEvent<T = unknown> extends BaseKafkaEvent {
   eventType: string;

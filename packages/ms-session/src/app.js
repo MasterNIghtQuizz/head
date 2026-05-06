@@ -3,19 +3,12 @@ import logger from "./logger.js";
 import { registerSwagger } from "common-swagger";
 import { createMetricsPlugin } from "common-metrics";
 import { Config } from "common-config";
-import { apiPlugin } from "./infrastructure/plugins/api.plugin.js";
+import { registerApiHooks } from "./infrastructure/hooks/api.hook.js";
 import { kafkaPlugin } from "./infrastructure/plugins/kafka.plugin.js";
 import { servicesPlugin } from "./infrastructure/plugins/services.plugin.js";
-import { registerApiHooks } from "./infrastructure/hooks/api.hook.js";
+import { apiPlugin } from "./infrastructure/plugins/api.plugin.js";
 import { initDatabase } from "./database.js";
 
-/**
- * @returns {Promise<{
- *   fastify: import('./types/fastify.js').AppInstance,
- *   kafkaProducer: import('common-kafka').KafkaProducer | null,
- *   kafkaConsumer: import('common-kafka').KafkaConsumer | null
- * }>}
- */
 export async function createServer() {
   const fastify = Fastify({
     loggerInstance: logger,
@@ -47,6 +40,7 @@ export async function createServer() {
 
   await fastify.register(servicesPlugin, {
     kafkaProducer: fastify.kafkaProducer,
+    kafkaConsumer: fastify.kafkaConsumer,
   });
   await fastify.register(apiPlugin);
 

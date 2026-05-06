@@ -41,9 +41,10 @@ export function createExecutionContext(
 
   const done = vi.fn();
 
-  const fastify = /** @type {import('fastify').FastifyInstance<any, any, any, any, any>} */ (
-    /** @type {unknown} */ ({})
-  );
+  const fastify =
+    /** @type {import('fastify').FastifyInstance<any, any, any, any, any>} */ (
+      /** @type {unknown} */ ({})
+    );
 
   return { request, reply, done, fastify };
 }

@@ -101,7 +101,7 @@ describe("Session E2E Professional Stress Test", () => {
       url: "/sessions/current-question",
       headers: { "game-token": playerTokens[0] },
     });
-    expect(currentQuestionRes.json().id).toBe(questionId);
+    expect(currentQuestionRes.json().question_id).toBe(questionId);
 
     const submissionPromises = playerTokens.map((pToken) =>
       app.inject({

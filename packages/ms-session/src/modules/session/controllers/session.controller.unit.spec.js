@@ -22,6 +22,7 @@ describe("SessionController unit tests", () => {
       startSession: vi.fn(),
       endSession: vi.fn(),
       deleteSession: vi.fn(),
+      getCurrentQuestion: vi.fn(),
     });
     controller = new SessionController(sessionServiceMock);
 
@@ -99,6 +100,44 @@ describe("SessionController unit tests", () => {
       );
 
       expect(replyMock.code).toHaveBeenCalledWith(200);
+    });
+  });
+
+  describe("getCurrentQuestion", () => {
+    it("should return 200 and the current question info", async () => {
+      const headers = { "internal-token": "valid" };
+      const payload = { sessionId: "s1" };
+      const questionData = {
+        question_id: "q1",
+        label: "Question 1",
+        type: "buzzer",
+        timer_seconds: 10,
+        choices: [],
+        current_buzzer: { id: "p1", username: "nick", pressed_at: 123456 },
+      };
+
+      vi.spyOn(controller, "_getInternalPayload").mockReturnValue(
+        // @ts-ignore
+        payload,
+      );
+      vi.mocked(sessionServiceMock.getCurrentQuestion).mockResolvedValue(
+        // @ts-ignore
+        questionData,
+      );
+
+      await controller.getCurrentQuestion(
+        /** @type {import('fastify').FastifyRequest} */ (
+          /** @type {unknown} */ ({ headers })
+        ),
+        replyMock,
+      );
+
+      expect(sessionServiceMock.getCurrentQuestion).toHaveBeenCalledWith(
+        payload.sessionId,
+        headers,
+      );
+      expect(replyMock.code).toHaveBeenCalledWith(200);
+      expect(replyMock.send).toHaveBeenCalledWith(questionData);
     });
   });
 });
