@@ -205,7 +205,10 @@ export class ResponseService extends BaseService {
   async clearSessionCache(sessionId) {
     await this.valkeyRepository.del(`sessionQuizId:${sessionId}`);
     await this.valkeyRepository.del(`currentSessionQuestion:${sessionId}`);
-    logger.info({ sessionId }, "Session Valkey cache cleared (responses preserved in DB)");
+    logger.info(
+      { sessionId },
+      "Session Valkey cache cleared (responses preserved in DB)",
+    );
   }
 
   /**
@@ -237,6 +240,17 @@ export class ResponseService extends BaseService {
       logger.warn({ quizId }, "Quiz found but contains no questions");
       throw new Error(ResponseError.QUIZ_NOT_FOUND);
     }
+
+    /** @type {Record<string, string>} */
+    const questionTypes = {};
+    quiz.questions.forEach((q) => {
+      questionTypes[q.id] = q.type;
+    });
+    await this.valkeyRepository.set(
+      `sessionQuestionTypes:${sessionId}`,
+      questionTypes,
+      3600,
+    );
 
     await this.valkeyRepository.set(cacheKey, quiz.questions[0].id, 3600);
 
@@ -422,10 +436,21 @@ export class ResponseService extends BaseService {
     const responses = await this.responseRepository.findBySession(sessionId);
     /** @type {Record<string, number>} */
     const initialScores = {};
+    /** @type {Record<string, string>} */
+    const questionTypes =
+      (await this.valkeyRepository.get(`sessionQuestionTypes:${sessionId}`)) ||
+      {};
+
     const scores = responses.reduce((acc, curr) => {
       acc[curr.participantId] = acc[curr.participantId] || 0;
+
+      const qType = questionTypes[curr.questionId] || "single";
+      const isBuzzer = qType === "buzzer";
+
       if (curr.isCorrect) {
-        acc[curr.participantId] += 1;
+        acc[curr.participantId] += isBuzzer ? 2 : 1;
+      } else {
+        acc[curr.participantId] -= 1;
       }
       return acc;
     }, initialScores);
