@@ -484,11 +484,14 @@ describe("ParticipantService unit tests", () => {
 
         expect(buzzerRepositoryMock.pop).toHaveBeenCalledWith(sessionId);
         expect(kafkaProducerMock.publish).toHaveBeenCalledWith(
-          SessionEventTypes.BUZZER_ANSWER_SUBMITTED,
+          Topics.QUIZZ_EVENTS,
           expect.objectContaining({
-            sessionId,
-            participantId,
-            isCorrect: false,
+            eventType: SessionEventTypes.BUZZER_ANSWER_SUBMITTED,
+            payload: expect.objectContaining({
+              sessionId,
+              participantId,
+              isCorrect: false,
+            }),
           }),
         );
       });
