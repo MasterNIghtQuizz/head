@@ -25,6 +25,7 @@ describe("FeedBuzzerConsumer unit tests", () => {
       client: { status: "ready" },
       hasBuzzed: vi.fn(),
       push: vi.fn(),
+      peek: vi.fn(),
     };
 
     consumer = new FeedBuzzerConsumer(kafkaConsumerMock, buzzerRepositoryMock);
@@ -55,6 +56,7 @@ describe("FeedBuzzerConsumer unit tests", () => {
 
     it("should push to repository if participant has not buzzed", async () => {
       vi.mocked(buzzerRepositoryMock.hasBuzzed).mockResolvedValue(false);
+      vi.mocked(buzzerRepositoryMock.peek).mockResolvedValue(null);
 
       await consumer.handleFeed(payload);
 
@@ -81,6 +83,7 @@ describe("FeedBuzzerConsumer unit tests", () => {
 
     it("should throw error if repository push fails", async () => {
       vi.mocked(buzzerRepositoryMock.hasBuzzed).mockResolvedValue(false);
+      vi.mocked(buzzerRepositoryMock.peek).mockResolvedValue(null);
       vi.mocked(buzzerRepositoryMock.push).mockRejectedValue(
         new Error("Redis error"),
       );
