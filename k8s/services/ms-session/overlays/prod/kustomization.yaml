@@ -6,4 +6,4 @@ resources:
 images:
 - name: victorcra/masterquizz-ms-session
   newName: victorcra/masterquizz-ms-session
-  newTag: 098aefc50b0743a60dd843f4dc5c7b0b5392a290
+  newTag: 65e33de6f831129b3efeff92b1e52f02793bd9e2
