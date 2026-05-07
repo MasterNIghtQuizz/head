@@ -275,6 +275,7 @@ ApplyMethodDecorators(SessionController, "getSession", [
             nullable: true,
             properties: {
               question_id: { type: "string" },
+              id: { type: "string" },
               label: { type: "string" },
               type: { type: "string" },
               timer_seconds: { type: "number" },
