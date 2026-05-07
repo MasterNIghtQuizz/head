@@ -6,4 +6,4 @@ resources:
 images:
 - name: victorcra/masterquizz-api-gateway
   newName: victorcra/masterquizz-api-gateway
-  newTag: c5053be7c4406067af6c928638cd822273a9bad5
+  newTag: 8789b1f71bfdbff90d8826682c00c0adcacd8773
