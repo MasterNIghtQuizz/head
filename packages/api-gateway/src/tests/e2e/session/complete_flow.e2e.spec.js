@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { describe, it, expect, beforeAll, beforeEach } from "vitest";
+import { describe, it, expect, beforeAll, beforeEach, vi } from "vitest";
 import { createServer } from "../../../app.js";
 import { seedDatabase } from "../utils/test-utils.js";
 import { UserRole } from "common-auth";
@@ -11,6 +11,7 @@ describe("Session E2E - Complete Game Flow", () => {
   let hostId;
 
   beforeAll(async () => {
+    vi.setConfig({ testTimeout: 60000 });
     await seedDatabase();
   });
 

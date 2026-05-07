@@ -27,10 +27,10 @@ import {
 
 /**
  * @param {unknown} ws
- * @returns {import("ws").WebSocket}
+ * @returns {import("../../types/ws.d.ts").ExtendedWebSocket}
  */
 function asWebSocket(ws) {
-  return /** @type {import("ws").WebSocket} */ (ws);
+  return /** @type {import("../../types/ws.d.ts").ExtendedWebSocket} */ (ws);
 }
 
 function createWsMock() {
@@ -90,7 +90,7 @@ describe("incoming-message.handler", () => {
       handleDirectChatMessage(
         asWebSocket(ws),
         "sender-1",
-        /** @type {any} */ (null),
+        /** @type {any} */(null),
       );
 
       expect(lastSentMessage(ws)).toEqual({
@@ -155,7 +155,7 @@ describe("incoming-message.handler", () => {
     it("sends INVALID_PAYLOAD when payload is invalid", () => {
       const ws = createWsMock();
 
-      handleJoinSessionMessage(asWebSocket(ws), /** @type {any} */ (null));
+      handleJoinSessionMessage(asWebSocket(ws), /** @type {any} */(null));
 
       expect(lastSentMessage(ws)).toEqual({
         type: messageType.ERROR,
@@ -231,7 +231,7 @@ describe("incoming-message.handler", () => {
     it("sends INVALID_PAYLOAD when payload is invalid", () => {
       const ws = createWsMock();
 
-      handleCreateSessionMessage(asWebSocket(ws), /** @type {any} */ (null));
+      handleCreateSessionMessage(asWebSocket(ws), /** @type {any} */(null));
 
       expect(lastSentMessage(ws)).toEqual({
         type: messageType.ERROR,
@@ -323,7 +323,7 @@ describe("incoming-message.handler", () => {
     it("sends INVALID_PAYLOAD when payload is invalid", () => {
       const ws = createWsMock();
 
-      handleStartSessionMessage(asWebSocket(ws), /** @type {any} */ (null));
+      handleStartSessionMessage(asWebSocket(ws), /** @type {any} */(null));
 
       expect(lastSentMessage(ws)).toEqual({
         type: messageType.ERROR,

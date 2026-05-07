@@ -124,7 +124,7 @@ export class ResponseService extends BaseService {
       );
       return saved;
     } catch (error) {
-      throw DATABASE_ERROR(/** @type {Error} */ (error));
+      throw DATABASE_ERROR(/** @type {Error} */(error));
     }
   }
 
@@ -343,6 +343,11 @@ export class ResponseService extends BaseService {
     return choice.is_correct;
   }
 
+  /**
+   * @param {string} participantId
+   * @param {string} sessionId
+   * @returns {string}
+   */
   getSessionToken(participantId, sessionId) {
     const payload = {
       userId: participantId,
@@ -372,6 +377,14 @@ export class ResponseService extends BaseService {
 
     const session = await this.sessionClient.getSession(sessionRequestHeaders);
 
+    if (!session.quizz_id || !session.host_id) {
+      logger.error(
+        { sessionId: _sessionId },
+        "Recovered session is missing quizz_id or host_id",
+      );
+      throw new Error(ResponseError.QUIZ_NOT_FOUND);
+    }
+
     await this.fetchQuizz(session.quizz_id, session.host_id, headers);
 
     await this.valkeyRepository.set(
@@ -382,7 +395,7 @@ export class ResponseService extends BaseService {
 
     await this.valkeyRepository.set(
       `currentSessionQuestion:${_sessionId}`,
-      session.current_question_id,
+      session.current_question_id || "",
       3600,
     );
 
@@ -395,12 +408,15 @@ export class ResponseService extends BaseService {
    */
   async getLeaderboard(sessionId) {
     const responses = await this.responseRepository.findBySession(sessionId);
+    /** @type {Record<string, number>} */
+    const initialScores = {};
     const scores = responses.reduce((acc, curr) => {
+      acc[curr.participantId] = acc[curr.participantId] || 0;
       if (curr.isCorrect) {
-        acc[curr.participantId] = (acc[curr.participantId] || 0) + 1;
+        acc[curr.participantId] += 1;
       }
       return acc;
-    }, {});
+    }, initialScores);
 
     return Object.entries(scores)
       .map(([participantId, score]) => ({
@@ -420,16 +436,18 @@ export class ResponseService extends BaseService {
       questionId,
       sessionId,
     );
+    /** @type {Record<string, number>} */
+    const initialStats = {};
     const stats = responses.reduce((acc, curr) => {
       if (curr.choiceId) {
         acc[curr.choiceId] = (acc[curr.choiceId] || 0) + 1;
       }
       return acc;
-    }, {});
+    }, initialStats);
 
     return Object.entries(stats).map(([choiceId, count]) => ({
       choiceId,
-      count: /** @type {number} */ (count),
+      count,
     }));
   }
 }

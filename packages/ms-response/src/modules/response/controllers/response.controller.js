@@ -13,6 +13,7 @@ import {
   ResponseErrorStatus,
   ResponseErrorMessage,
 } from "../response.constants.js";
+import { ResponseMapper } from "../infra/mappers/response.mapper.js";
 
 export class ResponseController extends BaseController {
   /** @type {import('../services/response.service.js').ResponseService} */
@@ -39,7 +40,7 @@ export class ResponseController extends BaseController {
 
     try {
       const result = await this.responseService.handleAnswer(
-        /** @type {import('common-contracts').AnswerEvent} */ (value),
+        /** @type {import('common-contracts').AnswerEvent} */(value),
       );
 
       return reply.code(201).send({
@@ -100,7 +101,7 @@ export class ResponseController extends BaseController {
     try {
       const quiz = await this.responseService.fetchQuizz(
         quizzID,
-        /** @type {string} */ (hostId),
+        /** @type {string} */(hostId),
 
         request.headers,
       );
@@ -126,7 +127,7 @@ export class ResponseController extends BaseController {
     try {
       const responses =
         await this.responseService.getAllSessionResponses(sessionId);
-      return reply.send(responses);
+      return reply.send(responses.map(ResponseMapper.toDto));
     } catch (err) {
       const caught = /** @type {Error} */ (err);
       logger.error(
@@ -150,7 +151,7 @@ export class ResponseController extends BaseController {
         participantId,
         sessionId,
       );
-      return reply.send(responses);
+      return reply.send(responses.map(ResponseMapper.toDto));
     } catch (err) {
       const caught = /** @type {Error} */ (err);
       logger.error(
@@ -174,7 +175,7 @@ export class ResponseController extends BaseController {
         questionId,
         sessionId,
       );
-      return reply.send(responses);
+      return reply.send(responses.map(ResponseMapper.toDto));
     } catch (err) {
       const caught = /** @type {Error} */ (err);
       logger.error(
@@ -356,7 +357,21 @@ ApplyMethodDecorators(ResponseController, "getAllSessionResponses", [
       },
     },
     response: {
-      200: { type: "array", items: { type: "object" } },
+      200: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            id: { type: "string" },
+            participantId: { type: "string" },
+            questionId: { type: "string" },
+            sessionId: { type: "string" },
+            choiceId: { type: "string", nullable: true },
+            isCorrect: { type: "boolean", nullable: true },
+            submittedAt: { type: "string", format: "date-time" },
+          },
+        },
+      },
     },
   }),
   Get("/session/:sessionId"),
@@ -381,7 +396,21 @@ ApplyMethodDecorators(ResponseController, "getAllParticipantResponses", [
       },
     },
     response: {
-      200: { type: "array", items: { type: "object" } },
+      200: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            id: { type: "string" },
+            participantId: { type: "string" },
+            questionId: { type: "string" },
+            sessionId: { type: "string" },
+            choiceId: { type: "string", nullable: true },
+            isCorrect: { type: "boolean", nullable: true },
+            submittedAt: { type: "string", format: "date-time" },
+          },
+        },
+      },
     },
   }),
   Get("/participant/:participantId"),
@@ -406,7 +435,21 @@ ApplyMethodDecorators(ResponseController, "getAllQuestionResponses", [
       },
     },
     response: {
-      200: { type: "array", items: { type: "object" } },
+      200: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            id: { type: "string" },
+            participantId: { type: "string" },
+            questionId: { type: "string" },
+            sessionId: { type: "string" },
+            choiceId: { type: "string", nullable: true },
+            isCorrect: { type: "boolean", nullable: true },
+            submittedAt: { type: "string", format: "date-time" },
+          },
+        },
+      },
     },
   }),
   Get("/question/:questionId"),

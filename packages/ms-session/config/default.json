@@ -41,6 +41,9 @@
     },
     "quizzManagement": {
       "baseUrl": "http://localhost:4002"
+    },
+    "response": {
+      "baseUrl": "http://localhost:4004"
     }
   },
   "otel": {

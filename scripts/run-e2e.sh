@@ -4,6 +4,7 @@ set -e
 export QUIZZ_SERVICE_URL="${QUIZZ_SERVICE_URL:-http://localhost:4012}"
 export USER_SERVICE_URL="${USER_SERVICE_URL:-http://localhost:4011}"
 export SESSION_SERVICE_URL="${SESSION_SERVICE_URL:-http://localhost:4013}"
+export RESPONSE_SERVICE_URL="${RESPONSE_SERVICE_URL:-http://localhost:4014}"
 
 QUIZZ_URL="$QUIZZ_SERVICE_URL"
 USER_URL="$USER_SERVICE_URL"
@@ -12,10 +13,12 @@ SESSION_URL="$SESSION_SERVICE_URL"
 HEALTH_QUIZZ="${QUIZZ_URL}/health"
 HEALTH_USER="${USER_URL}/health"
 HEALTH_SESSION="${SESSION_URL}/health"
+HEALTH_RESPONSE="${RESPONSE_SERVICE_URL}/health"
 
 SEED_QUIZZ="${QUIZZ_URL}/testing/seed"
 SEED_USER="${USER_URL}/testing/seed"
 SEED_SESSION="${SESSION_URL}/testing/seed"
+SEED_RESPONSE="${RESPONSE_SERVICE_URL}/testing/seed"
 
 MAX_RETRIES="${E2E_MAX_RETRIES:-30}"
 RETRY_INTERVAL="${E2E_RETRY_INTERVAL:-2}"
@@ -28,10 +31,11 @@ log() { printf "\033[1;36m[e2e]\033[0m %s\n" "$1"; }
 err() { printf "\033[1;31m[e2e]\033[0m %s\n" "$1"; }
 
 http_get() {
+  URL="$1"
   if command -v curl >/dev/null 2>&1; then
-    curl -sf "$1" 2>/dev/null
+    curl -sS -f "$URL" 2>&1
   else
-    wget -qO- "$1" 2>/dev/null
+    wget -S -O- "$URL" 2>&1
   fi
 }
 
@@ -80,7 +84,7 @@ wait_for_service() {
       return 0
     fi
     attempt=$((attempt + 1))
-    log "  Attempt ${attempt}/${MAX_RETRIES} — retrying in ${RETRY_INTERVAL}s..."
+    log "  Attempt ${attempt}/${MAX_RETRIES} — retrying in ${RETRY_INTERVAL}s... (Response: ${BODY:-EMPTY})"
     sleep "$RETRY_INTERVAL"
   done
   err "$NAME did not respond after ${MAX_RETRIES} attempts."
@@ -90,6 +94,7 @@ wait_for_service() {
 wait_for_service "ms-quizz-management" "$HEALTH_QUIZZ"
 wait_for_service "ms-user" "$HEALTH_USER"
 wait_for_service "ms-session" "$HEALTH_SESSION"
+wait_for_service "ms-response" "$HEALTH_RESPONSE"
 
 log "Step 2/3 — Seeding databases..."
 INTERNAL_TOKEN=$(generate_internal_token)
@@ -110,6 +115,7 @@ seed_service() {
 seed_service "ms-quizz-management" "$SEED_QUIZZ"
 seed_service "ms-user" "$SEED_USER"
 seed_service "ms-session" "$SEED_SESSION"
+seed_service "ms-response" "$SEED_RESPONSE"
 
 log "Step 3/3 — Running E2E tests..."
 exec yarn vitest run --config vitest.config.e2e.js --no-file-parallelism --maxWorkers=1 --dir packages/api-gateway "$@"

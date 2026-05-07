@@ -31,6 +31,9 @@ export declare const config: {
     quizzManagement: {
       baseUrl: string;
     };
+    response: {
+      baseUrl: string;
+    };
   };
   opensearch?: {
     enabled: boolean;
