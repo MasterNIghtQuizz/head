@@ -286,6 +286,7 @@ ApplyMethodDecorators(SessionController, "getSession", [
                   properties: {
                     id: { type: "string" },
                     text: { type: "string" },
+                    is_correct: { type: "boolean", nullable: true },
                   },
                 },
               },

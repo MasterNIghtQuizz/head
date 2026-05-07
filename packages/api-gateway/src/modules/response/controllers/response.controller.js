@@ -199,7 +199,7 @@ ApplyMethodDecorators(ResponseController, "getLeaderboard", [
     },
   }),
   UseGameToken(),
-  Roles([UserRole.ADMIN, UserRole.MODERATOR]),
+  Roles([UserRole.ADMIN, UserRole.MODERATOR, UserRole.USER]),
   Get("/leaderboard/session/:sessionId"),
 ]);
 
