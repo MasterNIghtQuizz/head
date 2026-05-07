@@ -9,6 +9,7 @@ import {
   SessionEventTypes,
   ParticipantRoles,
   QuestionType,
+  Topics,
 } from "common-contracts";
 
 import { TokenService } from "common-auth";
@@ -449,11 +450,14 @@ describe("ParticipantService unit tests", () => {
 
         expect(buzzerRepositoryMock.clear).toHaveBeenCalledWith(sessionId);
         expect(kafkaProducerMock.publish).toHaveBeenCalledWith(
-          SessionEventTypes.BUZZER_ANSWER_SUBMITTED,
+          Topics.QUIZZ_EVENTS,
           expect.objectContaining({
-            sessionId,
-            participantId,
-            isCorrect: true,
+            eventType: SessionEventTypes.BUZZER_ANSWER_SUBMITTED,
+            payload: expect.objectContaining({
+              sessionId,
+              participantId,
+              isCorrect: true,
+            }),
           }),
         );
       });
