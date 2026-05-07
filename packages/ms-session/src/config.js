@@ -55,6 +55,9 @@ const schema = Joi.object({
     quizzManagement: Joi.object({
       baseUrl: Joi.string().uri().required(),
     }).required(),
+    response: Joi.object({
+      baseUrl: Joi.string().uri().required(),
+    }).required(),
   }).required(),
   opensearch: Joi.object({
     enabled: Joi.boolean().default(false),
@@ -107,7 +110,7 @@ export const config = {
     Config.get("otel") || { enabled: false, exporterUrl: "" }
   ),
   services:
-    /** @type {{ session: { baseUrl: string; }; quizzManagement: { baseUrl: string; }; }} */ (
+    /** @type {{ session: { baseUrl: string; }; quizzManagement: { baseUrl: string; }; response: { baseUrl: string; } }} */ (
       Config.get("services")
     ),
   opensearch:

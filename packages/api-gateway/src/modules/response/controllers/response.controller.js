@@ -160,6 +160,19 @@ const ErrorResponse = {
   },
 };
 
+const ResponseItemSchema = {
+  type: "object",
+  properties: {
+    id: { type: "string" },
+    participantId: { type: "string" },
+    questionId: { type: "string" },
+    sessionId: { type: "string" },
+    choiceId: { type: "string", nullable: true },
+    isCorrect: { type: "boolean", nullable: true },
+    submittedAt: { type: "string" },
+  },
+};
+
 ApplyMethodDecorators(ResponseController, "getLeaderboard", [
   Schema({
     description: "Get the leaderboard for a session (Admin/Moderator only)",
@@ -239,7 +252,7 @@ ApplyMethodDecorators(ResponseController, "getSessionResponses", [
       },
     },
     response: {
-      200: { type: "array", items: { type: "object" } },
+      200: { type: "array", items: ResponseItemSchema },
       401: ErrorResponse,
       403: ErrorResponse,
     },
@@ -270,7 +283,7 @@ ApplyMethodDecorators(ResponseController, "getParticipantResponses", [
       },
     },
     response: {
-      200: { type: "array", items: { type: "object" } },
+      200: { type: "array", items: ResponseItemSchema },
       401: ErrorResponse,
       403: ErrorResponse,
     },
@@ -300,7 +313,7 @@ ApplyMethodDecorators(ResponseController, "getQuestionResponses", [
       },
     },
     response: {
-      200: { type: "array", items: { type: "object" } },
+      200: { type: "array", items: ResponseItemSchema },
       401: ErrorResponse,
       403: ErrorResponse,
     },

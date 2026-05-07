@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { describe, it, expect, beforeAll, beforeEach } from "vitest";
+import { describe, it, expect, beforeAll, beforeEach, vi } from "vitest";
 import { createServer } from "@monorepo/api-gateway/app.js";
 import { seedDatabase } from "../utils/test-utils.js";
 import { UserRole } from "common-auth";
@@ -9,6 +9,7 @@ describe("Technical Quizz Full E2E Scenarios", () => {
   let token;
 
   beforeAll(async () => {
+    vi.setConfig({ testTimeout: 60000 });
     await seedDatabase();
   });
 

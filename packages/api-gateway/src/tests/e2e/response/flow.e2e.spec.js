@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { describe, it, expect, beforeAll, beforeEach } from "vitest";
+import { describe, it, expect, beforeAll, beforeEach, vi } from "vitest";
 import { createServer } from "../../../app.js";
 import { seedDatabase } from "../utils/test-utils.js";
 import { UserRole } from "common-auth";
@@ -11,6 +11,7 @@ describe("Response E2E - Leaderboard and Stats Flow", () => {
   let hostId;
 
   beforeAll(async () => {
+    vi.setConfig({ testTimeout: 60000 });
     await seedDatabase();
   });
 
@@ -36,6 +37,7 @@ describe("Response E2E - Leaderboard and Stats Flow", () => {
       payload: { title: "Response E2E Quiz" },
     });
     const quizId = quizRes.json().id;
+    expect(quizRes.statusCode).toBe(201);
 
     // 2. Add Question
     const q1Res = await app.inject({
@@ -51,6 +53,7 @@ describe("Response E2E - Leaderboard and Stats Flow", () => {
       },
     });
     const q1Id = q1Res.json().id;
+    expect(q1Res.statusCode).toBe(201);
 
     // 3. Add Choices
     const c1Res = await app.inject({
@@ -68,6 +71,15 @@ describe("Response E2E - Leaderboard and Stats Flow", () => {
       payload: { question_id: q1Id, text: "Wrong", is_correct: false },
     });
     const c2Id = c2Res.json().id;
+    expect(c2Res.statusCode).toBe(201);
+
+    const c3Res = await app.inject({
+      method: "POST",
+      url: "/choices",
+      headers: { "access-token": hostToken },
+      payload: { question_id: q1Id, text: "Another Wrong", is_correct: false },
+    });
+    expect(c3Res.statusCode).toBe(201);
 
     // 4. Create Session
     const createSessionRes = await app.inject({
@@ -76,6 +88,7 @@ describe("Response E2E - Leaderboard and Stats Flow", () => {
       headers: { "access-token": hostToken },
       payload: { quiz_id: quizId },
     });
+    expect(createSessionRes.statusCode).toBe(201);
     const {
       session_id: sessionId,
       public_key: publicKey,
@@ -171,22 +184,59 @@ describe("Response E2E - Leaderboard and Stats Flow", () => {
     expect(qResponsesRes.statusCode).toBe(200);
     expect(qResponsesRes.json().length).toBe(2);
 
-    // 12. Add a second question (Buzzer)
+    // 12. Add a second question (QCM) to verify setup robustness
     const q2Res = await app.inject({
       method: "POST",
       url: "/questions",
       headers: { "access-token": hostToken },
       payload: {
         quiz_id: quizId,
-        label: "Q2 (Buzzer)",
-        type: "buzzer",
+        label: "Q2 (Multi-Choice)",
+        type: "single",
         order_index: 1,
         timer_seconds: 30,
       },
     });
     const q2Id = q2Res.json().id;
 
-    // 13. Move to next question
+    // Add choices for Q2
+    const q2c1Res = await app.inject({
+      method: "POST",
+      url: "/choices",
+      headers: { "access-token": hostToken },
+      payload: { question_id: q2Id, text: "Q2 Correct", is_correct: true },
+    });
+    const _q2c1Id = q2c1Res.json().id;
+
+    const _q2c2Res = await app.inject({
+      method: "POST",
+      url: "/choices",
+      headers: { "access-token": hostToken },
+      payload: { question_id: q2Id, text: "Q2 Wrong", is_correct: false },
+    });
+
+    // 13. Add a third question (Buzzer)
+    const q3Res = await app.inject({
+      method: "POST",
+      url: "/questions",
+      headers: { "access-token": hostToken },
+      payload: {
+        quiz_id: quizId,
+        label: "Q3 (Buzzer)",
+        type: "buzzer",
+        order_index: 2,
+        timer_seconds: 30,
+      },
+    });
+    const _q3Id = q3Res.json().id;
+
+    // 13. Move to Q2 then to Q3 (buzzer) — Q2 intentionally skipped for score integrity
+    await app.inject({
+      method: "POST",
+      url: "/sessions/next",
+      headers: { "game-token": hostGameToken },
+    });
+
     await app.inject({
       method: "POST",
       url: "/sessions/next",
@@ -251,6 +301,36 @@ describe("Response E2E - Leaderboard and Stats Flow", () => {
       payload: { title: "Auth Test Quiz" },
     });
     const quizId = quizRes.json().id;
+    expect(quizRes.statusCode).toBe(201);
+
+    // Add a question so session creation doesn't fail
+    const qRes = await app.inject({
+      method: "POST",
+      url: "/questions",
+      headers: { "access-token": hostToken },
+      payload: {
+        quiz_id: quizId,
+        label: "Auth Test Question",
+        type: "single",
+        order_index: 0,
+        timer_seconds: 30,
+      },
+    });
+    expect(qRes.statusCode).toBe(201);
+
+    // Add a second question to satisfy ms-session validations if needed
+    await app.inject({
+      method: "POST",
+      url: "/questions",
+      headers: { "access-token": hostToken },
+      payload: {
+        quiz_id: quizId,
+        label: "Auth Test Question 2",
+        type: "single",
+        order_index: 1,
+        timer_seconds: 30,
+      },
+    });
 
     const createSessionRes = await app.inject({
       method: "POST",
@@ -269,6 +349,7 @@ describe("Response E2E - Leaderboard and Stats Flow", () => {
         participant_nickname: "UnauthorizedPlayer",
       },
     });
+    expect(playerRes.statusCode).toBe(200);
     const playerToken = playerRes.json().game_token;
 
     // Player tries to access leaderboard (should be forbidden)

@@ -68,6 +68,9 @@
     },
     "quizzManagement": {
       "baseUrl": "QUIZZ_SERVICE_URL"
+    },
+    "response": {
+      "baseUrl": "RESPONSE_SERVICE_URL"
     }
   },
   "metrics": {

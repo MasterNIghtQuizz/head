@@ -6,8 +6,6 @@ import {
   ApplyMethodDecorators,
 } from "common-core";
 import { db } from "../../../database.js";
-import { ResponseEntity } from "../core/entities/response.entity.js";
-import { ProcessedEventEntity } from "common-database";
 import logger from "../../../logger.js";
 
 export class TestingController extends BaseController {
@@ -20,17 +18,22 @@ export class TestingController extends BaseController {
    * @param {import('fastify').FastifyReply} reply
    */
   async seed(request, reply) {
-    logger.info("Cleaning ms-response database and cache for E2E tests");
+    logger.info("SEED: Starting ms-response database and cache cleanup");
 
     try {
-      const responseRepo = db.instance.getRepository(ResponseEntity);
-      const processedEventRepo =
-        db.instance.getRepository(ProcessedEventEntity);
+      if (!db.instance) {
+        logger.error("SEED: Database instance is NOT initialized");
+        return reply.code(500).send({ message: "Database not initialized" });
+      }
 
-      await responseRepo.delete({});
-      await processedEventRepo.delete({});
+      // Using raw query like ms-user for reliability
+      logger.info("SEED: Truncating tables...");
+      await db.instance.query("TRUNCATE TABLE response CASCADE");
+      await db.instance.query("TRUNCATE TABLE processed_events CASCADE");
+      logger.info("SEED: Tables truncated");
 
       // Clear all keys related to ms-response in Valkey
+      logger.info("SEED: Clearing Valkey cache...");
       const valkeyService = request.server.valkeyService;
       if (valkeyService && valkeyService.client) {
         const client = valkeyService.client;
@@ -40,14 +43,20 @@ export class TestingController extends BaseController {
 
         const allKeys = [...keys, ...keys2, ...keys3];
         if (allKeys.length > 0) {
+          logger.info({ count: allKeys.length }, "SEED: Deleting Valkey keys");
           await client.del(allKeys);
         }
       }
+      logger.info("SEED: Valkey cache cleared");
 
+      logger.info("SEED: ms-response seeding completed successfully");
       return reply.code(204).send();
-    } catch (error) {
-      logger.error({ error }, "Failed to seed ms-response");
-      return reply.code(500).send({ message: "Failed to seed ms-response" });
+    } catch (/** @type {any} */ error) {
+      logger.error({ error }, "SEED: Failed to seed ms-response");
+      return reply.code(500).send({
+        message: "Failed to seed ms-response",
+        error: error.message,
+      });
     }
   }
 }

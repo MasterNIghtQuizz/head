@@ -11,20 +11,13 @@ export class ResponseEntity {
     isCorrect,
     submittedAt,
   }) {
-    /** @type {string | undefined} */
-    this.id = id;
-    /** @type {string} */
-    this.participantId = participantId;
-    /** @type {string} */
-    this.questionId = questionId;
-    /** @type {string} */
-    this.sessionId = sessionId;
-    /** @type {string | null} */
-    this.choiceId = choiceId;
-    /** @type {boolean | null} */
-    this.isCorrect = isCorrect;
-    /** @type {Date} */
-    this.submittedAt = submittedAt;
+    this.id = id || "";
+    this.participantId = participantId || "";
+    this.questionId = questionId || "";
+    this.sessionId = sessionId || "";
+    this.choiceId = choiceId ?? null;
+    this.isCorrect = isCorrect ?? null;
+    this.submittedAt = submittedAt || new Date();
   }
 
   /**

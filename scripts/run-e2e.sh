@@ -31,10 +31,11 @@ log() { printf "\033[1;36m[e2e]\033[0m %s\n" "$1"; }
 err() { printf "\033[1;31m[e2e]\033[0m %s\n" "$1"; }
 
 http_get() {
+  URL="$1"
   if command -v curl >/dev/null 2>&1; then
-    curl -sf "$1" 2>/dev/null
+    curl -sS -f "$URL" 2>&1
   else
-    wget -qO- "$1" 2>/dev/null
+    wget -S -O- "$URL" 2>&1
   fi
 }
 
@@ -83,7 +84,7 @@ wait_for_service() {
       return 0
     fi
     attempt=$((attempt + 1))
-    log "  Attempt ${attempt}/${MAX_RETRIES} — retrying in ${RETRY_INTERVAL}s..."
+    log "  Attempt ${attempt}/${MAX_RETRIES} — retrying in ${RETRY_INTERVAL}s... (Response: ${BODY:-EMPTY})"
     sleep "$RETRY_INTERVAL"
   done
   err "$NAME did not respond after ${MAX_RETRIES} attempts."

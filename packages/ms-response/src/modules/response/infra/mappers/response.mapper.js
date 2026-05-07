@@ -2,23 +2,44 @@ import { ResponseEntity } from "../../core/entities/response.entity.js";
 
 export class ResponseMapper {
   /**
-   * @param {Required<import('../models/response.model.js').ResponseModel>} model
-   * @returns {ResponseEntity}
+   * @typedef {Object} ResponsePersistenceModel
+   * @property {string} [id]
+   * @property {string} [participant_id]
+   * @property {string} [participantId]
+   * @property {string} [question_id]
+   * @property {string} [questionId]
+   * @property {string} [session_id]
+   * @property {string} [sessionId]
+   * @property {string|null} [choice_id]
+   * @property {string|null} [choiceId]
+   * @property {boolean|null} [is_correct]
+   * @property {boolean|null} [isCorrect]
+   * @property {Date} [submitted_at]
+   * @property {Date} [submittedAt]
+   */
+
+  /**
+   * @param {ResponsePersistenceModel} model
+   * @returns {ResponseEntity | null}
    */
   static toDomain(model) {
-    // C'est normal les TS ignore ici car les champs sont optionnels dans le modèle
-    // mais ils sont requis dans l'entité
+    if (!model) {
+      return null;
+    }
     return new ResponseEntity({
-      id: model.id,
-      // @ts-ignore
-      participantId: model.participant_id,
-      // @ts-ignore
-      questionId: model.question_id,
-      // @ts-ignore
-      sessionId: model.session_id,
-      choiceId: model.choice_id,
-      isCorrect: model.is_correct,
-      submittedAt: model.submitted_at,
+      id: model.id || "",
+      participantId: model.participant_id || model.participantId || "",
+      questionId: model.question_id || model.questionId || "",
+      sessionId: model.session_id || model.sessionId || "",
+      choiceId:
+        model.choice_id !== undefined
+          ? model.choice_id
+          : (model.choiceId ?? null),
+      isCorrect:
+        model.is_correct !== undefined
+          ? model.is_correct
+          : (model.isCorrect ?? null),
+      submittedAt: model.submitted_at || model.submittedAt || new Date(),
     });
   }
 
@@ -44,6 +65,22 @@ export class ResponseMapper {
       choice_id: entity.choiceId,
       is_correct: entity.isCorrect,
       submitted_at: entity.submittedAt,
+    };
+  }
+
+  /**
+   * @param {ResponseEntity} entity
+   * @returns {import('common-contracts').Response}
+   */
+  static toDto(entity) {
+    return {
+      id: entity.id || "",
+      participantId: entity.participantId,
+      questionId: entity.questionId,
+      sessionId: entity.sessionId,
+      choiceId: entity.choiceId ?? null,
+      isCorrect: entity.isCorrect ?? null,
+      submittedAt: entity.submittedAt,
     };
   }
 }

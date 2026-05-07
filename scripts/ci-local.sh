@@ -1,19 +1,20 @@
 #!/bin/bash
 set -e
 
-echo "🚀 Starting Local CI Emulator..."
+echo "🚀 Starting Local CI Emulator (Optimized for Rancher/Docker)..."
 
 # 1. Cleanup before start
 echo "🧹 Cleaning previous environment..."
 docker compose --profile test down -v --remove-orphans
 
-# 2. Build
-echo "🏗️ Building test images..."
-docker compose --profile test build \
-  api-gateway-test \
-  ms-user-test \
-  ms-quizz-management-test \
-  ms-session-test
+# 2. Sequential Build (Avoid crashes)
+echo "🏗️ Building test images sequentially..."
+SERVICES=("api-gateway-test" "ms-user-test" "ms-quizz-management-test" "ms-session-test" "ms-response-test")
+
+for service in "${SERVICES[@]}"; do
+  echo "   > Building $service..."
+  docker compose --profile test build "$service"
+done
 
 # 3. Start Infrastructure
 echo "📡 Starting infrastructure..."
@@ -22,7 +23,8 @@ docker compose --profile test up -d \
   valkey-test \
   ms-user-test \
   ms-quizz-management-test \
-  ms-session-test
+  ms-session-test \
+  ms-response-test
 
 # 4. Health Checks
 wait_for() {
@@ -44,6 +46,7 @@ wait_for() {
 wait_for ms-user-test
 wait_for ms-quizz-management-test
 wait_for ms-session-test
+wait_for ms-response-test
 
 # 5. Run E2E Tests
 echo "🧪 Running E2E Tests..."
@@ -53,6 +56,7 @@ docker compose --profile test run \
   -e USER_SERVICE_URL=http://ms-user-test:4011 \
   -e QUIZZ_SERVICE_URL=http://ms-quizz-management-test:4012 \
   -e SESSION_SERVICE_URL=http://ms-session-test:4013 \
+  -e RESPONSE_SERVICE_URL=http://ms-response-test:4014 \
   api-gateway-test \
   sh ./scripts/run-e2e.sh
 

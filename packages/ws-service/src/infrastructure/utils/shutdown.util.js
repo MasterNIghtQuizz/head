@@ -1,27 +1,38 @@
+import { WebSocketServer } from "ws";
 import logger from "../../logger.js";
 
 /**
- * @param {import('../types/fastify.js').AppInstance} fastify
+ * @param {import('../../types/fastify.js').AppInstance} fastify
  * @param {Object} opts
- * @param {import('ws').WebSocketServer} opts.wss
+ * @param {WebSocketServer} opts.wss
  * @param {import('common-kafka').KafkaConsumer | null} opts.kafkaConsumer
  * @param {import('../../infrastructure/valkey/consumers/session-notifications.consumer.js').SessionNotificationsConsumer | null} opts.valkeyConsumer
  */
-export function registerShutdown(fastify, { wss, kafkaConsumer, valkeyConsumer }) {
+export function registerShutdown(
+  fastify,
+  { wss, kafkaConsumer, valkeyConsumer },
+) {
   let shuttingDown = false;
 
   const shutdown = async (/** @type {string} */ signal) => {
-    if (shuttingDown) return;
+    if (shuttingDown) {
+      return;
+    }
     shuttingDown = true;
 
     logger.info({ signal }, "Starting graceful shutdown...");
 
     try {
       await new Promise((resolve, reject) => {
-        wss.close((err) => {
-          if (err) reject(err);
-          else resolve(null);
-        });
+        wss.close(
+          /** @param {Error} [err] */(err) => {
+            if (err) {
+              reject(err);
+            } else {
+              resolve(null);
+            }
+          },
+        );
       });
       logger.info("WebSocket server closed");
     } catch (err) {

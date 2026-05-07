@@ -356,6 +356,37 @@ export class ParticipantService extends BaseService {
     await Promise.all(
       (choiceIds || []).map(async (choiceId) => {
         if (!this.kafkaProducer) {
+          logger.info(
+            { sessionId, participantId, questionId: session.currentQuestionId },
+            "Kafka disabled, falling back to HTTP for response submission",
+          );
+
+          const internalToken = TokenService.signInternalToken(
+            {
+              userId: "ms-session",
+              role: UserRole.ADMIN,
+              type: TokenType.INTERNAL,
+            },
+            config.auth.internal.privateKeyPath,
+          );
+
+          await call({
+            url: `${config.services.response.baseUrl}/responses/response`,
+            method: "POST",
+            data: {
+              participantId,
+              sessionId,
+              questionId: session.currentQuestionId,
+              choiceId,
+              latencyMs: 0,
+            },
+            headers: { "internal-token": internalToken },
+          }).catch((err) => {
+            logger.error(
+              { err: err.message, sessionId, participantId },
+              "Failed to submit response via HTTP fallback",
+            );
+          });
           return;
         }
         /** @type {import('common-contracts').QuizResponseSubmittedEventPayload} */
@@ -495,6 +526,39 @@ export class ParticipantService extends BaseService {
         SessionEventTypes.BUZZER_ANSWER_SUBMITTED,
         payload,
       );
+    } else {
+      logger.info(
+        { sessionId, participantId, isCorrect },
+        "Kafka disabled, falling back to HTTP for buzzer answer submission",
+      );
+
+      const internalToken = TokenService.signInternalToken(
+        {
+          userId: "ms-session",
+          role: UserRole.ADMIN,
+          type: TokenType.INTERNAL,
+        },
+        config.auth.internal.privateKeyPath,
+      );
+
+      await call({
+        url: `${config.services.response.baseUrl}/responses/response`,
+        method: "POST",
+        data: {
+          participantId,
+          sessionId,
+          questionId: session.currentQuestionId,
+          choiceId: null,
+          isCorrect,
+          latencyMs: 0,
+        },
+        headers: { "internal-token": internalToken },
+      }).catch((err) => {
+        logger.error(
+          { err: err.message, sessionId, participantId },
+          "Failed to submit buzzer answer via HTTP fallback",
+        );
+      });
     }
 
     logger.info(

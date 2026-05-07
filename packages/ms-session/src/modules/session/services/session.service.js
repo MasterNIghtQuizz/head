@@ -235,14 +235,14 @@ export class SessionService extends BaseService {
         this.participantRepository.findBySessionId(sessionId),
         session.currentQuestionId
           ? this.getCurrentQuestion(sessionId, headers, participantId).catch(
-            (err) => {
-              logger.warn(
-                { sessionId, err: err.message },
-                "Failed to fetch current question during getSession",
-              );
-              return null;
-            },
-          )
+              (err) => {
+                logger.warn(
+                  { sessionId, err: err.message },
+                  "Failed to fetch current question during getSession",
+                );
+                return null;
+              },
+            )
           : Promise.resolve(null),
         this.valkeyRepository.get(`session:${sessionId}:question_activated_at`),
       ]);
@@ -250,10 +250,10 @@ export class SessionService extends BaseService {
       const hasAnswered =
         session.currentQuestionId && participantId
           ? await this.valkeyRepository
-            .get(
-              `session:${sessionId}:question:${session.currentQuestionId}:participant:${participantId}:responded`,
-            )
-            .catch(() => null)
+              .get(
+                `session:${sessionId}:question:${session.currentQuestionId}:participant:${participantId}:responded`,
+              )
+              .catch(() => null)
           : null;
 
       return SessionMapper.toDto(
@@ -490,7 +490,7 @@ export class SessionService extends BaseService {
         throw EMPTY_QUIZZ(session.quizzId);
       }
 
-      const currentIndex = questionIds.indexOf(session.currentQuestionId);
+      let currentIndex = questionIds.indexOf(session.currentQuestionId);
       if (currentIndex === -1) {
         logger.warn(
           `Current question with id ${session.currentQuestionId} not found in quiz ${session.quizzId}`,
@@ -498,11 +498,33 @@ export class SessionService extends BaseService {
         throw QUIZZ_NOT_FOUND(session.quizzId);
       }
       if (currentIndex === questionIds.length - 1) {
-        logger.warn(
-          `No more questions available for quiz with id ${session.quizzId}`,
+        const freshQuizResponse = await call({
+          url: `${config.services.quizzManagement.baseUrl}/quizzes/get-ids`,
+          method: "POST",
+          data: { quizId: quizzId },
+          headers: { "internal-token": internalToken || "" },
+        }).catch(() => null);
+
+        const freshIds = freshQuizResponse?.questions?.map(
+          (/** @type {import('common-contracts').FullQuestionResponse} */ q) =>
+            q.id,
         );
-        await this.endSession(sessionId);
-        return;
+
+        if (freshIds && freshIds.length > questionIds.length) {
+          questionIds = freshIds;
+          currentIndex = questionIds.indexOf(session.currentQuestionId);
+          await this.valkeyRepository.set(
+            `session:${session.id}:questions:ids`,
+            questionIds,
+            3600,
+          );
+        } else {
+          logger.warn(
+            `No more questions available for quiz with id ${session.quizzId}`,
+          );
+          await this.endSession(sessionId);
+          return;
+        }
       }
 
       const questionId = questionIds[currentIndex + 1];
@@ -574,6 +596,31 @@ export class SessionService extends BaseService {
           timestamp: Date.now(),
           eventType: SessionEventTypes.SESSION_ENDED,
           payload,
+        });
+      } else {
+        logger.info(
+          { sessionId: session.id },
+          "Kafka disabled, falling back to HTTP for session end notification",
+        );
+
+        const internalToken = TokenService.signInternalToken(
+          {
+            userId: "ms-session",
+            role: UserRole.ADMIN,
+            type: TokenType.INTERNAL,
+          },
+          config.auth.internal.privateKeyPath,
+        );
+
+        await call({
+          url: `${config.services.response.baseUrl}/responses/session/end/${session.id}`,
+          method: "DELETE",
+          headers: { "internal-token": internalToken },
+        }).catch((err) => {
+          logger.error(
+            { err: err.message, sessionId: session.id },
+            "Failed to notify session end via HTTP fallback",
+          );
         });
       }
     } catch (error) {
@@ -731,7 +778,9 @@ export class SessionService extends BaseService {
             }),
           );
 
-          question = questions.find((q) => q.id === session.currentQuestionId);
+          question = questions.find(
+            (/** @type {Question} */ q) => q.id === session.currentQuestionId,
+          );
         }
       }
 
@@ -777,7 +826,6 @@ export class SessionService extends BaseService {
 
       return new GetCurrentQuestionResponseDto({
         question_id: question.id,
-        id: question.id,
         label: question.label,
         type: question.type,
         timer_seconds: question.timer_seconds,
@@ -804,8 +852,6 @@ export class SessionService extends BaseService {
    * @returns {Promise<any>}
    */
   async _getQuizWithFallback(quizId, internalToken) {
-    const cacheKey = `quiz-cache:${quizId}`;
-
     try {
       const quiz = await call({
         url: `${config.services.quizzManagement.baseUrl}/quizzes/get-full`,
@@ -816,14 +862,7 @@ export class SessionService extends BaseService {
         },
       });
 
-      if (quiz) {
-        try {
-          await this.valkeyRepository.set(cacheKey, quiz, 3600);
-        } catch (err) {
-          logger.warn({ err }, "Failed to update quiz fallback cache");
-        }
-        return quiz;
-      }
+      return quiz;
     } catch (err) {
       const error = /** @type {import('common-errors').BaseError} */ (err);
       if (error.statusCode === 404) {
@@ -834,6 +873,7 @@ export class SessionService extends BaseService {
         { quizId, err: error.message },
         "ms-quizz unreachable, trying fallback cache",
       );
+      const cacheKey = `quiz-cache:${quizId}`;
       const cachedQuiz = await this.valkeyRepository.get(cacheKey);
 
       if (cachedQuiz) {
