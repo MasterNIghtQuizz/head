@@ -514,7 +514,7 @@ export class ParticipantService extends BaseService {
 
     if (this.kafkaProducer) {
       /** @type {import('common-contracts').BuzzerAnswerSubmittedEventPayload} */
-      const payload = {
+      const buzzerPayload = {
         sessionId,
         participantId,
         username,
@@ -522,10 +522,12 @@ export class ParticipantService extends BaseService {
         timestamp: new Date().toISOString(),
       };
 
-      await this.kafkaProducer.publish(
-        SessionEventTypes.BUZZER_ANSWER_SUBMITTED,
-        payload,
-      );
+      await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
+        eventId: randomUUID(),
+        timestamp: Date.now(),
+        eventType: SessionEventTypes.BUZZER_ANSWER_SUBMITTED,
+        payload: buzzerPayload,
+      });
     } else {
       logger.info(
         { sessionId, participantId, isCorrect },

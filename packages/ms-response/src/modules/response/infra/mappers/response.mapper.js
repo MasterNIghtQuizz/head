@@ -80,6 +80,7 @@ export class ResponseMapper {
       sessionId: entity.sessionId,
       choiceId: entity.choiceId ?? null,
       isCorrect: entity.isCorrect ?? null,
+      scoreObtained: entity.isCorrect ? 1 : 0,
       submittedAt: entity.submittedAt,
     };
   }

@@ -121,6 +121,11 @@ export class SessionEventsConsumer {
         );
         break;
 
+      case SessionEventTypes.USER_PRESSED_BUZZER:
+        logger.info(logCtx, "DEBUG [ws-service] Handling USER_PRESSED_BUZZER event");
+        this.onBuzzerPressed(payload);
+        break;
+
       default:
         logger.warn(logCtx, "DEBUG [ws-service] Unknown event type received");
     }
@@ -365,5 +370,30 @@ export class SessionEventsConsumer {
       { sessionId, reason },
       "Session destroyed and participants kicked",
     );
+  }
+
+  /**
+   * @param {{ session_id: string; participant_id: string; username: string }} payload
+   * @returns {void}
+   */
+  onBuzzerPressed(payload) {
+    const sessionId = payload?.session_id;
+    const participantId = payload?.participant_id;
+    const username = payload?.username;
+
+    if (!sessionId || !participantId || !username) {
+      logger.warn({ payload }, "Missing fields in USER_PRESSED_BUZZER payload");
+      return;
+    }
+
+    logger.info({ sessionId, participantId, username }, "Broadcasting buzzer press to session");
+
+    /** @type {import("common-websocket").ServerToClientMessage} */
+    const message = {
+      type: messageType.USER_PRESSED_BUZZER,
+      payload: { sessionId, participantId, username },
+    };
+
+    broadcastToSession(sessionId, message, null);
   }
 }

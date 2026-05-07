@@ -30,6 +30,7 @@ async function servicesPluginImpl(fastify, { kafkaProducer, kafkaConsumer }) {
     const feedBuzzerConsumer = new FeedBuzzerConsumer(
       kafkaConsumer,
       buzzerRepository,
+      kafkaProducer,
     );
     feedBuzzerConsumer.register();
   }

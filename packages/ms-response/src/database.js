@@ -6,6 +6,7 @@ import {
 } from "common-database";
 import { config } from "./config.js";
 import { CreateResponseTable1710000000000 as CreateResponseTable } from "./migrations/1710000000000-CreateResponseTable.js";
+import { CreateProcessedEventsTable1710000000001 as CreateProcessedEventsTable } from "./migrations/1710000000001-CreateProcessedEventsTable.js";
 import { TypeOrmResponseModel as ResponseEntity } from "./modules/response/infra/models/response.model.js";
 
 const strategy = new TypeORMStrategy();
@@ -20,6 +21,6 @@ export const initDatabase = async () => {
     database: config.postgres.database,
     env: config.env,
     entities: [ResponseEntity, ProcessedEventEntity],
-    migrations: [CreateResponseTable],
+    migrations: [CreateResponseTable, CreateProcessedEventsTable],
   });
 };

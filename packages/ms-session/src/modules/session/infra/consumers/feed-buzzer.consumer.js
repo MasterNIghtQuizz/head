@@ -1,15 +1,18 @@
 import logger from "../../../../logger.js";
-import { SessionEventTypes } from "common-contracts";
+import { SessionEventTypes, Topics } from "common-contracts";
 import { PARTICIPANT_ALREADY_BUZZED } from "../../errors/session.errors.js";
+import { randomUUID } from "node:crypto";
 
 export class FeedBuzzerConsumer {
   /**
    * @param {import('common-kafka').KafkaConsumer} kafkaConsumer
    * @param {import('../repositories/buzzer.repository.js').BuzzerRepository} buzzerRepository
+   * @param {import('common-kafka').KafkaProducer | null} [kafkaProducer]
    */
-  constructor(kafkaConsumer, buzzerRepository) {
+  constructor(kafkaConsumer, buzzerRepository, kafkaProducer = null) {
     this.kafkaConsumer = kafkaConsumer;
     this.buzzerRepository = buzzerRepository;
+    this.kafkaProducer = kafkaProducer;
   }
 
   register() {
@@ -58,6 +61,20 @@ export class FeedBuzzerConsumer {
         { sessionId, participantId },
         "Buzzer queue updated from Kafka event",
       );
+
+      if (this.kafkaProducer) {
+        await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
+          eventId: randomUUID(),
+          timestamp: Date.now(),
+          eventType: SessionEventTypes.USER_PRESSED_BUZZER,
+          payload: {
+            session_id: sessionId,
+            participant_id: participantId,
+            username: payload.username,
+          },
+        });
+        logger.info({ sessionId, participantId }, "USER_PRESSED_BUZZER event published");
+      }
     } catch (error) {
       logger.error(
         { error, sessionId, participantId },

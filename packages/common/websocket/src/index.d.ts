@@ -24,6 +24,7 @@ export declare const messageType: {
   SESSION_DELETED: "session_deleted";
   PARTICIPANTS_UPDATE: "participants_update";
   SESSION_RESULTS_DISPLAYED: "session_results_displayed";
+  USER_PRESSED_BUZZER: "user_pressed_buzzer";
   ERROR: "error";
 };
 

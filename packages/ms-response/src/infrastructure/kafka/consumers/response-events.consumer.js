@@ -107,6 +107,15 @@ export class ResponseEventsConsumer {
           );
           break;
 
+        case SessionEventTypes.BUZZER_ANSWER_SUBMITTED:
+          await this.onBuzzerAnswered(
+            /** @type {import('common-contracts').BuzzerAnswerSubmittedEventPayload} */ (
+              payload
+            ),
+            logCtx,
+          );
+          break;
+
         default:
           logger.warn(logCtx, "Unknown event type encountered");
       }
@@ -202,5 +211,24 @@ export class ResponseEventsConsumer {
       payload.session_id,
       payload.question_id,
     );
+  }
+
+  /**
+   * @param {import('common-contracts').BuzzerAnswerSubmittedEventPayload} payload
+   * @param {LogContext} logCtx
+   * @returns {Promise<void>}
+   */
+  async onBuzzerAnswered(payload, logCtx) {
+    logger.info(
+      { ...logCtx, sessionId: payload.sessionId, participantId: payload.participantId, isCorrect: payload.isCorrect },
+      "Executing onBuzzerAnswered",
+    );
+
+    await this.responseService.handleAnswer({
+      participantId: payload.participantId,
+      sessionId: payload.sessionId,
+      choiceId: null,
+      isCorrect: payload.isCorrect,
+    });
   }
 }

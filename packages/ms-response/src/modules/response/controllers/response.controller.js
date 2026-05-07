@@ -407,6 +407,7 @@ ApplyMethodDecorators(ResponseController, "getAllParticipantResponses", [
             sessionId: { type: "string" },
             choiceId: { type: "string", nullable: true },
             isCorrect: { type: "boolean", nullable: true },
+            scoreObtained: { type: "number" },
             submittedAt: { type: "string", format: "date-time" },
           },
         },

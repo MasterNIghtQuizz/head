@@ -18,6 +18,7 @@
  * @property {"session_next_question"} SESSION_NEXT_QUESTION
  * @property {"participants_update"} PARTICIPANTS_UPDATE
  * @property {"session_results_displayed"} SESSION_RESULTS_DISPLAYED
+ * @property {"user_pressed_buzzer"} USER_PRESSED_BUZZER
  * @property {"error"} ERROR
  */
 
@@ -41,6 +42,7 @@ export const messageType = {
   SESSION_NEXT_QUESTION: "session_next_question",
   PARTICIPANTS_UPDATE: "participants_update",
   SESSION_RESULTS_DISPLAYED: "session_results_displayed",
+  USER_PRESSED_BUZZER: "user_pressed_buzzer",
   ERROR: "error",
 };
 
