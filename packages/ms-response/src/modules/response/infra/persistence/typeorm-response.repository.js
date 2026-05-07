@@ -25,7 +25,7 @@ export class TypeOrmResponseRepository extends ResponseRepository {
 
   /**
    * @param {import('../../core/entities/response.entity.js').ResponseEntity} entity
-   * @returns {Promise<import('../../core/entities/response.entity.js').ResponseEntity>}
+   * @returns {Promise<import('../../core/entities/response.entity.js').ResponseEntity | null>}
    */
   async create(entity) {
     const model = this.repo.create(ResponseMapper.toPersistence(entity));

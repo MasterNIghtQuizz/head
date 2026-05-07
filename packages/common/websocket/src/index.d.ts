@@ -99,7 +99,7 @@ export interface SessionStartedPayload {
 
 export interface SessionNextQuestionPayload {
   sessionId: string;
-  question_id: string;
+  question_id: string | null;
   activated_at?: number | null;
 }
 
@@ -128,7 +128,7 @@ export interface SessionIdPayload {
 
 export interface SessionResultsDisplayedPayload {
   sessionId: string;
-  questionId: string;
+  questionId: string | null;
 }
 
 
@@ -178,6 +178,10 @@ export type ServerToClientMessage =
   | {
     type: typeof messageType.SESSION_RESULTS_DISPLAYED;
     payload: SessionResultsDisplayedPayload;
+  }
+  | {
+    type: typeof messageType.USER_PRESSED_BUZZER;
+    payload: { sessionId: string; participantId: string; username: string };
   }
   | { type: typeof messageType.ERROR; payload: ErrorPayload };
 

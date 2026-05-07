@@ -122,12 +122,18 @@ export class SessionEventsConsumer {
         break;
 
       case SessionEventTypes.USER_PRESSED_BUZZER:
-        logger.info(logCtx, "DEBUG [ws-service] Handling USER_PRESSED_BUZZER event");
+        logger.info(
+          logCtx,
+          "DEBUG [ws-service] Handling USER_PRESSED_BUZZER event",
+        );
         this.onBuzzerPressed(payload);
         break;
 
       case SessionEventTypes.SESSION_RESULTS_DISPLAYED:
-        logger.info(logCtx, "DEBUG [ws-service] Handling SESSION_RESULTS_DISPLAYED event (Kafka fallback)");
+        logger.info(
+          logCtx,
+          "DEBUG [ws-service] Handling SESSION_RESULTS_DISPLAYED event (Kafka fallback)",
+        );
         this.onResultsDisplayed(payload);
         break;
 
@@ -261,15 +267,9 @@ export class SessionEventsConsumer {
       removeParticipant(sessionId, participantId);
     }
 
-    // Fallback: If we don't have participants for this session (e.g. service restart),
-    // we should ideally fetch them from ms-session. For now, we at least ensure
-    // the list is initialized so the broadcast has a chance to reach the new participant.
+
     initSessionParticipants(sessionId);
 
-    // If the participant has an active websocket connection on this service,
-    // prefer to use the existing socket handlers so the local socket context
-    // state stays consistent. Otherwise broadcast the event to session sockets
-    // so connected clients are informed about the change.
     const participantSocket = getSocketByUserId(participantId);
     let handledLocally = false;
 
@@ -280,9 +280,6 @@ export class SessionEventsConsumer {
       }
 
       if (wsMessageType === messageType.USER_OFFLINE && participantSocket) {
-        // Participant left — use server-side leave handler to update context
-        // and broadcast via the normal path, but only if they are actually
-        // locally in the session they are leaving.
         const context = getSocketContext(participantSocket);
         if (context && context.sessionId === sessionId) {
           userLeaveSession(participantSocket);
@@ -378,13 +375,16 @@ export class SessionEventsConsumer {
   }
 
   /**
-   * @param {{ sessionId: string; questionId: string | null }} payload
+   * @param {import("common-contracts").SessionResultsDisplayedEventPayload} payload
    * @returns {void}
    */
   onResultsDisplayed(payload) {
-    const { sessionId, questionId } = payload || {};
+    const { session_id: sessionId, question_id: questionId } = payload || {};
     if (!sessionId) {
-      logger.warn({ payload }, "Missing sessionId in SESSION_RESULTS_DISPLAYED payload");
+      logger.warn(
+        { payload },
+        "Missing sessionId in SESSION_RESULTS_DISPLAYED payload",
+      );
       return;
     }
 
@@ -394,7 +394,10 @@ export class SessionEventsConsumer {
       payload: { sessionId, questionId },
     };
     broadcastToSession(sessionId, message, null);
-    logger.info({ sessionId, questionId }, "SESSION_RESULTS_DISPLAYED broadcast via Kafka fallback");
+    logger.info(
+      { sessionId, questionId },
+      "SESSION_RESULTS_DISPLAYED broadcast via Kafka fallback",
+    );
   }
 
   /**
@@ -411,7 +414,10 @@ export class SessionEventsConsumer {
       return;
     }
 
-    logger.info({ sessionId, participantId, username }, "Broadcasting buzzer press to session");
+    logger.info(
+      { sessionId, participantId, username },
+      "Sending buzzer press to moderator(s) only",
+    );
 
     /** @type {import("common-websocket").ServerToClientMessage} */
     const message = {
@@ -419,6 +425,24 @@ export class SessionEventsConsumer {
       payload: { sessionId, participantId, username },
     };
 
-    broadcastToSession(sessionId, message, null);
+    const participants = getParticipants(sessionId);
+    for (const p of participants) {
+      // Only send to moderator/host or the person who actually buzzed
+      // so they know it was successful
+      if (
+        p.role === "moderator" ||
+        p.role === "HOST" ||
+        p.participant_id === participantId
+      ) {
+        const socket = getSocketByUserId(p.participant_id);
+        if (socket) {
+          socket.send(JSON.stringify(message));
+          logger.debug(
+            { sessionId, recipient: p.participant_id, role: p.role },
+            "Buzzer press sent to specific recipient",
+          );
+        }
+      }
+    }
   }
 }
