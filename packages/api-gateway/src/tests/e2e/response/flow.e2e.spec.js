@@ -152,9 +152,9 @@ describe("Response E2E - Leaderboard and Stats Flow", () => {
     expect(leaderboardRes.statusCode).toBe(200);
     const leaderboard = leaderboardRes.json();
 
-    // P1 should be first with score 1, P2 score 0
+    // P1 should be first with score 1, P2 score -1 (penalty)
     expect(leaderboard).toContainEqual({ participantId: p1Id, score: 1 });
-    expect(leaderboard).toContainEqual({ participantId: p2Id, score: 0 });
+    expect(leaderboard).toContainEqual({ participantId: p2Id, score: -1 });
 
     // 9. Verify Question Stats (Host only)
     const statsRes = await app.inject({
@@ -275,8 +275,8 @@ describe("Response E2E - Leaderboard and Stats Flow", () => {
       headers: { "game-token": hostGameToken },
     });
     const leaderboard2 = leaderboardRes2.json();
-    expect(leaderboard2).toContainEqual({ participantId: p1Id, score: 2 });
-    expect(leaderboard2).toContainEqual({ participantId: p2Id, score: 0 });
+    expect(leaderboard2).toContainEqual({ participantId: p1Id, score: 3 });
+    expect(leaderboard2).toContainEqual({ participantId: p2Id, score: -1 });
 
     // 17. End Session
     await app.inject({

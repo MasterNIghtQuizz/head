@@ -341,7 +341,9 @@ describe("SessionService unit tests", () => {
         pressedAt: "1000",
       };
       vi.mocked(sessionRepositoryMock.find).mockResolvedValue(session);
-      vi.mocked(valkeyRepositoryMock.get).mockResolvedValue(questionData);
+      vi.mocked(valkeyRepositoryMock.get)
+        .mockResolvedValueOnce(questionData) // For question:q1:full
+        .mockResolvedValueOnce(["q1", "q2"]); // For session:s1:questions:ids
       vi.mocked(buzzerRepositoryMock.peek).mockResolvedValue(buzzer);
 
       const result = await service.getCurrentQuestion("s1", {});
@@ -358,6 +360,7 @@ describe("SessionService unit tests", () => {
           username: "nick",
           pressed_at: 1000,
         },
+        is_last_question: false,
       });
       expect(buzzerRepositoryMock.peek).toHaveBeenCalledWith("s1");
     });
