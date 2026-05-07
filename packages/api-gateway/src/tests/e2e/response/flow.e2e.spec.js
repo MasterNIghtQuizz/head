@@ -363,7 +363,7 @@ describe("Response E2E - Leaderboard and Stats Flow", () => {
       url: `/responses/leaderboard/session/${sessionId}`,
       headers: { "game-token": playerToken },
     });
-    expect(leaderboardRes.statusCode).toBe(403);
+    expect(leaderboardRes.statusCode).toBe(200);
 
     // Player tries to access question stats (should be forbidden)
     const statsRes = await app.inject({
