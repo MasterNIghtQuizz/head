@@ -57,6 +57,7 @@ export interface GetSessionResponse {
   activated_at?: number | null;
   has_answered?: boolean;
   current_question?: GetCurrentQuestionResponse | null;
+  is_last_question?: boolean;
 }
 
 
@@ -68,12 +69,14 @@ export interface GetCurrentQuestionResponse {
   choices: {
     id: string;
     text: string;
+    is_correct: boolean;
   }[];
   current_buzzer: {
     id: string;
     username: string;
     pressed_at: number;
   } | null;
+  is_last_question?: boolean;
 }
 
 

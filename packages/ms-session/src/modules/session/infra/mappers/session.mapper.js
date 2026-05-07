@@ -60,6 +60,7 @@ export class SessionMapper {
     currentQuestion = null,
     activatedAt = null,
     hasAnswered = false,
+    isLastQuestion = false,
   ) {
     const dto = new GetSessionResponseDto({
       session_id: entity.id,
@@ -72,6 +73,7 @@ export class SessionMapper {
       activated_at: activatedAt,
       has_answered: hasAnswered,
       current_question: currentQuestion,
+      is_last_question: isLastQuestion,
     });
     return dto;
   }

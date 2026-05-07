@@ -234,7 +234,7 @@ export class SessionService extends BaseService {
         throw SESSION_NOT_FOUND(sessionId);
       }
 
-      const [participants, currentQuestion, activatedAt] = await Promise.all([
+      const [participants, currentQuestion, activatedAt, questionIds] = await Promise.all([
         this.participantRepository.findBySessionId(sessionId),
         session.currentQuestionId
           ? this.getCurrentQuestion(sessionId, headers, participantId).catch(
@@ -248,7 +248,10 @@ export class SessionService extends BaseService {
             )
           : Promise.resolve(null),
         this.valkeyRepository.get(`session:${sessionId}:question_activated_at`),
+        this.valkeyRepository.get(`session:${sessionId}:questions:ids`),
       ]);
+
+      const isLastQuestion = Array.isArray(questionIds) && questionIds[questionIds.length - 1] === session.currentQuestionId;
 
       const hasAnswered =
         session.currentQuestionId && participantId
@@ -265,6 +268,7 @@ export class SessionService extends BaseService {
         currentQuestion,
         activatedAt ? Number(activatedAt) : null,
         !!hasAnswered,
+        isLastQuestion,
       );
     } catch (error) {
       const err = /** @type {import('common-errors').BaseError} */ (error);
@@ -843,6 +847,9 @@ export class SessionService extends BaseService {
         correctChoiceIds = validationCache?.correctChoiceIds || [];
       }
 
+      const questionIds = await this.valkeyRepository.get(`session:${sessionId}:questions:ids`);
+      const isLastQuestion = Array.isArray(questionIds) && questionIds[questionIds.length - 1] === question.id;
+
       return new GetCurrentQuestionResponseDto({
         question_id: question.id,
         label: question.label,
@@ -854,6 +861,7 @@ export class SessionService extends BaseService {
           ...(isModerator ? { is_correct: correctChoiceIds.includes(c.id) } : {}),
         })),
         current_buzzer: currentBuzzer,
+        is_last_question: isLastQuestion,
       });
     } catch (error) {
       const err = /** @type {import('common-errors').BaseError} */ (error);

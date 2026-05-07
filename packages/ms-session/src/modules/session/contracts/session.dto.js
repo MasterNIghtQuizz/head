@@ -116,6 +116,7 @@ export class GetSessionResponseDto {
     this.activated_at = data.activated_at;
     this.has_answered = data.has_answered;
     this.current_question = data.current_question;
+    this.is_last_question = data.is_last_question;
   }
 }
 
@@ -134,6 +135,7 @@ export class GetCurrentQuestionResponseDto {
     this.timer_seconds = data.timer_seconds;
     this.choices = data.choices;
     this.current_buzzer = data.current_buzzer;
+    this.is_last_question = data.is_last_question;
   }
 }
 
