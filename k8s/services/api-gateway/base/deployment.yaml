@@ -71,6 +71,8 @@ spec:
               value: "http://ms-quizz-management"
             - name: SESSION_SERVICE_URL
               value: "http://ms-session"
+            - name: RESPONSE_SERVICE_URL
+              value: "http://ms-response"
             - name: WEBSOCKET_SERVICE_URL
               value: "http://ws-service:3000"
             - name: VALKEY_ENABLED

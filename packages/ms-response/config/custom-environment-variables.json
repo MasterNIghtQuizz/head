@@ -67,10 +67,10 @@
   },
   "services": {
     "session": {
-      "baseUrl": "SESSION_SERVICE_BASE_URL"
+      "baseUrl": "SESSION_SERVICE_URL"
     },
     "quizzManagement": {
-      "baseUrl": "QUIZZ_MANAGEMENT_SERVICE_BASE_URL"
+      "baseUrl": "QUIZZ_SERVICE_URL"
     }
   },
   "metrics": {
