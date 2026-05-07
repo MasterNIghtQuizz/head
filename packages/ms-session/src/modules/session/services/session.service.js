@@ -129,6 +129,9 @@ export class SessionService extends BaseService {
               choiceIds: (q.choices || []).map(
                 (/** @type {Choice} */ c) => c.id,
               ),
+              correctChoiceIds: (q.choices || []).filter(
+                (/** @type {Choice} */ c) => c.is_correct,
+              ).map((/** @type {Choice} */ c) => c.id),
             };
             const fullQuestion = new Question({
               ...q,
@@ -334,6 +337,9 @@ export class SessionService extends BaseService {
               choiceIds: (q.choices || []).map(
                 (/** @type {Choice} */ c) => c.id,
               ),
+              correctChoiceIds: (q.choices || []).filter(
+                (/** @type {Choice} */ c) => c.is_correct,
+              ).map((/** @type {Choice} */ c) => c.id),
             };
             const fullQuestion = new Question({
               ...q,
@@ -756,6 +762,9 @@ export class SessionService extends BaseService {
                 choiceIds: (q.choices || []).map(
                   (/** @type {any} */ c) => c.id,
                 ),
+                correctChoiceIds: (q.choices || []).filter(
+                  (/** @type {any} */ c) => c.is_correct,
+                ).map((/** @type {any} */ c) => c.id),
               };
               const fullQuestion = new Question({
                 ...q,
@@ -826,6 +835,12 @@ export class SessionService extends BaseService {
         }
       }
 
+      let correctChoiceIds = [];
+      if (isModerator) {
+        const validationCache = await this.valkeyRepository.get(`question:${question.id}:validation`).catch(() => null);
+        correctChoiceIds = validationCache?.correctChoiceIds || [];
+      }
+
       return new GetCurrentQuestionResponseDto({
         question_id: question.id,
         label: question.label,
@@ -834,7 +849,7 @@ export class SessionService extends BaseService {
         choices: (question.choices || []).map((c) => ({
           id: c.id,
           text: c.text,
-          ...(isModerator ? { is_correct: c.is_correct } : {}),
+          ...(isModerator ? { is_correct: correctChoiceIds.includes(c.id) } : {}),
         })),
         current_buzzer: currentBuzzer,
       });
@@ -898,21 +913,33 @@ export class SessionService extends BaseService {
         throw SESSION_NOT_FOUND(sessionId);
       }
 
-      const channel = "ws:session:results";
-      const message = JSON.stringify({
-        eventType: "SESSION_RESULTS_DISPLAYED",
-        payload: {
-          sessionId,
-          questionId: session.currentQuestionId,
-        },
-      });
+      const questionId = session.currentQuestionId;
 
-      await this.valkeyRepository.publish(channel, message);
-
-      logger.info(
-        { sessionId, questionId: session.currentQuestionId },
-        "Results display triggered via Valkey",
-      );
+      try {
+        const channel = "ws:session:results";
+        const message = JSON.stringify({
+          eventType: "SESSION_RESULTS_DISPLAYED",
+          payload: { sessionId, questionId },
+        });
+        await this.valkeyRepository.publish(channel, message);
+        logger.info({ sessionId, questionId }, "Results display triggered via Valkey");
+      } catch (valkeyErr) {
+        logger.warn(
+          { sessionId, questionId, err: valkeyErr.message },
+          "Valkey publish failed, falling back to Kafka for results display",
+        );
+        if (this.kafkaProducer) {
+          await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
+            eventId: randomUUID(),
+            timestamp: Date.now(),
+            eventType: SessionEventTypes.SESSION_RESULTS_DISPLAYED,
+            payload: { sessionId, questionId },
+          });
+          logger.info({ sessionId, questionId }, "Results display triggered via Kafka fallback");
+        } else {
+          throw valkeyErr;
+        }
+      }
     } catch (error) {
       const err = /** @type {import('common-errors').BaseError} */ (error);
       logger.error({ sessionId, err: err.message }, "Error in showResults");

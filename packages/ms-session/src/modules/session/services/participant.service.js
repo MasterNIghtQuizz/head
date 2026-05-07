@@ -610,6 +610,16 @@ export class ParticipantService extends BaseService {
       return;
     }
 
+    const questionId = session.currentQuestionId;
+    if (questionId) {
+      const responseCacheKey = `session:${session.id}:question:${questionId}:participant:${participantId}:responded`;
+      try {
+        await this.valkeyRepository.set(responseCacheKey, "true", 3600);
+      } catch (err) {
+        logger.warn({ err, sessionId: session.id, participantId }, "Failed to set buzzer response cache key");
+      }
+    }
+
     /**@type {import('common-contracts').UserPressedBuzzerEventPayload} */
     const payload = {
       sessionId: session.id,

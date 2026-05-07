@@ -126,6 +126,11 @@ export class SessionEventsConsumer {
         this.onBuzzerPressed(payload);
         break;
 
+      case SessionEventTypes.SESSION_RESULTS_DISPLAYED:
+        logger.info(logCtx, "DEBUG [ws-service] Handling SESSION_RESULTS_DISPLAYED event (Kafka fallback)");
+        this.onResultsDisplayed(payload);
+        break;
+
       default:
         logger.warn(logCtx, "DEBUG [ws-service] Unknown event type received");
     }
@@ -370,6 +375,26 @@ export class SessionEventsConsumer {
       { sessionId, reason },
       "Session destroyed and participants kicked",
     );
+  }
+
+  /**
+   * @param {{ sessionId: string; questionId: string | null }} payload
+   * @returns {void}
+   */
+  onResultsDisplayed(payload) {
+    const { sessionId, questionId } = payload || {};
+    if (!sessionId) {
+      logger.warn({ payload }, "Missing sessionId in SESSION_RESULTS_DISPLAYED payload");
+      return;
+    }
+
+    /** @type {import("common-websocket").ServerToClientMessage} */
+    const message = {
+      type: messageType.SESSION_RESULTS_DISPLAYED,
+      payload: { sessionId, questionId },
+    };
+    broadcastToSession(sessionId, message, null);
+    logger.info({ sessionId, questionId }, "SESSION_RESULTS_DISPLAYED broadcast via Kafka fallback");
   }
 
   /**

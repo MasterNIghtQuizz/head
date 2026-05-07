@@ -197,6 +197,18 @@ export class ResponseService extends BaseService {
   }
 
   /**
+   * Clears only the Valkey runtime cache for a session, preserving DB responses
+   * for leaderboard display after session end.
+   * @param {string} sessionId
+   * @returns {Promise<void>}
+   */
+  async clearSessionCache(sessionId) {
+    await this.valkeyRepository.del(`sessionQuizId:${sessionId}`);
+    await this.valkeyRepository.del(`currentSessionQuestion:${sessionId}`);
+    logger.info({ sessionId }, "Session Valkey cache cleared (responses preserved in DB)");
+  }
+
+  /**
    * @param {string} sessionId
    * @returns {Promise<void>}
    */

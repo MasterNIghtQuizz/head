@@ -10,6 +10,12 @@ export class SessionNotificationsConsumer {
   /** @type {import('ioredis').Redis | null} */
   #subscriber = null;
 
+  /** @type {boolean} */
+  #stopped = false;
+
+  /** @type {ReturnType<typeof setTimeout> | null} */
+  #retryTimer = null;
+
   /**
    * @param {import('common-valkey').ValkeyConfig} config
    */
@@ -18,6 +24,13 @@ export class SessionNotificationsConsumer {
   }
 
   async start() {
+    this.#stopped = false;
+    await this.#connect();
+  }
+
+  async #connect(attempt = 0) {
+    if (this.#stopped) return;
+
     try {
       this.#subscriber = await this.#valkeyService.connect();
 
@@ -25,7 +38,7 @@ export class SessionNotificationsConsumer {
       await this.#subscriber.subscribe(channel);
 
       logger.info(
-        { channel },
+        { channel, attempt },
         "Valkey SessionNotificationsConsumer started and subscribed",
       );
 
@@ -34,12 +47,36 @@ export class SessionNotificationsConsumer {
           this.handleMessage(message);
         }
       });
+
+      this.#subscriber.on("error", (err) => {
+        logger.error({ err }, "Valkey subscriber error, scheduling reconnect");
+      });
+
+      this.#subscriber.on("close", () => {
+        if (!this.#stopped) {
+          logger.warn("Valkey subscriber connection closed, scheduling reconnect");
+          this.#scheduleReconnect(0);
+        }
+      });
     } catch (error) {
       logger.error(
-        { error },
-        "Failed to start Valkey SessionNotificationsConsumer",
+        { error, attempt },
+        "Failed to connect Valkey SessionNotificationsConsumer",
       );
+      this.#scheduleReconnect(attempt);
     }
+  }
+
+  /**
+   * @param {number} attempt
+   */
+  #scheduleReconnect(attempt) {
+    if (this.#stopped) return;
+    const delay = Math.min(1000 * Math.pow(2, attempt), 30000);
+    logger.info({ delay, attempt: attempt + 1 }, "Scheduling Valkey reconnect");
+    this.#retryTimer = setTimeout(() => {
+      this.#connect(attempt + 1);
+    }, delay);
   }
 
   /**
@@ -70,8 +107,17 @@ export class SessionNotificationsConsumer {
   }
 
   async stop() {
+    this.#stopped = true;
+    if (this.#retryTimer) {
+      clearTimeout(this.#retryTimer);
+      this.#retryTimer = null;
+    }
     if (this.#subscriber) {
-      await this.#valkeyService.disconnect();
+      try {
+        await this.#valkeyService.disconnect();
+      } catch (err) {
+        logger.warn({ err }, "Error during Valkey subscriber disconnect");
+      }
       this.#subscriber = null;
     }
   }

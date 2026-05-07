@@ -166,7 +166,7 @@ export class ResponseEventsConsumer {
       { ...logCtx, sessionId: payload.session_id },
       "Executing onSessionEnded",
     );
-    await this.responseService.clearSession(payload.session_id);
+    await this.responseService.clearSessionCache(payload.session_id);
   }
 
   /**
