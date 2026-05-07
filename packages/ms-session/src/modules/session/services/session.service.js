@@ -503,6 +503,8 @@ export class SessionService extends BaseService {
           method: "POST",
           data: { quizId: quizzId },
           headers: { "internal-token": internalToken || "" },
+          timeout: 3000,
+          retry: { retries: 0 },
         }).catch(() => null);
 
         const freshIds = freshQuizResponse?.questions?.map(

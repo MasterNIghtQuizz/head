@@ -34,7 +34,7 @@ describe("Response E2E - Leaderboard and Stats Flow", () => {
       method: "POST",
       url: "/quizzes",
       headers: { "access-token": hostToken },
-      payload: { title: "Response E2E Quiz" },
+      payload: { title: "E2E Response Quiz" },
     });
     const quizId = quizRes.json().id;
     expect(quizRes.statusCode).toBe(201);
@@ -46,7 +46,7 @@ describe("Response E2E - Leaderboard and Stats Flow", () => {
       headers: { "access-token": hostToken },
       payload: {
         quiz_id: quizId,
-        label: "Q1",
+        label: "Q1 (Single Choice)",
         type: "single",
         order_index: 0,
         timer_seconds: 30,
@@ -63,6 +63,7 @@ describe("Response E2E - Leaderboard and Stats Flow", () => {
       payload: { question_id: q1Id, text: "Correct", is_correct: true },
     });
     const c1Id = c1Res.json().id;
+    expect(c1Res.statusCode).toBe(201);
 
     const c2Res = await app.inject({
       method: "POST",
@@ -84,40 +85,41 @@ describe("Response E2E - Leaderboard and Stats Flow", () => {
     // 4. Create Session
     const createSessionRes = await app.inject({
       method: "POST",
-      url: "/sessions",
+      url: "/sessions/",
       headers: { "access-token": hostToken },
       payload: { quiz_id: quizId },
     });
     expect(createSessionRes.statusCode).toBe(201);
-    const {
-      session_id: sessionId,
-      public_key: publicKey,
-      game_token: hostGameToken,
-    } = createSessionRes.json();
+    const { session_id: sessionId, public_key: publicKey } =
+      createSessionRes.json();
+    const hostGameToken = createSessionRes.json().game_token;
 
-    // 5. Join Players
+    // 5. Join Participants
     const player1Res = await app.inject({
       method: "POST",
-      url: "/sessions/join",
+      url: "/sessions/join/",
       payload: { session_public_key: publicKey, participant_nickname: "P1" },
     });
+    expect(player1Res.statusCode).toBe(200);
     const p1Token = player1Res.json().game_token;
     const p1Id = player1Res.json().participant_id;
 
     const player2Res = await app.inject({
       method: "POST",
-      url: "/sessions/join",
+      url: "/sessions/join/",
       payload: { session_public_key: publicKey, participant_nickname: "P2" },
     });
+    expect(player2Res.statusCode).toBe(200);
     const p2Token = player2Res.json().game_token;
     const p2Id = player2Res.json().participant_id;
 
     // 6. Start Session
-    await app.inject({
+    const startRes = await app.inject({
       method: "POST",
-      url: "/sessions/start",
+      url: "/sessions/start/",
       headers: { "game-token": hostGameToken },
     });
+    expect(startRes.statusCode).toBe(200);
 
     // 7. Submit Responses (Wait a bit for Kafka/Async processing)
     // P1 submits correct
@@ -138,8 +140,8 @@ describe("Response E2E - Leaderboard and Stats Flow", () => {
     });
     expect(s2.statusCode).toBe(206);
 
-    // Wait for Kafka processing
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    // 7b. Verify intermediate results
+    await new Promise((resolve) => setTimeout(resolve, 1000));
 
     // 8. Verify Leaderboard (Host only)
     const leaderboardRes = await app.inject({
@@ -230,18 +232,20 @@ describe("Response E2E - Leaderboard and Stats Flow", () => {
     });
     const _q3Id = q3Res.json().id;
 
-    // 13. Move to Q2 then to Q3 (buzzer) — Q2 intentionally skipped for score integrity
-    await app.inject({
+    // 13. Move to Q2 then to Q3 (buzzer) \u2014 Q2 intentionally skipped for score integrity
+    const n1 = await app.inject({
       method: "POST",
-      url: "/sessions/next",
+      url: "/sessions/next/",
       headers: { "game-token": hostGameToken },
     });
+    expect(n1.statusCode).toBe(200);
 
-    await app.inject({
+    const n2 = await app.inject({
       method: "POST",
-      url: "/sessions/next",
+      url: "/sessions/next/",
       headers: { "game-token": hostGameToken },
     });
+    expect(n2.statusCode).toBe(200);
 
     // 14. P1 Buzzes in
     const b1 = await app.inject({
@@ -253,12 +257,13 @@ describe("Response E2E - Leaderboard and Stats Flow", () => {
     expect(b1.statusCode).toBe(206);
 
     // 15. Host validates P1's buzzer as correct
-    await app.inject({
+    const a1 = await app.inject({
       method: "POST",
-      url: "/sessions/buzzer/answer",
+      url: "/sessions/buzzer/answer/",
       headers: { "game-token": hostGameToken },
       payload: { participantId: p1Id, isCorrect: true },
     });
+    expect(a1.statusCode).toBe(200);
 
     // Wait for Kafka
     await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -276,7 +281,7 @@ describe("Response E2E - Leaderboard and Stats Flow", () => {
     // 17. End Session
     await app.inject({
       method: "POST",
-      url: "/sessions/end",
+      url: "/sessions/end/",
       headers: { "game-token": hostGameToken },
     });
 
@@ -290,7 +295,7 @@ describe("Response E2E - Leaderboard and Stats Flow", () => {
       headers: { "game-token": hostGameToken },
     });
     expect(leaderboardRes3.json().length).toBe(0);
-  });
+  }, 60000);
 
   it("should reject unauthorized access to responses", async () => {
     // Create a quick session
@@ -334,7 +339,7 @@ describe("Response E2E - Leaderboard and Stats Flow", () => {
 
     const createSessionRes = await app.inject({
       method: "POST",
-      url: "/sessions",
+      url: "/sessions/",
       headers: { "access-token": hostToken },
       payload: { quiz_id: quizId },
     });
@@ -343,7 +348,7 @@ describe("Response E2E - Leaderboard and Stats Flow", () => {
 
     const playerRes = await app.inject({
       method: "POST",
-      url: "/sessions/join",
+      url: "/sessions/join/",
       payload: {
         session_public_key: publicKey,
         participant_nickname: "UnauthorizedPlayer",

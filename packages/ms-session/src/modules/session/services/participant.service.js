@@ -548,7 +548,6 @@ export class ParticipantService extends BaseService {
           participantId,
           sessionId,
           questionId: session.currentQuestionId,
-          choiceId: null,
           isCorrect,
           latencyMs: 0,
         },
