@@ -273,6 +273,7 @@ services:
       OPENSEARCH_NODE: "http://opensearch:9200"
       OPENSEARCH_INDEX: "logs-api-gateway"
       METRICS_ENABLED: "true"
+      RESPONSE_SERVICE_URL: "http://ms-response:4004"
     depends_on:
       kafka:
         condition: service_healthy
@@ -371,6 +372,9 @@ services:
       OPENSEARCH_NODE: "http://opensearch:9200"
       OPENSEARCH_INDEX: "logs-ms-session"
       METRICS_ENABLED: "true"
+      QUIZZ_SERVICE_URL: "http://ms-quizz-management:4002"
+      RESPONSE_SERVICE_URL: "http://ms-response:4004"
+      SESSION_SERVICE_URL: "http://ms-session:4003"
     command: >
       sh -c "yarn workspace @monorepo/ms-session run migrations:run &&
              yarn workspace @monorepo/ms-session run start"
@@ -402,6 +406,8 @@ services:
       OPENSEARCH_ENABLED: ${MONITORING_ENABLED:-false}
       OPENSEARCH_NODE: "http://opensearch:9200"
       OPENSEARCH_INDEX: "logs-ms-response"
+      QUIZZ_SERVICE_URL: "http://ms-quizz-management:4002"
+      SESSION_SERVICE_URL: "http://ms-session:4003"
     command: >
       sh -c "yarn workspace @monorepo/ms-response run migrations:run &&
              yarn workspace @monorepo/ms-response run start"
@@ -647,8 +653,8 @@ services:
       VALKEY_PORT: 6379
       KAFKA_BROKERS: "[]"
       KAFKA_ENABLED: "false"
-      QUIZZ_MANAGEMENT_SERVICE_BASE_URL: "http://ms-quizz-management-test:4012"
-      SESSION_SERVICE_BASE_URL: "http://ms-session-test:4013"
+      QUIZZ_SERVICE_URL: "http://ms-quizz-management-test:4012"
+      SESSION_SERVICE_URL: "http://ms-session-test:4013"
     volumes:
       - .:/app
       - /app/node_modules

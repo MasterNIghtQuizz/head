@@ -108,6 +108,10 @@ spec:
               value: "3000"
             - name: QUIZZ_SERVICE_URL
               value: "http://ms-quizz-management"
+            - name: RESPONSE_SERVICE_URL
+              value: "http://ms-response"
+            - name: SESSION_SERVICE_URL
+              value: "http://ms-session"
             - name: POSTGRES_DB
               value: "ms_session_db"
             - name: POSTGRES_USER

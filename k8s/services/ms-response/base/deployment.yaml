@@ -107,9 +107,9 @@ spec:
           env:
             - name: PORT
               value: "3000"
-            - name: SESSION_SERVICE_BASE_URL
+            - name: SESSION_SERVICE_URL
               value: "http://ms-session"
-            - name: QUIZZ_MANAGEMENT_SERVICE_BASE_URL
+            - name: QUIZZ_SERVICE_URL
               value: "http://ms-quizz-management"
             - name: POSTGRES_DB
               value: "ms_response_db"
