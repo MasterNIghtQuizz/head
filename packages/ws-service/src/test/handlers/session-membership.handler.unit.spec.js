@@ -58,10 +58,10 @@ import {
 
 /**
  * @param {unknown} ws
- * @returns {import("ws").WebSocket}
+ * @returns {import("../../types/ws.d.ts").ExtendedWebSocket}
  */
 function asWebSocket(ws) {
-  return /** @type {import("ws").WebSocket} */ (ws);
+  return /** @type {import("../../types/ws.d.ts").ExtendedWebSocket} */ (ws);
 }
 
 describe("session-membership.handler", () => {

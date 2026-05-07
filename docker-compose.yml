@@ -619,6 +619,48 @@ services:
       retries: 20
       start_period: 20s
 
+  ms-response-test:
+    profiles: [test]
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.ms-response
+      args:
+        PRODUCTION: "false"
+    ports:
+      - "4014:4014"
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      valkey-test:
+        condition: service_healthy
+    environment:
+      NODE_ENV: test
+      PORT: 4014
+      POSTGRES_HOST: postgres-test
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ms_response_test_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password
+      VALKEY_HOST: valkey-test
+      VALKEY_PORT: 6379
+      KAFKA_BROKERS: "[]"
+      KAFKA_ENABLED: "false"
+      QUIZZ_SERVICE_URL: "http://ms-quizz-management-test:4012"
+      SESSION_SERVICE_URL: "http://ms-session-test:4013"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -qO- http://127.0.0.1:4014/health | grep ok || exit 1",
+        ]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 20s
+
   valkey-test:
     image: valkey/valkey:8
     profiles: [test]

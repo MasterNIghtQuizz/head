@@ -20,6 +20,8 @@ export async function seedDatabase() {
 
   const quizzUrl = config.services.quizz;
   const userUrl = config.services.user;
+  const sessionUrl = config.services.session;
+  const responseUrl = config.services.response;
 
   await Promise.all([
     axios.post(
@@ -31,6 +33,20 @@ export async function seedDatabase() {
     ),
     axios.post(
       `${userUrl}/testing/seed`,
+      {},
+      {
+        headers: { "internal-token": token },
+      },
+    ),
+    axios.post(
+      `${sessionUrl}/testing/seed`,
+      {},
+      {
+        headers: { "internal-token": token },
+      },
+    ),
+    axios.post(
+      `${responseUrl}/testing/seed`,
       {},
       {
         headers: { "internal-token": token },

@@ -33,7 +33,8 @@ jobs:
             api-gateway-test \
             ms-user-test \
             ms-quizz-management-test \
-            ms-session-test
+            ms-session-test \
+            ms-response-test
 
       - name: 📡 Starting infrastructure and services
         run: |
@@ -42,7 +43,8 @@ jobs:
             valkey-test \
             ms-user-test \
             ms-quizz-management-test \
-            ms-session-test
+            ms-session-test \
+            ms-response-test
 
       - name: ⏳ Wait for services to be healthy
         shell: bash
@@ -71,6 +73,7 @@ jobs:
           wait_for ms-user-test
           wait_for ms-quizz-management-test
           wait_for ms-session-test
+          wait_for ms-response-test
 
       - name: 🧪 Running E2E Tests
         run: |
@@ -80,6 +83,7 @@ jobs:
             -e USER_SERVICE_URL=http://ms-user-test:4011 \
             -e QUIZZ_SERVICE_URL=http://ms-quizz-management-test:4012 \
             -e SESSION_SERVICE_URL=http://ms-session-test:4013 \
+            -e RESPONSE_SERVICE_URL=http://ms-response-test:4014 \
             api-gateway-test \
             sh ./scripts/run-e2e.sh
 
