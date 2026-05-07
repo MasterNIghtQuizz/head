@@ -799,9 +799,11 @@ export class SessionService extends BaseService {
         throw QUESTION_NOT_FOUND(session.currentQuestionId);
       }
 
-      const isModerator = participantId
-        ? session.hostId === participantId
-        : false;
+      let isModerator = false;
+      if (participantId) {
+        const participant = await this.participantRepository.find(participantId).catch(() => null);
+        isModerator = participant?.role === ParticipantRoles.HOST;
+      }
       let currentBuzzer = null;
 
       if (question.type === "buzzer") {

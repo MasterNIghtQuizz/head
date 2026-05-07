@@ -507,6 +507,20 @@ export class ParticipantService extends BaseService {
     } else {
       try {
         await this.buzzerRepository.pop(sessionId);
+        const nextBuzzer = await this.buzzerRepository.peek(sessionId);
+        if (nextBuzzer && this.kafkaProducer) {
+          await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
+            eventId: randomUUID(),
+            timestamp: Date.now(),
+            eventType: SessionEventTypes.USER_PRESSED_BUZZER,
+            payload: {
+              session_id: sessionId,
+              participant_id: nextBuzzer.participantId,
+              username: nextBuzzer.username,
+            },
+          });
+          logger.info({ sessionId, nextBuzzer: nextBuzzer.participantId }, "USER_PRESSED_BUZZER published for next in queue");
+        }
       } catch (err) {
         logger.error({ err, sessionId }, "Failed to pop buzzer from queue");
       }

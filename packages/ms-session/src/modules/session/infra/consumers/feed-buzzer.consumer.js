@@ -56,13 +56,14 @@ export class FeedBuzzerConsumer {
         throw PARTICIPANT_ALREADY_BUZZED(participantId);
       }
 
+      const queueWasEmpty = !(await this.buzzerRepository.peek(sessionId));
       await this.buzzerRepository.push(sessionId, payload);
       logger.info(
-        { sessionId, participantId },
+        { sessionId, participantId, queueWasEmpty },
         "Buzzer queue updated from Kafka event",
       );
 
-      if (this.kafkaProducer) {
+      if (queueWasEmpty && this.kafkaProducer) {
         await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
           eventId: randomUUID(),
           timestamp: Date.now(),
@@ -73,7 +74,7 @@ export class FeedBuzzerConsumer {
             username: payload.username,
           },
         });
-        logger.info({ sessionId, participantId }, "USER_PRESSED_BUZZER event published");
+        logger.info({ sessionId, participantId }, "USER_PRESSED_BUZZER event published (first in queue)");
       }
     } catch (error) {
       logger.error(
