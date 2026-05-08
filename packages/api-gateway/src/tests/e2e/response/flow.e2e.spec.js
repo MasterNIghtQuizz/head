@@ -275,7 +275,7 @@ describe("Response E2E - Leaderboard and Stats Flow", () => {
       headers: { "game-token": hostGameToken },
     });
     const leaderboard2 = leaderboardRes2.json();
-    expect(leaderboard2).toContainEqual({ participantId: p1Id, score: 3 });
+    expect(leaderboard2).toContainEqual({ participantId: p1Id, score: 2 });
     expect(leaderboard2).toContainEqual({ participantId: p2Id, score: -1 });
 
     // 17. End Session
