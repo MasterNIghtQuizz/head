@@ -5,12 +5,12 @@ import { createMetricsPlugin } from "common-metrics";
 import { websocketPlugin } from "./infrastructure/plugins/websocket.plugin.js";
 import { kafkaPlugin } from "./infrastructure/plugins/kafka.plugin.js";
 import { valkeyPlugin } from "./infrastructure/plugins/valkey.plugin.js";
-import { WebSocketServer } from "ws";
+import { WebSocketServer as _WebSocketServer } from "ws";
 
 /**
  * @returns {Promise<{
  *   fastify: import('./types/fastify.js').AppInstance,
- *   wss: WebSocketServer,
+ *   wss: _WebSocketServer,
  *   kafkaConsumer: import('common-kafka').KafkaConsumer | null,
  *   valkeyConsumer: import('./infrastructure/valkey/consumers/session-notifications.consumer.js').SessionNotificationsConsumer | null
  * }>}

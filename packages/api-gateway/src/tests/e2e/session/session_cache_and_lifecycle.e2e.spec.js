@@ -189,7 +189,7 @@ describe("Session E2E - Cache & Lifecycle Monitoring", () => {
       url: "/sessions/join",
       payload: { session_public_key: pKey, participant_nickname: "Player 1" },
     });
-    const p2 = await app.inject({
+    const _p2 = await app.inject({
       method: "POST",
       url: "/sessions/join",
       payload: { session_public_key: pKey, participant_nickname: "Player 2" },
@@ -233,7 +233,7 @@ describe("Session E2E - Cache & Lifecycle Monitoring", () => {
       headers: { "access-token": hostToken },
       payload: { quiz_id: quizId },
     });
-    const sId = createRes.json().session_id;
+    const _sId = createRes.json().session_id;
     const hGameToken = createRes.json().game_token;
 
     await app.inject({

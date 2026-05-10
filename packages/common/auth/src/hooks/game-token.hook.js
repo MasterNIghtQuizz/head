@@ -10,8 +10,8 @@ import { URL } from "node:url";
 export function hookGameToken(options) {
   return function gameTokenHook(request, _reply, done) {
     const isWebSocketRequest = request.url?.startsWith("/ws");
-    const upgradeHeader = request.headers.upgrade || "";
-    const isWebSocketUpgrade = upgradeHeader.toLowerCase() === "websocket";
+    const _upgradeHeader = request.headers.upgrade || "";
+    const _isWebSocketUpgrade = _upgradeHeader.toLowerCase() === "websocket";
 
     if (request.routeOptions?.config?.isPublic) {
       done();
@@ -27,7 +27,7 @@ export function hookGameToken(options) {
       try {
         const url = new URL(request.url, "http://localhost");
         token = url.searchParams.get("game-token") || undefined;
-      } catch (e) {
+      } catch (_e) {
         // Fallback
       }
     }

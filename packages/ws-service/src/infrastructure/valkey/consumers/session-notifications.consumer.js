@@ -29,7 +29,9 @@ export class SessionNotificationsConsumer {
   }
 
   async #connect(attempt = 0) {
-    if (this.#stopped) { return; }
+    if (this.#stopped) {
+      return;
+    }
 
     try {
       this.#subscriber = await this.#valkeyService.connect();
@@ -73,7 +75,9 @@ export class SessionNotificationsConsumer {
    * @param {number} attempt
    */
   #scheduleReconnect(attempt) {
-    if (this.#stopped) { return; }
+    if (this.#stopped) {
+      return;
+    }
     const delay = Math.min(1000 * Math.pow(2, attempt), 30000);
     logger.info({ delay, attempt: attempt + 1 }, "Scheduling Valkey reconnect");
     this.#retryTimer = setTimeout(() => {

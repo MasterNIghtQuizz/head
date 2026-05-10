@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "common-auth": "workspace:*",
+    "common-axios": "workspace:*",
     "common-config": "workspace:*",
     "common-contracts": "workspace:*",
     "common-core": "workspace:*",
@@ -33,5 +34,8 @@
     "pg": "^8.13.3",
     "reflect-metadata": "^0.2.2",
     "typeorm": "^0.3.20"
+  },
+  "devDependencies": {
+    "ioredis": "^5.4.1"
   }
 }

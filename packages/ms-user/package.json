@@ -17,6 +17,7 @@
     "common-core": "workspace:^",
     "common-crypto": "workspace:*",
     "common-database": "workspace:*",
+    "common-errors": "workspace:*",
     "common-kafka": "workspace:*",
     "common-logger": "workspace:*",
     "common-metrics": "workspace:*",

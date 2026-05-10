@@ -124,7 +124,7 @@ export class ResponseService extends BaseService {
       );
       return saved;
     } catch (error) {
-      throw DATABASE_ERROR(/** @type {Error} */(error));
+      throw DATABASE_ERROR(/** @type {Error} */ (error));
     }
   }
 

@@ -25,7 +25,7 @@ export function registerShutdown(
     try {
       await new Promise((resolve, reject) => {
         wss.close(
-          /** @param {Error} [err] */(err) => {
+          /** @param {Error} [err] */ (err) => {
             if (err) {
               reject(err);
             } else {
@@ -64,7 +64,8 @@ export function registerShutdown(
       }
     }
 
-    logger.info("Shutdown complete. Exiting.");
+    logger.info("Shutdown process completed. Exiting.");
+    // eslint-disable-next-line unicorn/no-process-exit
     process.exit(0);
   };
 

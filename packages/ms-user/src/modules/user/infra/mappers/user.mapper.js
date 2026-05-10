@@ -1,10 +1,10 @@
 import { UserResponseDto } from "../../contracts/user.dto.js";
 import { UserEntity } from "../../core/entities/user.entity.js";
 import { CryptoService } from "common-crypto";
-import { UserModel } from "../models/user.model.js";
+import { UserModel as _UserModel } from "../models/user.model.js";
 
 /**
- * @typedef {UserModel} UserPersistenceModel
+ * @typedef {_UserModel} UserPersistenceModel
  */
 
 export class UserMapper {

@@ -40,7 +40,7 @@ export class ResponseController extends BaseController {
 
     try {
       const result = await this.responseService.handleAnswer(
-        /** @type {import('common-contracts').AnswerEvent} */(value),
+        /** @type {import('common-contracts').AnswerEvent} */ (value),
       );
 
       return reply.code(201).send({
@@ -101,7 +101,7 @@ export class ResponseController extends BaseController {
     try {
       const quiz = await this.responseService.fetchQuizz(
         quizzID,
-        /** @type {string} */(hostId),
+        /** @type {string} */ (hostId),
 
         request.headers,
       );

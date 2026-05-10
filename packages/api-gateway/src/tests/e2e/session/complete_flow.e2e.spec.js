@@ -88,7 +88,7 @@ describe("Session E2E - Complete Game Flow", () => {
     });
     expect(createSessionRes.statusCode).toBe(201);
     const {
-      session_id: sessionId,
+      session_id: _sessionId,
       public_key: publicKey,
       game_token: hostGameToken,
     } = createSessionRes.json();
