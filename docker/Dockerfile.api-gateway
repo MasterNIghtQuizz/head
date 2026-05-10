@@ -1,5 +1,6 @@
 FROM node:24-alpine AS base
 WORKDIR /app
+RUN apk add --no-cache python3 make g++
 
 RUN corepack enable && corepack prepare yarn@4.11.0 --activate
 
@@ -20,6 +21,7 @@ RUN if [ "$PRODUCTION" = "true" ]; then \
 
 FROM node:24-alpine AS runtime
 WORKDIR /app
+RUN apk add --no-cache python3 make g++
 
 RUN corepack enable && corepack prepare yarn@4.11.0 --activate
 

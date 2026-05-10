@@ -4,6 +4,7 @@ FROM node:24-slim AS base
 ENV YARN_VERSION=4.11.0
 RUN corepack enable && corepack prepare yarn@$YARN_VERSION --activate
 WORKDIR /app
+RUN apt-get update && apt-get install -y python3 make gcc g++ && rm -rf /var/lib/apt/lists/*
 
 FROM base AS dependencies
 COPY .yarn ./.yarn
@@ -44,7 +45,8 @@ ENV NODE_ENV=production
 ENV SERVICE_NAME=${SERVICE_NAME}
 
 
-COPY --from=dependencies /app/node_modules ./node_modules
+COPY --from=dependencies /app/.pnp.* ./
+COPY --from=dependencies /app/.yarn ./.yarn
 COPY --from=builder /app/packages /app/packages
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/yarn.lock ./yarn.lock
