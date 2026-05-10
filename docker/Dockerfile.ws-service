@@ -19,8 +19,7 @@ RUN if [ "$PRODUCTION" = "true" ]; then \
     fi
 
 FROM node:24-alpine AS runtime
-WORKDIR /app
-RUN apk add --no-cache python3 make g++/packages/ws-service
+WORKDIR /app/packages/ws-service
 
 RUN corepack enable && corepack prepare yarn@4.11.0 --activate
 
