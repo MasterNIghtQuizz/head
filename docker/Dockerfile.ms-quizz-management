@@ -1,6 +1,5 @@
 FROM node:24-alpine AS base
 WORKDIR /app
-RUN apk add --no-cache build-base python3 python3-dev linux-headers && ln -sf /usr/bin/python3 /usr/bin/python
 
 RUN corepack enable && corepack prepare yarn@4.11.0 --activate
 

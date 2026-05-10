@@ -4,7 +4,6 @@ FROM node:24-slim AS base
 ENV YARN_VERSION=4.11.0
 RUN corepack enable && corepack prepare yarn@$YARN_VERSION --activate
 WORKDIR /app
-RUN apt-get update && apt-get install -y python3 make gcc g++ && rm -rf /var/lib/apt/lists/*
 
 FROM base AS dependencies
 COPY .yarn ./.yarn

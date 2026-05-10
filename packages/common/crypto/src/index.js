@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import fs from "node:fs";
 import crypto from "node:crypto";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import logger from "common-logger";
 
 export class CryptoService {
