@@ -19,3 +19,4 @@ registerShutdown(fastify, { kafkaProducer, kafkaConsumer });
 logger.info({ port: config.port, env: config.env }, "MS Session starting...");
 
 await fastify.listen({ host: "0.0.0.0", port: config.port });
+// Trigger CI for PnP transition
