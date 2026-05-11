@@ -20,7 +20,7 @@ vi.mock("common-crypto", () => ({
     sha256Hash: vi.fn((val) => `hash-${val}`),
     sign: vi.fn((val) => `signed-${val}`),
     // @ts-ignore
-    verify: vi.fn((val) => ({ userId: "1", type: "REFRESH" })),
+    verify: vi.fn(() => ({ userId: "1", type: "REFRESH" })),
   },
 }));
 

@@ -74,7 +74,10 @@ export class FeedBuzzerConsumer {
             username: payload.username,
           },
         });
-        logger.info({ sessionId, participantId }, "USER_PRESSED_BUZZER event published (first in queue)");
+        logger.info(
+          { sessionId, participantId },
+          "USER_PRESSED_BUZZER event published (first in queue)",
+        );
       }
     } catch (error) {
       logger.error(

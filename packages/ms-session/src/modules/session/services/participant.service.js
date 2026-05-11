@@ -519,7 +519,10 @@ export class ParticipantService extends BaseService {
               username: nextBuzzer.username,
             },
           });
-          logger.info({ sessionId, nextBuzzer: nextBuzzer.participantId }, "USER_PRESSED_BUZZER published for next in queue");
+          logger.info(
+            { sessionId, nextBuzzer: nextBuzzer.participantId },
+            "USER_PRESSED_BUZZER published for next in queue",
+          );
         }
       } catch (err) {
         logger.error({ err, sessionId }, "Failed to pop buzzer from queue");
@@ -630,7 +633,10 @@ export class ParticipantService extends BaseService {
       try {
         await this.valkeyRepository.set(responseCacheKey, "true", 3600);
       } catch (err) {
-        logger.warn({ err, sessionId: session.id, participantId }, "Failed to set buzzer response cache key");
+        logger.warn(
+          { err, sessionId: session.id, participantId },
+          "Failed to set buzzer response cache key",
+        );
       }
     }
 

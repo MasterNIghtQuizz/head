@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { ParticipantRoles } from "common-contracts";
 import { messageType } from "common-websocket";
 
 // Mock connection-store
@@ -40,7 +39,6 @@ vi.mock("../../lib/session-capacity-store.js", () => ({
 import { handleSessionDeparture } from "../../handlers/session-membership.handler.js";
 import {
   getSessionSockets,
-  getSocketContext,
   deleteParticipants,
 } from "../../lib/connection-store.js";
 import { broadcastToSession } from "../../lib/messaging.js";
@@ -71,7 +69,6 @@ describe("Host Departure Logic", () => {
   it("should kick everyone and delete session data when the owner leaves", () => {
     const sessionId = "session-123";
     const ownerId = "owner-456";
-    const otherUserId = "player-789";
 
     const mockSocket = { close: vi.fn() };
 

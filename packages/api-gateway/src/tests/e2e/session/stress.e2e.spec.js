@@ -13,6 +13,7 @@ describe("Session E2E Professional Stress Test", () => {
     try {
       await seedDatabase();
     } catch {
+      // eslint-disable-next-line no-console
       console.warn("Infra check failed");
     }
   });
@@ -70,7 +71,7 @@ describe("Session E2E Professional Stress Test", () => {
       payload: { quiz_id: quizId },
     });
     const {
-      session_id: sessionId,
+      session_id: _sessionId,
       public_key: publicKey,
       game_token: hostToken,
     } = sessionRes.json();

@@ -1,10 +1,9 @@
-import { WebSocketServer } from "ws";
 import logger from "../../logger.js";
 
 /**
  * @param {import('../../types/fastify.js').AppInstance} fastify
  * @param {Object} opts
- * @param {WebSocketServer} opts.wss
+ * @param {import('ws').WebSocketServer} opts.wss
  * @param {import('common-kafka').KafkaConsumer | null} opts.kafkaConsumer
  * @param {import('../../infrastructure/valkey/consumers/session-notifications.consumer.js').SessionNotificationsConsumer | null} opts.valkeyConsumer
  */
@@ -25,7 +24,7 @@ export function registerShutdown(
     try {
       await new Promise((resolve, reject) => {
         wss.close(
-          /** @param {Error} [err] */(err) => {
+          /** @param {Error} [err] */ (err) => {
             if (err) {
               reject(err);
             } else {
@@ -64,7 +63,8 @@ export function registerShutdown(
       }
     }
 
-    logger.info("Shutdown complete. Exiting.");
+    logger.info("Shutdown process completed. Exiting.");
+    // eslint-disable-next-line unicorn/no-process-exit
     process.exit(0);
   };
 

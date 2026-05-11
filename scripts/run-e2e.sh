@@ -58,11 +58,11 @@ http_post() {
 }
 
 generate_internal_token() {
-  node --input-type=module -e "
+  yarn workspace @monorepo/api-gateway node --input-type=module -e "
     import { CryptoService } from 'common-crypto';
     import { TokenType } from 'common-auth';
     import path from 'node:path';
-    const keyPath = path.resolve(process.cwd(), 'keys/internal-private.pem');
+    const keyPath = path.resolve('/app', 'keys/internal-private.pem');
     const token = CryptoService.sign(
       { userId: 'e2e-runner', role: 'admin', type: TokenType.INTERNAL, source: 'e2e-script' },
       keyPath,

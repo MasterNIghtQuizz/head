@@ -267,7 +267,6 @@ export class SessionEventsConsumer {
       removeParticipant(sessionId, participantId);
     }
 
-
     initSessionParticipants(sessionId);
 
     const participantSocket = getSocketByUserId(participantId);

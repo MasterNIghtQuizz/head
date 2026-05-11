@@ -2,7 +2,7 @@ import { BaseService } from "common-core";
 import logger from "../../../logger.js";
 import { QUESTION_NOT_FOUND } from "../errors/question.errors.js";
 import { DATABASE_ERROR } from "../errors/internal.errors.js";
-import { BaseError } from "common-errors";
+import { BaseError as _BaseError } from "common-errors";
 import { QuestionEntity } from "../core/entities/question.entity.js";
 import { QuestionMapper } from "../infra/mappers/question.mapper.js";
 
@@ -146,7 +146,7 @@ export class QuestionService extends BaseService {
       logger.info({ id }, "Question fetched from DB");
       return dto;
     } catch (error) {
-      if (/** @type {BaseError} */ (error).statusCode) {
+      if (/** @type {_BaseError} */ (error).statusCode) {
         throw error;
       }
       logger.error(
@@ -170,7 +170,7 @@ export class QuestionService extends BaseService {
       }
       return entity.choices.map((choice) => choice.id);
     } catch (error) {
-      if (/** @type {BaseError} */ (error).statusCode) {
+      if (/** @type {_BaseError} */ (error).statusCode) {
         throw error;
       }
       logger.error(
@@ -273,7 +273,7 @@ export class QuestionService extends BaseService {
       logger.info({ id }, "Question updated successfully");
       return dto;
     } catch (error) {
-      if (/** @type {BaseError} */ (error).statusCode) {
+      if (/** @type {_BaseError} */ (error).statusCode) {
         throw error;
       }
       logger.error(
@@ -329,7 +329,7 @@ export class QuestionService extends BaseService {
         ),
       );
     } catch (error) {
-      if (/** @type {BaseError} */ (error).statusCode) {
+      if (/** @type {_BaseError} */ (error).statusCode) {
         throw error;
       }
       logger.error(

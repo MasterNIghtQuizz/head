@@ -2,7 +2,7 @@ import { BaseService } from "common-core";
 import logger from "../../../logger.js";
 import { QUIZ_NOT_FOUND, QUIZ_CONFLICT } from "../errors/quiz.errors.js";
 import { DATABASE_ERROR } from "../errors/internal.errors.js";
-import { BaseError } from "common-errors";
+import { BaseError as _BaseError } from "common-errors";
 import { QuizEntity } from "../core/entities/quiz.entity.js";
 import { QuizMapper } from "../infra/mappers/quiz.mapper.js";
 
@@ -100,7 +100,7 @@ export class QuizService extends BaseService {
       logger.info({ id }, "Quiz fetched from DB");
       return dto;
     } catch (error) {
-      if (/** @type {BaseError} */ (error).statusCode) {
+      if (/** @type {_BaseError} */ (error).statusCode) {
         throw error;
       }
       logger.error(
@@ -183,7 +183,7 @@ export class QuizService extends BaseService {
       logger.info({ id }, "Quiz updated successfully");
       return dto;
     } catch (error) {
-      if (/** @type {BaseError} */ (error).statusCode) {
+      if (/** @type {_BaseError} */ (error).statusCode) {
         throw error;
       }
       // @ts-ignore
@@ -258,7 +258,7 @@ export class QuizService extends BaseService {
         "Quiz and all related sub-resources deleted successfully",
       );
     } catch (error) {
-      if (/** @type {BaseError} */ (error).statusCode) {
+      if (/** @type {_BaseError} */ (error).statusCode) {
         throw error;
       }
 
@@ -312,7 +312,7 @@ export class QuizService extends BaseService {
 
       return result;
     } catch (error) {
-      if (/** @type {BaseError} */ (error).statusCode) {
+      if (/** @type {_BaseError} */ (error).statusCode) {
         throw error;
       }
       throw DATABASE_ERROR(/** @type {Error} */ (error));
@@ -330,7 +330,7 @@ export class QuizService extends BaseService {
       }
     } catch (error) {
       logger.warn(
-        { error: /** @type {BaseError} */ (error), quizId },
+        { error: /** @type {_BaseError} */ (error), quizId },
         "Valkey cache get failed",
       );
     }
@@ -346,13 +346,13 @@ export class QuizService extends BaseService {
         await this.valkeyRepository.set(cacheKey, dto, this.cacheTtl);
       } catch (cacheError) {
         logger.warn(
-          { error: /** @type {BaseError} */ (cacheError), quizId },
+          { error: /** @type {_BaseError} */ (cacheError), quizId },
           "Valkey cache set failed",
         );
       }
       return dto;
     } catch (error) {
-      if (/** @type {BaseError} */ (error).statusCode) {
+      if (/** @type {_BaseError} */ (error).statusCode) {
         throw error;
       }
       throw DATABASE_ERROR(/** @type {Error} */ (error));
@@ -370,7 +370,7 @@ export class QuizService extends BaseService {
       }
     } catch (error) {
       logger.warn(
-        { error: /** @type {BaseError} */ (error), quizId },
+        { error: /** @type {_BaseError} */ (error), quizId },
         "Valkey cache get failed",
       );
     }
@@ -386,13 +386,13 @@ export class QuizService extends BaseService {
         await this.valkeyRepository.set(cacheKey, dto, this.cacheTtl);
       } catch (cacheError) {
         logger.warn(
-          { error: /** @type {BaseError} */ (cacheError), quizId },
+          { error: /** @type {_BaseError} */ (cacheError), quizId },
           "Valkey cache set failed",
         );
       }
       return dto;
     } catch (error) {
-      if (/** @type {BaseError} */ (error).statusCode) {
+      if (/** @type {_BaseError} */ (error).statusCode) {
         throw error;
       }
       throw DATABASE_ERROR(/** @type {Error} */ (error));

@@ -129,9 +129,9 @@ export class SessionService extends BaseService {
               choiceIds: (q.choices || []).map(
                 (/** @type {Choice} */ c) => c.id,
               ),
-              correctChoiceIds: (q.choices || []).filter(
-                (/** @type {Choice} */ c) => c.is_correct,
-              ).map((/** @type {Choice} */ c) => c.id),
+              correctChoiceIds: (q.choices || [])
+                .filter((/** @type {Choice} */ c) => c.is_correct)
+                .map((/** @type {Choice} */ c) => c.id),
             };
             const fullQuestion = new Question({
               ...q,
@@ -234,24 +234,29 @@ export class SessionService extends BaseService {
         throw SESSION_NOT_FOUND(sessionId);
       }
 
-      const [participants, currentQuestion, activatedAt, questionIds] = await Promise.all([
-        this.participantRepository.findBySessionId(sessionId),
-        session.currentQuestionId
-          ? this.getCurrentQuestion(sessionId, headers, participantId).catch(
-              (err) => {
-                logger.warn(
-                  { sessionId, err: err.message },
-                  "Failed to fetch current question during getSession",
-                );
-                return null;
-              },
-            )
-          : Promise.resolve(null),
-        this.valkeyRepository.get(`session:${sessionId}:question_activated_at`),
-        this.valkeyRepository.get(`session:${sessionId}:questions:ids`),
-      ]);
+      const [participants, currentQuestion, activatedAt, questionIds] =
+        await Promise.all([
+          this.participantRepository.findBySessionId(sessionId),
+          session.currentQuestionId
+            ? this.getCurrentQuestion(sessionId, headers, participantId).catch(
+                (err) => {
+                  logger.warn(
+                    { sessionId, err: err.message },
+                    "Failed to fetch current question during getSession",
+                  );
+                  return null;
+                },
+              )
+            : Promise.resolve(null),
+          this.valkeyRepository.get(
+            `session:${sessionId}:question_activated_at`,
+          ),
+          this.valkeyRepository.get(`session:${sessionId}:questions:ids`),
+        ]);
 
-      const isLastQuestion = Array.isArray(questionIds) && questionIds[questionIds.length - 1] === session.currentQuestionId;
+      const isLastQuestion =
+        Array.isArray(questionIds) &&
+        questionIds[questionIds.length - 1] === session.currentQuestionId;
 
       const hasAnswered =
         session.currentQuestionId && participantId
@@ -341,9 +346,9 @@ export class SessionService extends BaseService {
               choiceIds: (q.choices || []).map(
                 (/** @type {Choice} */ c) => c.id,
               ),
-              correctChoiceIds: (q.choices || []).filter(
-                (/** @type {Choice} */ c) => c.is_correct,
-              ).map((/** @type {Choice} */ c) => c.id),
+              correctChoiceIds: (q.choices || [])
+                .filter((/** @type {Choice} */ c) => c.is_correct)
+                .map((/** @type {Choice} */ c) => c.id),
             };
             const fullQuestion = new Question({
               ...q,
@@ -766,9 +771,9 @@ export class SessionService extends BaseService {
                 choiceIds: (q.choices || []).map(
                   (/** @type {any} */ c) => c.id,
                 ),
-                correctChoiceIds: (q.choices || []).filter(
-                  (/** @type {any} */ c) => c.is_correct,
-                ).map((/** @type {any} */ c) => c.id),
+                correctChoiceIds: (q.choices || [])
+                  .filter((/** @type {any} */ c) => c.is_correct)
+                  .map((/** @type {any} */ c) => c.id),
               };
               const fullQuestion = new Question({
                 ...q,
@@ -805,7 +810,9 @@ export class SessionService extends BaseService {
 
       let isModerator = false;
       if (participantId) {
-        const participant = await this.participantRepository.find(participantId).catch(() => null);
+        const participant = await this.participantRepository
+          .find(participantId)
+          .catch(() => null);
         isModerator = participant?.role === ParticipantRoles.HOST;
       }
       let currentBuzzer = null;
@@ -843,12 +850,18 @@ export class SessionService extends BaseService {
 
       let correctChoiceIds = [];
       if (isModerator) {
-        const validationCache = await this.valkeyRepository.get(`question:${question.id}:validation`).catch(() => null);
+        const validationCache = await this.valkeyRepository
+          .get(`question:${question.id}:validation`)
+          .catch(() => null);
         correctChoiceIds = validationCache?.correctChoiceIds || [];
       }
 
-      const questionIds = await this.valkeyRepository.get(`session:${sessionId}:questions:ids`);
-      const isLastQuestion = Array.isArray(questionIds) && questionIds[questionIds.length - 1] === question.id;
+      const questionIds = await this.valkeyRepository.get(
+        `session:${sessionId}:questions:ids`,
+      );
+      const isLastQuestion =
+        Array.isArray(questionIds) &&
+        questionIds[questionIds.length - 1] === question.id;
 
       return new GetCurrentQuestionResponseDto({
         question_id: question.id,
@@ -858,7 +871,9 @@ export class SessionService extends BaseService {
         choices: (question.choices || []).map((c) => ({
           id: c.id,
           text: c.text,
-          ...(isModerator ? { is_correct: correctChoiceIds.includes(c.id) } : {}),
+          ...(isModerator
+            ? { is_correct: correctChoiceIds.includes(c.id) }
+            : {}),
         })),
         current_buzzer: currentBuzzer,
         is_last_question: isLastQuestion,
@@ -932,7 +947,10 @@ export class SessionService extends BaseService {
           payload: { sessionId, questionId },
         });
         await this.valkeyRepository.publish(channel, message);
-        logger.info({ sessionId, questionId }, "Results display triggered via Valkey");
+        logger.info(
+          { sessionId, questionId },
+          "Results display triggered via Valkey",
+        );
       } catch (valkeyErr) {
         logger.warn(
           { sessionId, questionId, err: valkeyErr.message },
@@ -945,7 +963,10 @@ export class SessionService extends BaseService {
             eventType: SessionEventTypes.SESSION_RESULTS_DISPLAYED,
             payload: { sessionId, questionId },
           });
-          logger.info({ sessionId, questionId }, "Results display triggered via Kafka fallback");
+          logger.info(
+            { sessionId, questionId },
+            "Results display triggered via Kafka fallback",
+          );
         } else {
           throw valkeyErr;
         }

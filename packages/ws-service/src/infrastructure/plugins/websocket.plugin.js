@@ -110,7 +110,7 @@ async function websocketPluginImpl(fastify) {
         }
       });
 
-      ws.on("close", (code, reason) => {
+      ws.on("close", (code, _reason) => {
         wsConnectionsActive.dec({ service: "ws-service" });
         userDisconnect(ws, connectedUser.userId, connectedUser.userName);
         logger.info(

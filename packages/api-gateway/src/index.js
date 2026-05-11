@@ -1,11 +1,8 @@
-import { initTracing } from "common-monitoring";
+
+
 import { config } from "./config.js";
 
-initTracing({
-  serviceName: "api-gateway",
-  enabled: config.otel.enabled,
-  exporterUrl: config.otel.exporterUrl,
-});
+
 
 const { default: logger } = await import("./logger.js");
 const { createServer } = await import("./app.js");
@@ -32,6 +29,7 @@ const shutdown = async (/** @type {string} */ signal) => {
   }
 
   logger.info("Shutdown complete. Exiting.");
+  // eslint-disable-next-line unicorn/no-process-exit
   process.exit(0);
 };
 

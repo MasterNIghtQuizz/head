@@ -109,7 +109,7 @@ describe("TypeOrmResponseRepository Integration Tests", () => {
   /** @param {Partial<import('common-contracts').ResponseProps>} [overrides] */
   function buildEntity(overrides = {}) {
     return new ResponseEntity(
-      /** @type {import('common-contracts').ResponseProps} */({
+      /** @type {import('common-contracts').ResponseProps} */ ({
         participantId: "11111111-1111-1111-1111-111111111111",
         questionId: "22222222-2222-2222-2222-222222222222",
         sessionId: "33333333-3333-3333-3333-333333333333",
@@ -282,7 +282,7 @@ describe("TypeOrmResponseRepository Integration Tests", () => {
         isCorrect: false,
       });
 
-      await repository.update(/** @type {string} */(created.id), updated);
+      await repository.update(/** @type {string} */ (created.id), updated);
 
       const found = await repository.findByParticipantAndQuestion(
         created.participantId,

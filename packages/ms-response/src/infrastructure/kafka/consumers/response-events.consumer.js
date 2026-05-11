@@ -220,7 +220,12 @@ export class ResponseEventsConsumer {
    */
   async onBuzzerAnswered(payload, logCtx) {
     logger.info(
-      { ...logCtx, sessionId: payload.sessionId, participantId: payload.participantId, isCorrect: payload.isCorrect },
+      {
+        ...logCtx,
+        sessionId: payload.sessionId,
+        participantId: payload.participantId,
+        isCorrect: payload.isCorrect,
+      },
       "Executing onBuzzerAnswered",
     );
 

@@ -1,33 +1,80 @@
-FROM node:24-alpine AS base
+# syntax=docker/dockerfile:1
+# 🚀 Dockerfile optimisé pour Node 24 + Yarn PnP (ZIP mode)
+# Résout l'erreur "EBADF: bad file descriptor" via Yarn 4.14.1 + Inlining
+
+FROM node:24-bookworm AS base
+
+# Installation des dépendances système (Debian Bookworm recommandé vs Alpine pour glibc)
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
-RUN corepack enable && corepack prepare yarn@4.11.0 --activate
+# Activation de Corepack avec Yarn 4.14.1 (version contenant les patchs pour Node 24 fstat)
+RUN corepack enable && corepack prepare yarn@4.14.1 --activate
 
-ARG PRODUCTION=true
+# Copie des fichiers de configuration Yarn PnP
+COPY .yarnrc.yml package.json yarn.lock ./
+COPY .yarn ./.yarn
 
-COPY package.json yarn.lock .yarnrc.yml ./
-COPY packages/common ./packages/common
-COPY packages/ms-session ./packages/ms-session
-COPY keys ./keys
-COPY scripts ./scripts
-COPY vitest.config.js vitest.config.e2e.js jsconfig.json ./
+# Copy package.json of all packages for Yarn PnP discovery
+COPY packages/common/auth/package.json ./packages/common/auth/
+COPY packages/common/axios/package.json ./packages/common/axios/
+COPY packages/common/config/package.json ./packages/common/config/
+COPY packages/common/contracts/package.json ./packages/common/contracts/
+COPY packages/common/core/package.json ./packages/common/core/
+COPY packages/common/crypto/package.json ./packages/common/crypto/
+COPY packages/common/database/package.json ./packages/common/database/
+COPY packages/common/errors/package.json ./packages/common/errors/
+COPY packages/common/kafka/package.json ./packages/common/kafka/
+COPY packages/common/logger/package.json ./packages/common/logger/
+COPY packages/common/swagger/package.json ./packages/common/swagger/
+COPY packages/common/valkey/package.json ./packages/common/valkey/
+COPY packages/common/metrics/package.json ./packages/common/metrics/
+COPY packages/api-gateway/package.json ./packages/api-gateway/
+COPY packages/ms-user/package.json ./packages/ms-user/
+COPY packages/ms-quizz-management/package.json ./packages/ms-quizz-management/
+COPY packages/common/websocket/package.json ./packages/common/websocket/
+COPY packages/ws-service/package.json ./packages/ws-service/
+COPY packages/ms-session/package.json ./packages/ms-session/
+COPY packages/ms-response/package.json ./packages/ms-response/
 
-RUN if [ "$PRODUCTION" = "true" ]; then \
-      yarn workspaces focus @monorepo/ms-session --production; \
-    else \
-      yarn install; \
-    fi
 
-FROM node:24-alpine AS runtime
-WORKDIR /app/packages/ms-session
+# Installation en mode PnP ZIP Strict
+ENV YARN_PNP_FALLBACK_MODE=dependenciesonly
+RUN yarn install
 
-RUN corepack enable && corepack prepare yarn@4.11.0 --activate
+# Copie du code source
+COPY . .
 
+# --- Runtime Stage ---
+FROM node:24-bookworm AS runtime
+RUN apt-get update && apt-get install -y wget && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+
+# Activation de Corepack dans le runtime pour supporter "yarn workspace" dans docker-compose
+RUN corepack enable && corepack prepare yarn@4.14.1 --activate
+
+# Variables d'environnement critiques pour la stabilité du loader ESM sur Node 24
+ENV NODE_ENV=production
+ENV PORT=4013
+ENV YARN_PNP_FALLBACK_MODE=dependenciesonly
+
+# ⚡ SOLUTION TECHNIQUE : --require + --import est obligatoire pour CJS + ESM sur Node 24
+# L'inlining (pnpEnableInlining: true) évite les erreurs de descripteur de fichier (EBADF)
+
+# Copie des artefacts PnP et du code (ZIP archives incluses)
 COPY --from=base /app /app
 
 EXPOSE 4003
 
-HEALTHCHECK --interval=10s --timeout=3s --retries=5 \
-  CMD wget -qO- http://127.0.0.1:${PORT:-4013}/health | grep ok || exit 1
+# Vérification de santé
+HEALTHCHECK --start-period=30s --interval=10s --timeout=3s --retries=5 \
+  CMD wget -qO- http://127.0.0.1:${PORT}/health | grep ok || exit 1
 
-CMD ["node", "src/index.js"]
+# Commande de démarrage directe
+CMD ["yarn", "node", "packages/ms-session/src/index.js"]

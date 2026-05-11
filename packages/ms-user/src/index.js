@@ -1,11 +1,4 @@
-import { initTracing } from "common-monitoring";
 import { config } from "./config.js";
-
-initTracing({
-  serviceName: "ms-user",
-  enabled: config.otel.enabled,
-  exporterUrl: config.otel.exporterUrl,
-});
 
 import logger from "./logger.js";
 import { createServer } from "./app.js";

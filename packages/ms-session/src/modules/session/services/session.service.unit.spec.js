@@ -21,7 +21,6 @@ import {
   QUIZZ_NOT_FOUND,
   EMPTY_QUIZZ,
 } from "../errors/session.errors.js";
-import { Question } from "common-core";
 
 vi.mock("common-axios");
 vi.mock("common-crypto");
