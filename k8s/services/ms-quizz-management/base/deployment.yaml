@@ -37,11 +37,11 @@ spec:
               memory: "64Mi"
             limits:
               cpu: "50m"
-              memory: "256Mi"
+              memory: "128Mi"
           command: ["/bin/sh", "-c"]
           args:
             - |
-              node -e "const net = require('net'); const s = () => { const c = net.createConnection(process.env.POSTGRES_PORT, process.env.POSTGRES_HOST).on('connect', () => process.exit(0)).on('error', () => { console.log('waiting for postgres...'); setTimeout(s, 2000); }); }; s();" && yarn workspace @monorepo/ms-quizz-management run migrations:run
+              node -e "const net = require('net'); const s = () => { const c = net.createConnection(process.env.POSTGRES_PORT, process.env.POSTGRES_HOST).on('connect', () => process.exit(0)).on('error', () => { setTimeout(s, 2000); }); }; s();" && yarn workspace @monorepo/ms-quizz-management run migrations:run
           envFrom:
             - configMapRef:
                 name: global-config
@@ -65,6 +65,8 @@ spec:
           volumeMounts:
             - name: tmp
               mountPath: /tmp
+            - name: tmp
+              mountPath: /home/node
       containers:
         - name: ms-quizz-management
           image: victorcra/masterquizz-ms-quizz-management:1.0.0
@@ -81,7 +83,6 @@ spec:
             limits:
               cpu: "500m"
               memory: "512Mi"
-
           livenessProbe:
             httpGet:
               path: /metrics
@@ -132,6 +133,8 @@ spec:
               readOnly: true
             - name: tmp
               mountPath: /tmp
+            - name: tmp
+              mountPath: /home/node
       volumes:
         - name: auth-keys
           secret:
