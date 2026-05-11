@@ -490,9 +490,9 @@ services:
       RESPONSE_SERVICE_URL: "http://ms-response-test:4014"
       VALKEY_HOST: valkey-test
       VALKEY_PORT: 6379
-    volumes:
-      - .:/app
-      - /app/node_modules
+    # volumes:
+    #   - .:/app
+    #   - /app/node_modules
     depends_on:
       valkey-test:
         condition: service_healthy
@@ -527,9 +527,9 @@ services:
       VALKEY_PORT: 6379
       KAFKA_BROKERS: "[]"
       KAFKA_ENABLED: "false"
-    volumes:
-      - .:/app
-      - /app/node_modules
+    # volumes:
+    #   - .:/app
+    #   - /app/node_modules
     healthcheck:
       test:
         [
@@ -570,9 +570,9 @@ services:
       VALKEY_PORT: 6379
       KAFKA_BROKERS: "[]"
       KAFKA_ENABLED: "false"
-    volumes:
-      - .:/app
-      - /app/node_modules
+    # volumes:
+    #   - .:/app
+    #   - /app/node_modules
     healthcheck:
       test:
         [
@@ -613,9 +613,9 @@ services:
       KAFKA_BROKERS: "[]"
       KAFKA_ENABLED: "false"
       USER_SERVICE_URL: "http://ms-user-test:4011"
-    volumes:
-      - .:/app
-      - /app/node_modules
+    # volumes:
+    #   - .:/app
+    #   - /app/node_modules
     healthcheck:
       test:
         [
@@ -655,9 +655,9 @@ services:
       KAFKA_ENABLED: "false"
       QUIZZ_SERVICE_URL: "http://ms-quizz-management-test:4012"
       SESSION_SERVICE_URL: "http://ms-session-test:4013"
-    volumes:
-      - .:/app
-      - /app/node_modules
+    # volumes:
+    #   - .:/app
+    #   - /app/node_modules
     healthcheck:
       test:
         [

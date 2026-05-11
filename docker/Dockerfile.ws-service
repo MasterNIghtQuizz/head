@@ -1,32 +1,39 @@
-FROM node:24-alpine AS base
+# syntax=docker/dockerfile:1
+FROM node:24-bookworm-slim AS base
+
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
-RUN corepack enable && corepack prepare yarn@4.11.0 --activate
+RUN corepack enable && corepack prepare yarn@4.14.1 --activate
 
-ARG PRODUCTION=true
+COPY .yarnrc.yml package.json yarn.lock ./
+COPY .yarn ./.yarn
 
-COPY package.json yarn.lock .yarnrc.yml ./
-COPY packages/common ./packages/common
-COPY packages/ws-service ./packages/ws-service
-COPY keys ./keys
-COPY vitest.config.js vitest.config.e2e.js jsconfig.json ./
+ENV YARN_PNP_FALLBACK_MODE=dependenciesonly
+RUN yarn install
 
-RUN if [ "$PRODUCTION" = "true" ]; then \
-      yarn workspaces focus @monorepo/ws-service --production; \
-    else \
-      yarn install; \
-    fi
+COPY . .
 
-FROM node:24-alpine AS runtime
-WORKDIR /app/packages/ws-service
+# --- Runtime Stage ---
+FROM node:24-bookworm-slim AS runtime
+WORKDIR /app
+RUN corepack enable && corepack prepare yarn@4.14.1 --activate
 
-RUN corepack enable && corepack prepare yarn@4.11.0 --activate
+ENV NODE_ENV=production
+ENV PORT=4005
+ENV YARN_PNP_FALLBACK_MODE=dependenciesonly
 
 COPY --from=base /app /app
 
 EXPOSE 4005
 
 HEALTHCHECK --interval=10s --timeout=3s --retries=5 \
-  CMD wget -qO- http://127.0.0.1:${PORT:-4005}/health | grep ok || exit 1
+  CMD wget -qO- http://127.0.0.1:${PORT}/health | grep ok || exit 1
 
-CMD ["node", "src/index.js"]
+CMD ["yarn", "node", "packages/ws-service/src/index.js"]

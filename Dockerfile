@@ -1,7 +1,8 @@
 # syntax=docker/dockerfile:1
 
-FROM node:24-slim AS base
+FROM node:24 AS base
 ENV YARN_VERSION=4.11.0
+RUN apt-get update && apt-get install -y wget && rm -rf /var/lib/apt/lists/*
 RUN corepack enable && corepack prepare yarn@$YARN_VERSION --activate
 WORKDIR /app
 
@@ -9,6 +10,7 @@ FROM base AS dependencies
 COPY .yarn ./.yarn
 COPY .yarnrc.yml package.json yarn.lock ./
 
+# Copy package.json of all packages
 COPY packages/common/auth/package.json ./packages/common/auth/
 COPY packages/common/axios/package.json ./packages/common/axios/
 COPY packages/common/config/package.json ./packages/common/config/
@@ -31,9 +33,7 @@ COPY packages/ws-service/package.json ./packages/ws-service/
 COPY packages/ms-session/package.json ./packages/ms-session/
 COPY packages/ms-response/package.json ./packages/ms-response/
 
-
 RUN yarn install --immutable
-
 
 FROM dependencies AS builder
 COPY . .
@@ -42,7 +42,6 @@ FROM base AS runner
 ARG SERVICE_NAME
 ENV NODE_ENV=production
 ENV SERVICE_NAME=${SERVICE_NAME}
-
 
 COPY --from=dependencies /app/.pnp.* ./
 COPY --from=dependencies /app/.yarn ./.yarn

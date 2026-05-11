@@ -1,11 +1,9 @@
-import { initTracing } from "common-monitoring";
+
+
 import { config } from "./config.js";
 
-initTracing({
-  serviceName: "ms-quizz-management",
-  enabled: config.otel.enabled,
-  exporterUrl: config.otel.exporterUrl,
-});
+
+
 
 import "reflect-metadata";
 import { fileURLToPath } from "node:url";

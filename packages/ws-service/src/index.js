@@ -1,11 +1,9 @@
-import { initTracing } from "common-monitoring";
+
+
 import { config } from "./config.js";
 
-initTracing({
-  serviceName: "ws-service",
-  enabled: config.otel.enabled,
-  exporterUrl: config.otel.exporterUrl,
-});
+
+
 
 import { fileURLToPath } from "node:url";
 import logger from "./logger.js";

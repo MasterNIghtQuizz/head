@@ -1,11 +1,6 @@
-import { initTracing } from "common-monitoring";
 import { config } from "./config.js";
 
-initTracing({
-  serviceName: "ms-session",
-  enabled: config.otel.enabled,
-  exporterUrl: config.otel.exporterUrl,
-});
+
 
 import "reflect-metadata";
 import logger from "./logger.js";

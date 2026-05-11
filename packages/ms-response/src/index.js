@@ -1,15 +1,13 @@
-import { fileURLToPath } from "node:url";
-import { initTracing } from "common-monitoring";
+
+
 import { config } from "./config.js";
+
+
+import { fileURLToPath } from "node:url";
 import { createServer } from "./app.js";
 import { registerShutdown } from "./infrastructure/utils/shutdown.util.js";
 import logger from "./logger.js";
 
-initTracing({
-  serviceName: "ms-response",
-  enabled: config.otel?.enabled ?? false,
-  exporterUrl: config.otel?.exporterUrl ?? "",
-});
 
 export async function start() {
   const { fastify, kafkaConsumer, valkeyService } = await createServer();
