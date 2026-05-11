@@ -1,7 +1,6 @@
+import logger from "./logger.js";
 import { config } from "./config.js";
-
-const { default: logger } = await import("./logger.js");
-const { createServer } = await import("./app.js");
+import { createServer } from "./app.js";
 
 const fastify = await createServer();
 
