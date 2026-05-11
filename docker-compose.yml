@@ -159,7 +159,8 @@ services:
       prometheus:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health || exit 1"]
+      test:
+        ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -286,6 +287,9 @@ services:
         condition: service_healthy
       valkey:
         condition: service_healthy
+    volumes:
+      - ./scripts:/app/scripts:ro
+      - ./keys:/app/keys:ro
 
   ms-user:
     profiles: [app]
@@ -502,9 +506,10 @@ services:
       RESPONSE_SERVICE_URL: "http://ms-response-test:4014"
       VALKEY_HOST: valkey-test
       VALKEY_PORT: 6379
-    # volumes:
-    #   - .:/app
-    #   - /app/node_modules
+    volumes:
+      - ./scripts:/app/scripts:ro
+      - ./keys:/app/keys:ro
+      - ./vitest.config.e2e.js:/app/vitest.config.e2e.js:ro
     depends_on:
       valkey-test:
         condition: service_healthy
@@ -556,9 +561,8 @@ services:
       resources:
         limits:
           memory: 512M
-    # volumes:
-    #   - .:/app
-    #   - /app/node_modules
+    volumes:
+      - ./keys:/app/keys:ro
     healthcheck:
       test:
         [
@@ -604,9 +608,8 @@ services:
       resources:
         limits:
           memory: 512M
-    # volumes:
-    #   - .:/app
-    #   - /app/node_modules
+    volumes:
+      - ./keys:/app/keys:ro
     healthcheck:
       test:
         [
@@ -652,9 +655,8 @@ services:
       resources:
         limits:
           memory: 512M
-    # volumes:
-    #   - .:/app
-    #   - /app/node_modules
+    volumes:
+      - ./keys:/app/keys:ro
     healthcheck:
       test:
         [
@@ -699,9 +701,8 @@ services:
       resources:
         limits:
           memory: 512M
-    # volumes:
-    #   - .:/app
-    #   - /app/node_modules
+    volumes:
+      - ./keys:/app/keys:ro
     healthcheck:
       test:
         [
@@ -740,6 +741,7 @@ services:
       retries: 5
     volumes:
       - valkeydata-test-response:/data
+      - ./keys:/app/keys:ro
 
 volumes:
   pgdata:

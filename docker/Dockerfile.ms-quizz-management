@@ -15,7 +15,6 @@ RUN corepack enable && corepack prepare yarn@4.14.1 --activate
 COPY .yarnrc.yml package.json yarn.lock ./
 COPY .yarn ./.yarn
 
-# Copy package.json of all packages for Yarn PnP discovery
 COPY packages/common/auth/package.json ./packages/common/auth/
 COPY packages/common/axios/package.json ./packages/common/axios/
 COPY packages/common/config/package.json ./packages/common/config/
@@ -29,22 +28,17 @@ COPY packages/common/logger/package.json ./packages/common/logger/
 COPY packages/common/swagger/package.json ./packages/common/swagger/
 COPY packages/common/valkey/package.json ./packages/common/valkey/
 COPY packages/common/metrics/package.json ./packages/common/metrics/
-COPY packages/api-gateway/package.json ./packages/api-gateway/
-COPY packages/ms-user/package.json ./packages/ms-user/
-COPY packages/ms-quizz-management/package.json ./packages/ms-quizz-management/
 COPY packages/common/websocket/package.json ./packages/common/websocket/
-COPY packages/ws-service/package.json ./packages/ws-service/
-COPY packages/ms-session/package.json ./packages/ms-session/
-COPY packages/ms-response/package.json ./packages/ms-response/
 
+COPY packages/ms-quizz-management/package.json ./packages/ms-quizz-management/
 
 ENV YARN_PNP_FALLBACK_MODE=dependenciesonly
 RUN yarn install
 
 COPY . .
 
-# --- Runtime Stage ---
-FROM node:24-bookworm AS runtime
+FROM node:24-bookworm-slim AS runtime
+
 RUN apt-get update && apt-get install -y wget && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 RUN corepack enable && corepack prepare yarn@4.14.1 --activate
@@ -53,7 +47,14 @@ ENV NODE_ENV=production
 ENV PORT=4002
 ENV YARN_PNP_FALLBACK_MODE=dependenciesonly
 
-COPY --from=base /app /app
+COPY --from=base /app/.yarn ./.yarn
+COPY --from=base /app/.pnp.* ./
+COPY --from=base /app/package.json ./
+COPY --from=base /app/yarn.lock ./
+
+COPY --from=base /app/packages/common ./packages/common
+
+COPY --from=base /app/packages/ms-quizz-management ./packages/ms-quizz-management
 
 EXPOSE 4002
 

@@ -2,6 +2,9 @@
 # 🚀 Dockerfile optimisé pour Node 24 + Yarn PnP (ZIP mode)
 # Résout l'erreur "EBADF: bad file descriptor" via Yarn 4.14.1 + Inlining
 
+# ==========================================
+# STAGE 1 : INSTALLATION & DÉPENDANCES NATIVES
+# ==========================================
 FROM node:24-bookworm AS base
 
 # Installation des dépendances système (Debian Bookworm recommandé vs Alpine pour glibc)
@@ -21,7 +24,7 @@ RUN corepack enable && corepack prepare yarn@4.14.1 --activate
 COPY .yarnrc.yml package.json yarn.lock ./
 COPY .yarn ./.yarn
 
-# Copy package.json of all packages for Yarn PnP discovery
+# 1. On garde uniquement les librairies partagées (common)
 COPY packages/common/auth/package.json ./packages/common/auth/
 COPY packages/common/axios/package.json ./packages/common/axios/
 COPY packages/common/config/package.json ./packages/common/config/
@@ -35,14 +38,10 @@ COPY packages/common/logger/package.json ./packages/common/logger/
 COPY packages/common/swagger/package.json ./packages/common/swagger/
 COPY packages/common/valkey/package.json ./packages/common/valkey/
 COPY packages/common/metrics/package.json ./packages/common/metrics/
-COPY packages/api-gateway/package.json ./packages/api-gateway/
-COPY packages/ms-user/package.json ./packages/ms-user/
-COPY packages/ms-quizz-management/package.json ./packages/ms-quizz-management/
 COPY packages/common/websocket/package.json ./packages/common/websocket/
-COPY packages/ws-service/package.json ./packages/ws-service/
-COPY packages/ms-session/package.json ./packages/ms-session/
-COPY packages/ms-response/package.json ./packages/ms-response/
 
+# 2. On cible UNIQUEMENT ms-session
+COPY packages/ms-session/package.json ./packages/ms-session/
 
 # Installation en mode PnP ZIP Strict
 ENV YARN_PNP_FALLBACK_MODE=dependenciesonly
@@ -51,8 +50,11 @@ RUN yarn install
 # Copie du code source
 COPY . .
 
-# --- Runtime Stage ---
-FROM node:24-bookworm AS runtime
+# ==========================================
+# STAGE 2 : RUNTIME (Image Slim & Légère)
+# ==========================================
+FROM node:24-bookworm-slim AS runtime
+
 RUN apt-get update && apt-get install -y wget && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
@@ -67,10 +69,20 @@ ENV YARN_PNP_FALLBACK_MODE=dependenciesonly
 # ⚡ SOLUTION TECHNIQUE : --require + --import est obligatoire pour CJS + ESM sur Node 24
 # L'inlining (pnpEnableInlining: true) évite les erreurs de descripteur de fichier (EBADF)
 
-# Copie des artefacts PnP et du code (ZIP archives incluses)
-COPY --from=base /app /app
+# 1. Copie des artefacts PnP (ZIP archives incluses)
+COPY --from=base /app/.yarn ./.yarn
+COPY --from=base /app/.pnp.* ./
+COPY --from=base /app/package.json ./
+COPY --from=base /app/yarn.lock ./
 
-EXPOSE 4003
+# 2. Copie du dossier common
+COPY --from=base /app/packages/common ./packages/common
+
+# 3. Copie du code source exclusif de ms-session
+COPY --from=base /app/packages/ms-session ./packages/ms-session
+
+# Alignement du EXPOSE avec la variable ENV PORT
+EXPOSE 4013
 
 # Vérification de santé
 HEALTHCHECK --start-period=30s --interval=10s --timeout=3s --retries=5 \

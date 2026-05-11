@@ -1,4 +1,7 @@
 # syntax=docker/dockerfile:1
+# ==========================================
+# STAGE 1 : INSTALLATION & DÉPENDANCES NATIVES
+# ==========================================
 FROM node:24-bookworm AS base
 
 RUN apt-get update && apt-get install -y \
@@ -15,7 +18,7 @@ RUN corepack enable && corepack prepare yarn@4.14.1 --activate
 COPY .yarnrc.yml package.json yarn.lock ./
 COPY .yarn ./.yarn
 
-# Copy package.json of all packages for Yarn PnP discovery
+# 1. On garde uniquement les librairies partagées (common)
 COPY packages/common/auth/package.json ./packages/common/auth/
 COPY packages/common/axios/package.json ./packages/common/axios/
 COPY packages/common/config/package.json ./packages/common/config/
@@ -29,22 +32,24 @@ COPY packages/common/logger/package.json ./packages/common/logger/
 COPY packages/common/swagger/package.json ./packages/common/swagger/
 COPY packages/common/valkey/package.json ./packages/common/valkey/
 COPY packages/common/metrics/package.json ./packages/common/metrics/
-COPY packages/api-gateway/package.json ./packages/api-gateway/
-COPY packages/ms-user/package.json ./packages/ms-user/
-COPY packages/ms-quizz-management/package.json ./packages/ms-quizz-management/
 COPY packages/common/websocket/package.json ./packages/common/websocket/
-COPY packages/ws-service/package.json ./packages/ws-service/
-COPY packages/ms-session/package.json ./packages/ms-session/
-COPY packages/ms-response/package.json ./packages/ms-response/
 
+# 2. On cible UNIQUEMENT ws-service
+COPY packages/ws-service/package.json ./packages/ws-service/
 
 ENV YARN_PNP_FALLBACK_MODE=dependenciesonly
+
+# Installation de toutes les dépendances
 RUN yarn install
 
+# On copie le reste du code source
 COPY . .
 
-# --- Runtime Stage ---
-FROM node:24-bookworm AS runtime
+# ==========================================
+# STAGE 2 : RUNTIME (Image Slim & Légère)
+# ==========================================
+FROM node:24-bookworm-slim AS runtime
+
 RUN apt-get update && apt-get install -y wget && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 RUN corepack enable && corepack prepare yarn@4.14.1 --activate
@@ -53,11 +58,22 @@ ENV NODE_ENV=production
 ENV PORT=4005
 ENV YARN_PNP_FALLBACK_MODE=dependenciesonly
 
-COPY --from=base /app /app
+# 1. On récupère le moteur Yarn et les dépendances résolues
+COPY --from=base /app/.yarn ./.yarn
+COPY --from=base /app/.pnp.* ./
+COPY --from=base /app/package.json ./
+COPY --from=base /app/yarn.lock ./
+
+# 2. On copie l'intégralité du dossier "common"
+COPY --from=base /app/packages/common ./packages/common
+
+# 3. On copie le code source exclusif de ws-service
+COPY --from=base /app/packages/ws-service ./packages/ws-service
 
 EXPOSE 4005
 
 HEALTHCHECK --start-period=30s --interval=10s --timeout=3s --retries=5 \
   CMD wget -qO- http://127.0.0.1:${PORT}/health | grep ok || exit 1
 
+# On lance directement le fichier JS principal du service WebSocket
 CMD ["yarn", "node", "packages/ws-service/src/index.js"]

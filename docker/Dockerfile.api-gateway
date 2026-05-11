@@ -65,7 +65,6 @@ COPY --from=base /app/.pnp.* ./
 COPY --from=base /app/package.json ./
 COPY --from=base /app/yarn.lock ./
 
-# 2. On copie l'intégralité du dossier "common" car ton API en dépend en JS pur
 COPY --from=base /app/packages/common ./packages/common
 
 # 3. On copie le code source de l'API Gateway
