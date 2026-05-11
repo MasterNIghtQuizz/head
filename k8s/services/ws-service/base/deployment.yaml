@@ -36,22 +36,20 @@ spec:
               cpu: "100m"
               memory: "128Mi"
             limits:
-              cpu: "300m"
-              memory: "256Mi"
-          command: ["/bin/sh", "-c"]
-          args:
-            - "yarn workspace @monorepo/ws-service run start"
+              cpu: "500m"
+              memory: "512Mi"
+
           livenessProbe:
             httpGet:
               path: /metrics
               port: 3000
-            initialDelaySeconds: 15
+            initialDelaySeconds: 60
             periodSeconds: 20
           readinessProbe:
             httpGet:
               path: /metrics
               port: 3000
-            initialDelaySeconds: 5
+            initialDelaySeconds: 60
             periodSeconds: 10
           ports:
             - containerPort: 3000

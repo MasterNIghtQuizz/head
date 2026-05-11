@@ -37,7 +37,7 @@ spec:
               memory: "64Mi"
             limits:
               cpu: "50m"
-              memory: "128Mi"
+              memory: "256Mi" # <-- ⬆️ Sécurisé pour les migrations
           command: ["/bin/sh", "-c"]
           args:
             - |
@@ -82,21 +82,21 @@ spec:
               memory: "128Mi"
             limits:
               cpu: "500m"
-              memory: "256Mi"
-          command: ["/bin/sh", "-c"]
-          args:
-            - "yarn workspace @monorepo/ms-session run start"
+              memory: "512Mi" # <-- ⬆️ Évite le OOMKilled
+
+          # 🚨 Suppression de command/args ici pour écouter le Dockerfile
+
           livenessProbe:
             httpGet:
               path: /metrics
               port: 3000
-            initialDelaySeconds: 15
+            initialDelaySeconds: 60 # <-- ⬆️ Délai augmenté
             periodSeconds: 20
           readinessProbe:
             httpGet:
               path: /metrics
               port: 3000
-            initialDelaySeconds: 5
+            initialDelaySeconds: 60 # <-- ⬆️ Délai augmenté
             periodSeconds: 10
           ports:
             - containerPort: 3000

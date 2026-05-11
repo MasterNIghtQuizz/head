@@ -37,7 +37,7 @@ spec:
               memory: "64Mi"
             limits:
               cpu: "50m"
-              memory: "128Mi"
+              memory: "256Mi"
           command: ["/bin/sh", "-c"]
           args:
             - |
@@ -83,21 +83,19 @@ spec:
               memory: "128Mi"
             limits:
               cpu: "500m"
-              memory: "256Mi"
-          command: ["/bin/sh", "-c"]
-          args:
-            - "yarn workspace @monorepo/ms-response run start"
+              memory: "512Mi"
+
           livenessProbe:
             httpGet:
               path: /health
               port: 3000
-            initialDelaySeconds: 15
+            initialDelaySeconds: 60
             periodSeconds: 20
           readinessProbe:
             httpGet:
               path: /health
               port: 3000
-            initialDelaySeconds: 5
+            initialDelaySeconds: 60
             periodSeconds: 10
           ports:
             - containerPort: 3000
