@@ -26,7 +26,7 @@ spec:
         - name: migrate-ms-response
           image: victorcra/masterquizz-ms-response:1.0.0
           securityContext:
-            readOnlyRootFilesystem: false
+            readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
             capabilities:
               drop:
@@ -37,12 +37,11 @@ spec:
               memory: "64Mi"
             limits:
               cpu: "50m"
-              memory: "256Mi"
+              memory: "512Mi"
           command: ["/bin/sh", "-c"]
           args:
             - |
-              node -e "const net = require('net'); const s = () => { const c = net.createConnection(process.env.POSTGRES_PORT, process.env.POSTGRES_HOST).on('connect', () => process.exit(0)).on('error', () => { console.log('waiting for postgres...'); setTimeout(s, 2000); }); }; s();" && \
-              node -e "const { Client } = require('pg'); const c = new Client({ host: process.env.POSTGRES_HOST, user: process.env.POSTGRES_USER, password: process.env.POSTGRES_PASSWORD, database: 'ms_response_db' }); c.connect().then(() => c.query('CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"; CREATE TABLE IF NOT EXISTS response (id uuid PRIMARY KEY DEFAULT uuid_generate_v4(), participant_id uuid NOT NULL, question_id uuid NOT NULL, session_id uuid NOT NULL, choice_id uuid NULL, is_correct boolean NULL, submitted_at TIMESTAMP NOT NULL DEFAULT now()); CREATE TABLE IF NOT EXISTS processed_events (id character varying NOT NULL, topic character varying NOT NULL, \"processedAt\" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT \"PK_processed_events\" PRIMARY KEY (id));')).then(() => { console.log('Manual migration success'); process.exit(0); }).catch(e => { console.error(e); process.exit(1); })"
+              node -e "const net = require('net'); const s = () => { const c = net.createConnection(process.env.POSTGRES_PORT, process.env.POSTGRES_HOST).on('connect', () => process.exit(0)).on('error', () => { setTimeout(s, 2000); }); }; s();" && yarn workspace @monorepo/ms-quizz-management run migrations:run
           envFrom:
             - configMapRef:
                 name: global-config
@@ -68,6 +67,8 @@ spec:
           volumeMounts:
             - name: tmp
               mountPath: /tmp
+            - name: tmp
+              mountPath: /home/node
       containers:
         - name: ms-response
           image: victorcra/masterquizz-ms-response:1.0.0

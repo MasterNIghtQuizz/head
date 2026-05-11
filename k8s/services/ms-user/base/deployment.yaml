@@ -43,7 +43,7 @@ spec:
           resources:
             requests:
               cpu: "100m"
-              memory: "256Mi"
+              memory: "512Mi"
             limits:
               cpu: "500m"
               memory: "512Mi"
@@ -76,6 +76,8 @@ spec:
           volumeMounts:
             - name: tmp
               mountPath: /tmp
+            - name: tmp
+              mountPath: /home/node
       containers:
         - name: ms-user
           image: victorcra/masterquizz-ms-user:1.0.0
