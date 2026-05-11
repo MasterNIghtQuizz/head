@@ -21,7 +21,6 @@ import {
   INVALID_CHOICE_IDS,
   ALREADY_RESPONDED,
   UNAUTHORIZED_HOST,
-  NO_BUZZER_FOUND,
 } from "../errors/session.errors.js";
 
 vi.mock("common-axios");

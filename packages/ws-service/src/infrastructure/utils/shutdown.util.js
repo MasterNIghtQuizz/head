@@ -1,10 +1,9 @@
-import { WebSocketServer } from "ws";
 import logger from "../../logger.js";
 
 /**
  * @param {import('../../types/fastify.js').AppInstance} fastify
  * @param {Object} opts
- * @param {WebSocketServer} opts.wss
+ * @param {import('ws').WebSocketServer} opts.wss
  * @param {import('common-kafka').KafkaConsumer | null} opts.kafkaConsumer
  * @param {import('../../infrastructure/valkey/consumers/session-notifications.consumer.js').SessionNotificationsConsumer | null} opts.valkeyConsumer
  */

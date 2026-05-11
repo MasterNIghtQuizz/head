@@ -4,7 +4,7 @@ import { createUserEntityMock } from "../../../tests/factories/user.factory.js";
 import { UnauthorizedError, ConflictError } from "common-errors";
 import { UserRole } from "common-auth";
 import { UserEventTypes } from "common-contracts";
-import logger, { mockLogger } from "common-logger";
+import { mockLogger } from "common-logger";
 
 vi.mock("common-crypto", () => ({
   CryptoService: {
@@ -15,7 +15,7 @@ vi.mock("common-crypto", () => ({
     sha256Hash: vi.fn((val) => `hash-${val}`),
     sign: vi.fn((val) => `signed-${val}`),
     // @ts-ignore
-    verify: vi.fn((val) => ({ userId: "1", type: "REFRESH" })),
+    verify: vi.fn(() => ({ userId: "1", type: "REFRESH" })),
   },
 }));
 

@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM node:24-bookworm-slim AS base
+FROM node:24-bookworm AS base
 
 RUN apt-get update && apt-get install -y \
     python3 \
@@ -15,13 +15,37 @@ RUN corepack enable && corepack prepare yarn@4.14.1 --activate
 COPY .yarnrc.yml package.json yarn.lock ./
 COPY .yarn ./.yarn
 
+# Copy package.json of all packages for Yarn PnP discovery
+COPY packages/common/auth/package.json ./packages/common/auth/
+COPY packages/common/axios/package.json ./packages/common/axios/
+COPY packages/common/config/package.json ./packages/common/config/
+COPY packages/common/contracts/package.json ./packages/common/contracts/
+COPY packages/common/core/package.json ./packages/common/core/
+COPY packages/common/crypto/package.json ./packages/common/crypto/
+COPY packages/common/database/package.json ./packages/common/database/
+COPY packages/common/errors/package.json ./packages/common/errors/
+COPY packages/common/kafka/package.json ./packages/common/kafka/
+COPY packages/common/logger/package.json ./packages/common/logger/
+COPY packages/common/swagger/package.json ./packages/common/swagger/
+COPY packages/common/valkey/package.json ./packages/common/valkey/
+COPY packages/common/metrics/package.json ./packages/common/metrics/
+COPY packages/api-gateway/package.json ./packages/api-gateway/
+COPY packages/ms-user/package.json ./packages/ms-user/
+COPY packages/ms-quizz-management/package.json ./packages/ms-quizz-management/
+COPY packages/common/websocket/package.json ./packages/common/websocket/
+COPY packages/ws-service/package.json ./packages/ws-service/
+COPY packages/ms-session/package.json ./packages/ms-session/
+COPY packages/ms-response/package.json ./packages/ms-response/
+
+
 ENV YARN_PNP_FALLBACK_MODE=dependenciesonly
 RUN yarn install
 
 COPY . .
 
 # --- Runtime Stage ---
-FROM node:24-bookworm-slim AS runtime
+FROM node:24-bookworm AS runtime
+RUN apt-get update && apt-get install -y wget && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 RUN corepack enable && corepack prepare yarn@4.14.1 --activate
 
@@ -33,7 +57,7 @@ COPY --from=base /app /app
 
 EXPOSE 4004
 
-HEALTHCHECK --interval=10s --timeout=3s --retries=5 \
+HEALTHCHECK --start-period=30s --interval=10s --timeout=3s --retries=5 \
   CMD wget -qO- http://127.0.0.1:${PORT}/health | grep ok || exit 1
 
 CMD ["yarn", "node", "packages/ms-response/src/index.js"]

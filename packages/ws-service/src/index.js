@@ -1,9 +1,4 @@
-
-
 import { config } from "./config.js";
-
-
-
 
 import { fileURLToPath } from "node:url";
 import logger from "./logger.js";

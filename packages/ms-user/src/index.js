@@ -1,9 +1,4 @@
-
-
 import { config } from "./config.js";
-
-
-
 
 import logger from "./logger.js";
 import { createServer } from "./app.js";

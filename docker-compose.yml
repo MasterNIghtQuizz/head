@@ -36,6 +36,7 @@ services:
   # ────────────────────────────────────────────────────────
   postgres:
     profiles: [infra, app]
+    init: true
     image: postgres:16
     environment:
       <<: *common-env
@@ -54,6 +55,7 @@ services:
   valkey:
     profiles: [infra, app]
     image: valkey/valkey:8
+    init: true
     container_name: valkey
     ports:
       - "6379:6379"
@@ -69,6 +71,7 @@ services:
     profiles: [infra, app]
     image: confluentinc/cp-kafka:7.8.0
     hostname: kafka
+    init: true
     container_name: kafka
     ports:
       - "9092:9092"
@@ -103,6 +106,7 @@ services:
   kafka-ui:
     profiles: [infra]
     image: provectuslabs/kafka-ui:master
+    init: true
     container_name: kafka-ui
     ports:
       - "8080:8080"
@@ -250,6 +254,7 @@ services:
   # ────────────────────────────────────────────────────────
   api-gateway:
     profiles: [app]
+    init: true
     build:
       context: .
       dockerfile: docker/Dockerfile.api-gateway
@@ -284,6 +289,7 @@ services:
 
   ms-user:
     profiles: [app]
+    init: true
     build:
       context: .
       dockerfile: docker/Dockerfile.ms-user
@@ -316,6 +322,7 @@ services:
 
   ms-quizz-management:
     profiles: [app]
+    init: true
     build:
       context: .
       dockerfile: docker/Dockerfile.ms-quizz-management
@@ -348,6 +355,7 @@ services:
 
   ms-session:
     profiles: [app]
+    init: true
     build:
       context: .
       dockerfile: docker/Dockerfile.ms-session
@@ -388,6 +396,7 @@ services:
 
   ms-response:
     profiles: [app]
+    init: true
     build:
       context: .
       dockerfile: docker/Dockerfile.ms-response
@@ -421,6 +430,7 @@ services:
 
   ws-service:
     profiles: [app]
+    init: true
     build:
       context: .
       dockerfile: docker/Dockerfile.ws-service
@@ -455,6 +465,7 @@ services:
   #  TEST SERVICES — profile: test
   # ────────────────────────────────────────────────────────
   postgres-test:
+    init: true
     image: postgres:16
     profiles: [test]
     environment:
@@ -472,6 +483,7 @@ services:
       - pgdata-test:/var/lib/postgresql/data
   api-gateway-test:
     profiles: [test]
+    init: true
     build:
       context: .
       dockerfile: docker/Dockerfile.api-gateway
@@ -496,6 +508,18 @@ services:
     depends_on:
       valkey-test:
         condition: service_healthy
+      ms-user-test:
+        condition: service_healthy
+      ms-quizz-management-test:
+        condition: service_healthy
+      ms-session-test:
+        condition: service_healthy
+      ms-response-test:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 2G
     healthcheck:
       test:
         [
@@ -508,6 +532,7 @@ services:
 
   ms-user-test:
     profiles: [test]
+    init: true
     build:
       context: .
       dockerfile: docker/Dockerfile.ms-user
@@ -527,6 +552,10 @@ services:
       VALKEY_PORT: 6379
       KAFKA_BROKERS: "[]"
       KAFKA_ENABLED: "false"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
     # volumes:
     #   - .:/app
     #   - /app/node_modules
@@ -546,6 +575,7 @@ services:
 
   ms-quizz-management-test:
     profiles: [test]
+    init: true
     build:
       context: .
       dockerfile: docker/Dockerfile.ms-quizz-management
@@ -570,6 +600,10 @@ services:
       VALKEY_PORT: 6379
       KAFKA_BROKERS: "[]"
       KAFKA_ENABLED: "false"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
     # volumes:
     #   - .:/app
     #   - /app/node_modules
@@ -586,6 +620,7 @@ services:
 
   ms-session-test:
     profiles: [test]
+    init: true
     build:
       context: .
       dockerfile: docker/Dockerfile.ms-session
@@ -613,6 +648,10 @@ services:
       KAFKA_BROKERS: "[]"
       KAFKA_ENABLED: "false"
       USER_SERVICE_URL: "http://ms-user-test:4011"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
     # volumes:
     #   - .:/app
     #   - /app/node_modules
@@ -629,6 +668,7 @@ services:
 
   ms-response-test:
     profiles: [test]
+    init: true
     build:
       context: .
       dockerfile: docker/Dockerfile.ms-response
@@ -655,6 +695,10 @@ services:
       KAFKA_ENABLED: "false"
       QUIZZ_SERVICE_URL: "http://ms-quizz-management-test:4012"
       SESSION_SERVICE_URL: "http://ms-session-test:4013"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
     # volumes:
     #   - .:/app
     #   - /app/node_modules
@@ -685,6 +729,7 @@ services:
   valkey-test-response:
     image: valkey/valkey:8
     profiles: [test]
+    init: true
     container_name: valkey-test-response
     ports:
       - "6381:6379"

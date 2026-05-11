@@ -1,15 +1,10 @@
-
-
 import { config } from "./config.js";
 
-
-import { fileURLToPath } from "node:url";
 import { createServer } from "./app.js";
 import { registerShutdown } from "./infrastructure/utils/shutdown.util.js";
 import logger from "./logger.js";
 
-
-export async function start() {
+try {
   const { fastify, kafkaConsumer, valkeyService } = await createServer();
 
   registerShutdown(fastify, { kafkaConsumer, valkeyService });
@@ -25,8 +20,7 @@ export async function start() {
   });
 
   logger.info({ port: config.port }, "Server listening");
-}
-
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  start();
+} catch (err) {
+  logger.fatal({ err }, "Failed to start MS Response");
+  process.exit(1);
 }

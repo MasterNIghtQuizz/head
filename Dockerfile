@@ -23,7 +23,6 @@ COPY packages/common/kafka/package.json ./packages/common/kafka/
 COPY packages/common/logger/package.json ./packages/common/logger/
 COPY packages/common/swagger/package.json ./packages/common/swagger/
 COPY packages/common/valkey/package.json ./packages/common/valkey/
-COPY packages/common/monitoring/package.json ./packages/common/monitoring/
 COPY packages/common/metrics/package.json ./packages/common/metrics/
 COPY packages/api-gateway/package.json ./packages/api-gateway/
 COPY packages/ms-user/package.json ./packages/ms-user/
