@@ -95,6 +95,8 @@ spec:
               value: "/app/keys/game-private.pem"
             - name: AUTH_GAME_PUBLIC_KEY_PATH
               value: "/app/keys/game-public.pem"
+            - name: COREPACK_HOME
+              value: "/tmp/corepack"
             - name: OTEL_SERVICE_NAME
               value: "api-gateway"
           volumeMounts:

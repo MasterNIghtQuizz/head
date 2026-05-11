@@ -137,6 +137,8 @@ spec:
               value: "/app/keys/access-public.pem"
             - name: YARN_CACHE_FOLDER
               value: "/tmp/yarn-cache"
+            - name: COREPACK_HOME
+              value: "/tmp/corepack"
             - name: OTEL_SERVICE_NAME
               value: "ms-user"
           volumeMounts:
