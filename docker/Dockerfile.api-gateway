@@ -4,7 +4,6 @@
 # ==========================================
 FROM node:24-bookworm AS base
 
-# Utile si certains de tes paquets npm ont besoin d'être compilés (ex: bcrypt, pg)
 RUN apt-get update && apt-get install -y \
     python3 \
     make \
@@ -19,7 +18,6 @@ RUN corepack enable && corepack prepare yarn@4.14.1 --activate
 COPY .yarnrc.yml package.json yarn.lock ./
 COPY .yarn ./.yarn
 
-# On cible uniquement les paquets "common" et "api-gateway"
 COPY packages/common/auth/package.json ./packages/common/auth/
 COPY packages/common/axios/package.json ./packages/common/axios/
 COPY packages/common/config/package.json ./packages/common/config/
@@ -34,17 +32,14 @@ COPY packages/common/swagger/package.json ./packages/common/swagger/
 COPY packages/common/valkey/package.json ./packages/common/valkey/
 COPY packages/common/metrics/package.json ./packages/common/metrics/
 COPY packages/common/websocket/package.json ./packages/common/websocket/
+
 COPY packages/api-gateway/package.json ./packages/api-gateway/
 
 ENV YARN_PNP_FALLBACK_MODE=dependenciesonly
 
-# Installation de toutes les dépendances
 RUN yarn install
 
-# On copie le reste du code source
 COPY . .
-
-# (Aucune commande de build ici puisque tu es en JS pur)
 
 # ==========================================
 # STAGE 2 : RUNTIME (Image Slim & Légère)
@@ -59,7 +54,6 @@ ENV NODE_ENV=production
 ENV PORT=3000
 ENV YARN_PNP_FALLBACK_MODE=dependenciesonly
 
-# 1. On récupère le moteur Yarn et les dépendances résolues
 COPY --from=base /app/.yarn ./.yarn
 COPY --from=base /app/.pnp.* ./
 COPY --from=base /app/package.json ./
@@ -67,7 +61,6 @@ COPY --from=base /app/yarn.lock ./
 
 COPY --from=base /app/packages/common ./packages/common
 
-# 3. On copie le code source de l'API Gateway
 COPY --from=base /app/packages/api-gateway ./packages/api-gateway
 
 EXPOSE 3000
@@ -75,6 +68,4 @@ EXPOSE 3000
 HEALTHCHECK --start-period=30s --interval=10s --timeout=3s --retries=5 \
   CMD wget -qO- http://127.0.0.1:${PORT}/health | grep ok || exit 1
 
-# On lance directement le fichier JS principal
-# (Assure-toi que "src/index.js" est bien le bon chemin dans ton api-gateway)
 CMD ["yarn", "node", "packages/api-gateway/src/index.js"]

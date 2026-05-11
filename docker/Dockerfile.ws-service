@@ -18,7 +18,6 @@ RUN corepack enable && corepack prepare yarn@4.14.1 --activate
 COPY .yarnrc.yml package.json yarn.lock ./
 COPY .yarn ./.yarn
 
-# 1. On garde uniquement les librairies partagées (common)
 COPY packages/common/auth/package.json ./packages/common/auth/
 COPY packages/common/axios/package.json ./packages/common/axios/
 COPY packages/common/config/package.json ./packages/common/config/
@@ -34,15 +33,12 @@ COPY packages/common/valkey/package.json ./packages/common/valkey/
 COPY packages/common/metrics/package.json ./packages/common/metrics/
 COPY packages/common/websocket/package.json ./packages/common/websocket/
 
-# 2. On cible UNIQUEMENT ws-service
 COPY packages/ws-service/package.json ./packages/ws-service/
 
 ENV YARN_PNP_FALLBACK_MODE=dependenciesonly
 
-# Installation de toutes les dépendances
 RUN yarn install
 
-# On copie le reste du code source
 COPY . .
 
 # ==========================================
@@ -58,16 +54,11 @@ ENV NODE_ENV=production
 ENV PORT=4005
 ENV YARN_PNP_FALLBACK_MODE=dependenciesonly
 
-# 1. On récupère le moteur Yarn et les dépendances résolues
 COPY --from=base /app/.yarn ./.yarn
 COPY --from=base /app/.pnp.* ./
 COPY --from=base /app/package.json ./
 COPY --from=base /app/yarn.lock ./
-
-# 2. On copie l'intégralité du dossier "common"
 COPY --from=base /app/packages/common ./packages/common
-
-# 3. On copie le code source exclusif de ws-service
 COPY --from=base /app/packages/ws-service ./packages/ws-service
 
 EXPOSE 4005
@@ -75,5 +66,4 @@ EXPOSE 4005
 HEALTHCHECK --start-period=30s --interval=10s --timeout=3s --retries=5 \
   CMD wget -qO- http://127.0.0.1:${PORT}/health | grep ok || exit 1
 
-# On lance directement le fichier JS principal du service WebSocket
 CMD ["yarn", "node", "packages/ws-service/src/index.js"]
