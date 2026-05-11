@@ -37,7 +37,7 @@ spec:
               memory: "64Mi"
             limits:
               cpu: "50m"
-              memory: "256Mi" # <-- ⬆️ Sécurisé pour les migrations
+              memory: "512Mi"
           command: ["/bin/sh", "-c"]
           args:
             - |
@@ -67,6 +67,8 @@ spec:
           volumeMounts:
             - name: tmp
               mountPath: /tmp
+            - name: tmp
+              mountPath: /home/node
       containers:
         - name: ms-session
           image: victorcra/masterquizz-ms-session:1.0.0
@@ -82,21 +84,18 @@ spec:
               memory: "128Mi"
             limits:
               cpu: "500m"
-              memory: "512Mi" # <-- ⬆️ Évite le OOMKilled
-
-          # 🚨 Suppression de command/args ici pour écouter le Dockerfile
-
+              memory: "512Mi"
           livenessProbe:
             httpGet:
               path: /metrics
               port: 3000
-            initialDelaySeconds: 60 # <-- ⬆️ Délai augmenté
+            initialDelaySeconds: 60
             periodSeconds: 20
           readinessProbe:
             httpGet:
               path: /metrics
               port: 3000
-            initialDelaySeconds: 60 # <-- ⬆️ Délai augmenté
+            initialDelaySeconds: 60
             periodSeconds: 10
           ports:
             - containerPort: 3000
