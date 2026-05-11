@@ -50,7 +50,7 @@ spec:
           command: ["/bin/sh", "-c"]
           args:
             - |
-              node -e "const net = require('net'); const s = () => { const c = net.createConnection(process.env.POSTGRES_PORT, process.env.POSTGRES_HOST).on('connect', () => process.exit(0)).on('error', () => { console.log('waiting for postgres...'); setTimeout(s, 2000); }); }; s();" && node packages/ms-user/src/run-migrations.js
+              node -e "const net = require('net'); const s = () => { const c = net.createConnection(process.env.POSTGRES_PORT, process.env.POSTGRES_HOST).on('connect', () => process.exit(0)).on('error', () => { console.log('waiting for postgres...'); setTimeout(s, 2000); }); }; s();" && yarn workspace @monorepo/ms-user run migrations:run
           envFrom:
             - configMapRef:
                 name: global-config
@@ -94,7 +94,7 @@ spec:
               memory: "256Mi"
           command: ["/bin/sh", "-c"]
           args:
-            - "node packages/ms-user/src/index.js"
+            - "yarn workspace @monorepo/ms-user run start"
           livenessProbe:
             httpGet:
               path: /metrics

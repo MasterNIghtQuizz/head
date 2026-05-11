@@ -86,7 +86,7 @@ spec:
               memory: "256Mi"
           command: ["/bin/sh", "-c"]
           args:
-            - "node packages/ms-response/src/index.js"
+            - "yarn workspace @monorepo/ms-response run start"
           livenessProbe:
             httpGet:
               path: /health

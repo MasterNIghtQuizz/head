@@ -40,7 +40,7 @@ spec:
               memory: "256Mi"
           command: ["/bin/sh", "-c"]
           args:
-            - "node packages/api-gateway/src/index.js"
+            - "yarn workspace @monorepo/api-gateway run start"
           livenessProbe:
             httpGet:
               path: /metrics
@@ -139,3 +139,4 @@ spec:
       nodePort: 30001
   selector:
     app: api-gateway
+# test
