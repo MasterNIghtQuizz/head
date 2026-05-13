@@ -126,7 +126,7 @@ jobs:
 
           echo "$SERVICES" | jq -r '.[]' | while read service; do
             echo "Updating image for service $service to $SHA"
-            for env in dev prod; do
+            for env in prod; do
               if [ -d "k8s/services/$service/overlays/$env" ]; then
                 cd "k8s/services/$service/overlays/$env"
                 kustomize edit set image "victorcra/masterquizz-$service=$REGISTRY/masterquizz-$service:$SHA"

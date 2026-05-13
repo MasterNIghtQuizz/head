@@ -61,10 +61,9 @@ kind: Service
 metadata:
   name: front-office
 spec:
-  type: NodePort
+  type: ClusterIP
   ports:
     - port: 80
       targetPort: 3000
-      nodePort: 30000
   selector:
     app: front-office

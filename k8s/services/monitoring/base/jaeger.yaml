@@ -44,11 +44,10 @@ kind: Service
 metadata:
   name: jaeger-service
 spec:
-  type: NodePort
+  type: ClusterIP
   selector:
     app: jaeger
   ports:
     - name: query
       port: 16686
       targetPort: 16686
-      nodePort: 30005
