@@ -4,19 +4,26 @@ metadata:
   name: quizzmaster-ingress
   namespace: masterquizz-prod
   annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.middlewares: masterquizz-prod-security-headers@kubernetescrd
+    cert-manager.io/cluster-issuer: cloudflare-issuer
 spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - quizz-master.cyrus-ag.com
+      secretName: quizzmaster-tls
   rules:
-  - host: quizzmaster.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: front-office
-            port:
-              number: 80
+    - host: quizz-master.cyrus-ag.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: front-office
+                port:
+                  number: 80
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -24,20 +31,26 @@ metadata:
   name: api-quizzmaster-ingress
   namespace: masterquizz-prod
   annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: websecure
-    traefik.ingress.kubernetes.io/router.middlewares: masterquizz-prod-api-gateway-cors@kubernetescrd
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.middlewares: masterquizz-prod-security-headers@kubernetescrd,masterquizz-prod-api-gateway-cors@kubernetescrd
+    cert-manager.io/cluster-issuer: cloudflare-issuer
 spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - api-prod.cyrus-ag.com
+      secretName: api-quizzmaster-tls
   rules:
-  - host: api.quizzmaster.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: api-gateway
-            port:
-              number: 80
+    - host: api-prod.cyrus-ag.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  number: 80
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -45,38 +58,63 @@ metadata:
   name: monitor-quizzmaster-ingress
   namespace: masterquizz-prod
   annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: websecure
-    traefik.ingress.kubernetes.io/router.middlewares: masterquizz-prod-monitoring-auth@kubernetescrd
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.middlewares: masterquizz-prod-security-headers@kubernetescrd,masterquizz-prod-monitoring-auth@kubernetescrd
+    cert-manager.io/cluster-issuer: cloudflare-issuer
 spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - grafana-prod.cyrus-ag.com
+        - prometheus-prod.cyrus-ag.com
+      secretName: monitor-quizzmaster-tls
   rules:
-  - host: monitor.quizzmaster.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: grafana-service
-            port:
-              number: 3000
-      - path: /prometheus
-        pathType: Prefix
-        backend:
-          service:
-            name: prometheus-service
-            port:
-              number: 9090
-      - path: /jaeger
-        pathType: Prefix
-        backend:
-          service:
-            name: jaeger-service
-            port:
-              number: 16686
-      - path: /dashboards
-        pathType: Prefix
-        backend:
-          service:
-            name: opensearch-dashboards-service
-            port:
-              number: 5601
+    - host: grafana-prod.cyrus-ag.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana-service
+                port:
+                  number: 3000
+    - host: prometheus-prod.cyrus-ag.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: prometheus-service
+                port:
+                  number: 9090
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd-ingress
+  namespace: argocd
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    # traefik.ingress.kubernetes.io/router.middlewares: argocd-security-headers@kubernetescrd
+    cert-manager.io/cluster-issuer: cloudflare-issuer
+    # On retire router.tls pour éviter la boucle avec le tunnel Cloudflare
+    # traefik.ingress.kubernetes.io/router.tls: "true"
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - argocd.cyrus-ag.com
+      secretName: argocd-server-tls
+  rules:
+    - host: argocd.cyrus-ag.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: argocd-server
+                port:
+                  number: 80

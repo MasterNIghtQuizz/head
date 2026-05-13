@@ -57,6 +57,10 @@ spec:
             - configMapRef:
                 name: global-config
           env:
+            - name: OPENSEARCH_ENABLED
+              value: "false"
+            - name: OPENSEARCH_NODE
+              value: "http://localhost:9999" # URL bidon pour forcer l'échec rapide
             - name: PORT
               value: "3000"
             - name: OPENSEARCH_INDEX

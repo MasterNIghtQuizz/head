@@ -4,13 +4,8 @@ kind: Kustomization
 resources:
   - prometheus.yaml
   - grafana.yaml
-  - otel-collector.yaml
-  - opensearch.yaml
-  - opensearch-dashboards.yaml
   - grafana-datasources.yaml
   - grafana-dashboards-config.yaml
-  - jaeger.yaml
-  - opensearch-init-job.yaml
   - rbac.yaml
 
 configMapGenerator:

@@ -1,0 +1,28 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ws-quizzmaster-ingress
+  namespace: masterquizz-prod
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    cert-manager.io/cluster-issuer: cloudflare-issuer
+    traefik.ingress.kubernetes.io/router.priority: "100"
+    traefik.ingress.kubernetes.io/service.sticky.cookie: "true"
+    # Pas de middleware de sécurité ici pour éviter de casser le handshake WS
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - quizz-master.cyrus-ag.com
+      secretName: quizzmaster-tls
+  rules:
+    - host: quizz-master.cyrus-ag.com
+      http:
+        paths:
+          - path: /ws
+            pathType: Prefix
+            backend:
+              service:
+                name: ws-service
+                port:
+                  number: 3000
