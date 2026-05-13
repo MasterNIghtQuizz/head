@@ -164,6 +164,7 @@ ApplyMethodDecorators(ParticipantController, "joinSession", [
       properties: {
         session_public_key: { type: "string" },
         participant_nickname: { type: "string" },
+        is_spectator: { type: "boolean" },
       },
     },
     response: {

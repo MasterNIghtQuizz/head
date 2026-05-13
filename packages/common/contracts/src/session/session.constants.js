@@ -11,4 +11,5 @@ export const ParticipantRoles = {
   USER: "user",
   HOST: "HOST",
   PLAYER: "PLAYER",
+  SPECTATOR: "SPECTATOR",
 };

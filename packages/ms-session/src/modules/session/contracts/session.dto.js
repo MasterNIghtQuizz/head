@@ -58,6 +58,7 @@ export class JoinSessionRequestDto {
   constructor(data) {
     this.session_public_key = data.session_public_key;
     this.participant_nickname = data.participant_nickname;
+    this.is_spectator = data.is_spectator;
   }
 
   /**
@@ -68,6 +69,7 @@ export class JoinSessionRequestDto {
     const schema = Joi.object({
       session_public_key: Joi.string().required(),
       participant_nickname: Joi.string().required(),
+      is_spectator: Joi.boolean().optional(),
     });
     return schema.validate(data);
   }

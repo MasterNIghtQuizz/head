@@ -7,11 +7,13 @@ import logger from "../../logger.js";
  */
 export async function securityPlugin(fastify) {
   fastify.addHook("onSend", async (request, reply, payload) => {
-    if (!reply.hasHeader("Strict-Transport-Security")) {
-      reply.header(
-        "Strict-Transport-Security",
-        "max-age=63072000; includeSubDomains; preload",
-      );
+    if (config.env === "production") {
+      if (!reply.hasHeader("Strict-Transport-Security")) {
+        reply.header(
+          "Strict-Transport-Security",
+          "max-age=63072000; includeSubDomains; preload",
+        );
+      }
     }
     if (!reply.hasHeader("X-DNS-Prefetch-Control")) {
       reply.header("X-DNS-Prefetch-Control", "off");
@@ -29,7 +31,7 @@ export async function securityPlugin(fastify) {
       reply.header("Referrer-Policy", "strict-origin-when-cross-origin");
     }
     if (!reply.hasHeader("Content-Security-Policy")) {
-      const csp = [
+      const cspValues = [
         "default-src 'self'",
         "base-uri 'self'",
         "font-src 'self' https: data:",
@@ -41,9 +43,13 @@ export async function securityPlugin(fastify) {
         "script-src-attr 'none'",
         "style-src 'self' https: 'unsafe-inline'",
         "connect-src 'self' ws: wss: http://localhost:* ws://localhost:* https://*.nightquizz.com wss://*.nightquizz.com https://*.cyrus-ag.com wss://*.cyrus-ag.com",
-        "upgrade-insecure-requests",
-      ].join("; ");
-      reply.header("Content-Security-Policy", csp);
+      ];
+
+      if (config.env === "production") {
+        cspValues.push("upgrade-insecure-requests");
+      }
+
+      reply.header("Content-Security-Policy", cspValues.join("; "));
     }
     return payload;
   });
