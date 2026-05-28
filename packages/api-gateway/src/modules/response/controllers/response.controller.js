@@ -239,12 +239,7 @@ ApplyMethodDecorators(ResponseController, "getQuestionStats", [
     },
   }),
   UseGameToken(),
-  Roles([
-    UserRole.ADMIN,
-    UserRole.MODERATOR,
-    UserRole.USER,
-    UserRole.SPECTATOR,
-  ]),
+  Roles([UserRole.ADMIN, UserRole.MODERATOR]),
   Get("/stats/question/:questionId"),
 ]);
 

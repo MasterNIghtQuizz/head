@@ -357,7 +357,7 @@ describe("Response E2E - Leaderboard and Stats Flow", () => {
     expect(playerRes.statusCode).toBe(200);
     const playerToken = playerRes.json().game_token;
 
-    // Player tries to access leaderboard (should be forbidden)
+    // Player tries to access leaderboard (should be allowed now)
     const leaderboardRes = await app.inject({
       method: "GET",
       url: `/responses/leaderboard/session/${sessionId}`,
