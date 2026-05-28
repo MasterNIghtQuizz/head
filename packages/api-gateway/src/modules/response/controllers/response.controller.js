@@ -175,7 +175,7 @@ const ResponseItemSchema = {
 
 ApplyMethodDecorators(ResponseController, "getLeaderboard", [
   Schema({
-    description: "Get the leaderboard for a session (Admin/Moderator only)",
+    description: "Get the leaderboard for a session",
     tags: ["Response"],
     security: [{ gameToken: [] }],
     params: {
@@ -199,14 +199,18 @@ ApplyMethodDecorators(ResponseController, "getLeaderboard", [
     },
   }),
   UseGameToken(),
-  Roles([UserRole.ADMIN, UserRole.MODERATOR, UserRole.USER]),
+  Roles([
+    UserRole.ADMIN,
+    UserRole.MODERATOR,
+    UserRole.USER,
+    UserRole.SPECTATOR,
+  ]),
   Get("/leaderboard/session/:sessionId"),
 ]);
 
 ApplyMethodDecorators(ResponseController, "getQuestionStats", [
   Schema({
-    description:
-      "Get statistics for a specific question (Admin/Moderator only)",
+    description: "Get statistics for a specific question",
     tags: ["Response"],
     security: [{ gameToken: [] }],
     params: {
@@ -289,7 +293,12 @@ ApplyMethodDecorators(ResponseController, "getParticipantResponses", [
     },
   }),
   UseGameToken(),
-  Roles([UserRole.ADMIN, UserRole.MODERATOR, UserRole.USER]),
+  Roles([
+    UserRole.ADMIN,
+    UserRole.MODERATOR,
+    UserRole.USER,
+    UserRole.SPECTATOR,
+  ]),
   Get("/participant/:participantId"),
 ]);
 
@@ -325,7 +334,7 @@ ApplyMethodDecorators(ResponseController, "getQuestionResponses", [
 
 ApplyMethodDecorators(ResponseController, "addResponse", [
   Schema({
-    description: "Submit a response to a question (Admin/Moderator only)",
+    description: "Submit a response to a question",
     tags: ["Response"],
     security: [{ gameToken: [] }],
     body: {
@@ -350,7 +359,7 @@ ApplyMethodDecorators(ResponseController, "addResponse", [
     },
   }),
   UseGameToken(),
-  Roles([UserRole.ADMIN, UserRole.MODERATOR]),
+  Roles([UserRole.ADMIN, UserRole.MODERATOR, UserRole.USER]),
   Post("/response"),
 ]);
 

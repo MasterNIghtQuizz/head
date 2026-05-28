@@ -122,6 +122,32 @@ describe("ParticipantService unit tests", () => {
       expect(result.game_token).toBe("tok");
     });
 
+    it("should successfully join a session as a spectator", async () => {
+      const data = { session_public_key: "pub", participant_nickname: "nick", is_spectator: true };
+      const session = createSessionEntity({
+        id: "s1",
+        status: SessionStatus.LOBBY,
+      });
+
+      vi.mocked(sessionRepositoryMock.findByPublicKey).mockResolvedValue(
+        session,
+      );
+      vi.mocked(participantRepositoryMock.create).mockResolvedValue(
+        createParticipantEntity({ role: ParticipantRoles.SPECTATOR }),
+      );
+      vi.mocked(TokenService.signGameToken).mockReturnValue("tok-spectator");
+
+      const result = await service.joinSession(data);
+
+      expect(participantRepositoryMock.create).toHaveBeenCalledWith(expect.objectContaining({
+        role: ParticipantRoles.SPECTATOR
+      }));
+      expect(TokenService.signGameToken).toHaveBeenCalledWith(expect.objectContaining({
+        role: "spectator"
+      }), expect.any(String));
+      expect(result.game_token).toBe("tok-spectator");
+    });
+
     it("should throw SESSION_NOT_FOUND if public key is invalid", async () => {
       vi.mocked(sessionRepositoryMock.findByPublicKey).mockResolvedValue(null);
       await expect(
@@ -218,6 +244,17 @@ describe("ParticipantService unit tests", () => {
             submittedAt: expect.any(String),
           }),
         }),
+      );
+    });
+
+    it("should throw ForbiddenError if spectator tries to submit response", async () => {
+      vi.mocked(sessionRepositoryMock.find).mockResolvedValue(session);
+      vi.mocked(participantRepositoryMock.find).mockResolvedValue(
+        createParticipantEntity({ id: "p1", role: ParticipantRoles.SPECTATOR }),
+      );
+
+      await expect(service.submitResponse(defaultParams)).rejects.toThrow(
+        "Only players can submit responses",
       );
     });
 

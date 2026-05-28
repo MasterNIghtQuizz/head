@@ -82,7 +82,7 @@ export class SessionController extends BaseController {
   }
 
   /**
-   * @param {import('fastify').FastifyRequest<{ Body: { session_public_key: string; participant_nickname: string } }>} request
+   * @param {import('fastify').FastifyRequest<{ Body: { session_public_key: string; participant_nickname: string; is_spectator?: boolean } }>} request
    * @param {import('fastify').FastifyReply} reply
    */
   async joinSession(request, reply) {
@@ -425,6 +425,10 @@ ApplyMethodDecorators(SessionController, "joinSession", [
         participant_nickname: {
           type: "string",
           description: "The display name chosen by the player.",
+        },
+        is_spectator: {
+          type: "boolean",
+          description: "Whether the participant is joining as a spectator.",
         },
       },
     },

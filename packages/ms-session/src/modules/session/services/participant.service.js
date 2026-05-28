@@ -83,10 +83,11 @@ export class ParticipantService extends BaseService {
       throw SESSION_INVALID_STATUS(session.id);
     }
     const participantId = randomUUID();
+    const role = data.is_spectator ? ParticipantRoles.SPECTATOR : ParticipantRoles.PLAYER;
 
     const participantEntity = new ParticipantEntity({
       id: participantId,
-      role: ParticipantRoles.PLAYER,
+      role,
       sessionId: session.id,
       nickname: data.participant_nickname,
       socketId: "",
@@ -121,6 +122,7 @@ export class ParticipantService extends BaseService {
         sessionId: session.id,
         participantId,
         nickname: data.participant_nickname,
+        role,
       },
       "Participant joined session",
     );
@@ -129,7 +131,7 @@ export class ParticipantService extends BaseService {
       {
         sessionId: session.id,
         participantId: participantId,
-        role: UserRole.USER,
+        role: data.is_spectator ? UserRole.SPECTATOR : UserRole.USER,
         type: TokenType.GAME,
       },
       config.auth.game.privateKeyPath,

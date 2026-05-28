@@ -65,19 +65,19 @@ export async function createServer() {
   await fastify.register(securityPlugin);
 
   fastify.addHook(
-    "onRequest",
+    "preHandler",
     hookAccessToken({ publicKeyPath: config.auth.access.publicKeyPath }),
   );
   fastify.addHook(
-    "onRequest",
+    "preHandler",
     hookRefreshToken({ publicKeyPath: config.auth.refresh.publicKeyPath }),
   );
   fastify.addHook(
-    "onRequest",
+    "preHandler",
     hookGameToken({ publicKeyPath: config.auth.game.publicKeyPath }),
   );
   fastify.addHook(
-    "onRequest",
+    "preHandler",
     hookInternalTokenInterceptor({
       privateKeyPath: config.auth.internal.privateKeyPath,
       source: "api-gateway",
@@ -99,7 +99,7 @@ export async function createServer() {
     );
   });
 
-  fastify.addHook("onRequest", async (request) => {
+  fastify.addHook("preHandler", async (request) => {
     if (request.url.startsWith("/ws")) {
       const userId =
         request.gameTokenPayload?.participantId ||

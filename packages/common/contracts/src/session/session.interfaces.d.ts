@@ -34,6 +34,7 @@ export interface CreateSessionResponse {
 export interface JoinSessionRequest {
   session_public_key: string;
   participant_nickname: string;
+  is_spectator?: boolean;
 }
 
 export interface JoinSessionResponse {
