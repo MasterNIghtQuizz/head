@@ -11,8 +11,11 @@ spec:
       - PUT
       - DELETE
       - OPTIONS
+      - PATCH
     accessControlAllowOriginList:
-      - https://quizzmaster.com
+      - https://quizz-master.cyrus-ag.com
+    accessControlAllowHeaders:
+      - "*"
     accessControlMaxAge: 100
     addVaryHeader: true
 ---
@@ -56,7 +59,7 @@ metadata:
   namespace: masterquizz-prod
 spec:
   headers:
-    sslRedirect: true
+    sslRedirect: false
     stsSeconds: 31536000
     stsIncludeSubdomains: true
     stsPreload: true

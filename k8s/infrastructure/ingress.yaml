@@ -67,8 +67,6 @@ spec:
     - hosts:
         - grafana-prod.cyrus-ag.com
         - prometheus-prod.cyrus-ag.com
-        - jaeger-prod.cyrus-ag.com
-        - opensearch-prod.cyrus-ag.com
       secretName: monitor-quizzmaster-tls
   rules:
     - host: grafana-prod.cyrus-ag.com
@@ -91,26 +89,6 @@ spec:
                 name: prometheus-service
                 port:
                   number: 9090
-    - host: jaeger-prod.cyrus-ag.com
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: jaeger-service
-                port:
-                  number: 16686
-    - host: opensearch-prod.cyrus-ag.com
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: opensearch-dashboards-service
-                port:
-                  number: 5601
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress

@@ -11,10 +11,10 @@ data:
   KAFKA_BROKERS: '["kafka-service:29092"]'
   KAFKA_ENABLED: "true"
   VALKEY_ENABLED: "true"
-  OTEL_ENABLED: "true"
+  OTEL_ENABLED: "false"
   OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector-service:4317"
   METRICS_ENABLED: "true"
-  OPENSEARCH_ENABLED: "true"
+  OPENSEARCH_ENABLED: "false"
   OPENSEARCH_NODE: "http://opensearch-service:9200"
   OPENSEARCH_USERNAME: "admin"
   OPENSEARCH_PASSWORD: "MasterQuizz123!"
