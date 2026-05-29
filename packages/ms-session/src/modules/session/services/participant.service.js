@@ -83,7 +83,9 @@ export class ParticipantService extends BaseService {
       throw SESSION_INVALID_STATUS(session.id);
     }
     const participantId = randomUUID();
-    const role = data.is_spectator ? ParticipantRoles.SPECTATOR : ParticipantRoles.PLAYER;
+    const role = data.is_spectator
+      ? ParticipantRoles.SPECTATOR
+      : ParticipantRoles.PLAYER;
 
     const participantEntity = new ParticipantEntity({
       id: participantId,
@@ -309,16 +311,16 @@ export class ParticipantService extends BaseService {
 
     if (question.timer_seconds) {
       if (!activatedAt) {
-        logger.error(
+        logger.warn(
           { sessionId, questionId },
-          "Activation time missing from Valkey while trying to validate timer. Blocking response for safety.",
+          "Activation time missing from Valkey while trying to validate timer. Allowing response in degraded mode.",
         );
-        throw QUESTION_TIMED_OUT();
-      }
-      const now = Date.now();
-      const limit = Number(activatedAt) + question.timer_seconds * 1000;
-      if (now > limit) {
-        throw QUESTION_TIMED_OUT();
+      } else {
+        const now = Date.now();
+        const limit = Number(activatedAt) + question.timer_seconds * 1000;
+        if (now > limit) {
+          throw QUESTION_TIMED_OUT();
+        }
       }
     }
 
@@ -357,10 +359,29 @@ export class ParticipantService extends BaseService {
 
     await Promise.all(
       (choiceIds || []).map(async (choiceId) => {
-        if (!this.kafkaProducer) {
+        let published = false;
+        /** @type {import('common-contracts').QuizResponseSubmittedEventPayload} */
+        const payload = {
+          sessionId,
+          participantId,
+          questionId: session.currentQuestionId ?? "",
+          choiceId,
+          submittedAt: new Date().toISOString(),
+        };
+
+        if (this.kafkaProducer) {
+          published = await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
+            eventId: randomUUID(),
+            timestamp: Date.now(),
+            eventType: SessionEventTypes.QUIZ_RESPONSE_SUBMITTED,
+            payload,
+          });
+        }
+
+        if (!published) {
           logger.info(
             { sessionId, participantId, questionId: session.currentQuestionId },
-            "Kafka disabled, falling back to HTTP for response submission",
+            "Kafka disabled or down, falling back to HTTP for response submission",
           );
 
           const internalToken = TokenService.signInternalToken(
@@ -372,40 +393,26 @@ export class ParticipantService extends BaseService {
             config.auth.internal.privateKeyPath,
           );
 
-          await call({
-            url: `${config.services.response.baseUrl}/responses/response`,
-            method: "POST",
-            data: {
-              participantId,
-              sessionId,
-              questionId: session.currentQuestionId,
-              choiceId,
-              latencyMs: 0,
-            },
-            headers: { "internal-token": internalToken },
-          }).catch((err) => {
+          try {
+            await call({
+              url: `${config.services.response.baseUrl}/responses/response`,
+              method: "POST",
+              data: {
+                participantId,
+                sessionId,
+                questionId: session.currentQuestionId,
+                choiceId,
+                latencyMs: 0,
+              },
+              headers: { "internal-token": internalToken },
+            });
+          } catch (err) {
             logger.error(
               { err: err.message, sessionId, participantId },
               "Failed to submit response via HTTP fallback",
             );
-          });
-          return;
+          }
         }
-        /** @type {import('common-contracts').QuizResponseSubmittedEventPayload} */
-        const payload = {
-          sessionId,
-          participantId,
-          questionId: session.currentQuestionId ?? "",
-          choiceId,
-          submittedAt: new Date().toISOString(),
-        };
-
-        await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
-          eventId: randomUUID(),
-          timestamp: Date.now(),
-          eventType: SessionEventTypes.QUIZ_RESPONSE_SUBMITTED,
-          payload,
-        });
       }),
     );
 
@@ -417,6 +424,7 @@ export class ParticipantService extends BaseService {
         question.type === QuestionType.BUZZER &&
         (!choiceIds || choiceIds.length === 0)
       ) {
+        let published = false;
         if (this.kafkaProducer) {
           /** @type {import('common-contracts').QuizResponseSubmittedEventPayload} */
           const payload = {
@@ -427,12 +435,18 @@ export class ParticipantService extends BaseService {
             type: QuestionType.BUZZER,
             submittedAt: new Date().toISOString(),
           };
-          await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
+          published = await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
             eventId: randomUUID(),
             timestamp: Date.now(),
             eventType: SessionEventTypes.QUIZ_RESPONSE_SUBMITTED,
             payload,
           });
+        }
+        if (!published) {
+          logger.info(
+            { sessionId, participantId },
+            "Kafka down, HTTP fallback for buzzer empty choices",
+          );
         }
       }
       logger.info(
@@ -478,9 +492,9 @@ export class ParticipantService extends BaseService {
         throw NO_BUZZER_FOUND(sessionId);
       }
 
-      if (currentBuzzer.participantId !== participantId) {
+      if (currentBuzzer.participant_id !== participantId) {
         throw WRONG_BUZZER_CANDIDATE(
-          currentBuzzer.participantId,
+          currentBuzzer.participant_id,
           participantId,
         );
       }
@@ -517,12 +531,12 @@ export class ParticipantService extends BaseService {
             eventType: SessionEventTypes.USER_PRESSED_BUZZER,
             payload: {
               session_id: sessionId,
-              participant_id: nextBuzzer.participantId,
+              participant_id: nextBuzzer.participant_id,
               username: nextBuzzer.username,
             },
           });
           logger.info(
-            { sessionId, nextBuzzer: nextBuzzer.participantId },
+            { sessionId, nextBuzzer: nextBuzzer.participant_id },
             "USER_PRESSED_BUZZER published for next in queue",
           );
         }
@@ -644,23 +658,28 @@ export class ParticipantService extends BaseService {
 
     /**@type {import('common-contracts').UserPressedBuzzerEventPayload} */
     const payload = {
-      sessionId: session.id,
-      participantId,
+      session_id: session.id,
+      participant_id: participantId,
       username: participant.nickname,
       questionId: session.currentQuestionId ?? "",
       pressedAt: String(Date.now()),
     };
 
+    let published = false;
     if (this.kafkaProducer) {
-      await this.kafkaProducer.publish(
+      published = await this.kafkaProducer.publish(
         SessionEventTypes.FEED_BUZZER_QUEUE,
         payload,
       );
-      logger.info(
-        { sessionId: session.id, participantId },
-        "Buzzer event published to Kafka FEED_BUZZER_QUEUE",
-      );
-    } else {
+      if (published) {
+        logger.info(
+          { sessionId: session.id, participantId },
+          "Buzzer event published to Kafka FEED_BUZZER_QUEUE",
+        );
+      }
+    }
+
+    if (!published) {
       try {
         await this.buzzerRepository.push(session.id, payload);
         logger.info(

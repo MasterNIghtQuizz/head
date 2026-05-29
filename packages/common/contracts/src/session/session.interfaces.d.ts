@@ -13,12 +13,18 @@ export declare const SessionStatus: {
   FINISHED: "FINISHED";
 };
 
-export type ParticipantRolesType = "moderator" | "user" | "HOST" | "PLAYER";
+export type ParticipantRolesType =
+  | "moderator"
+  | "user"
+  | "HOST"
+  | "PLAYER"
+  | "SPECTATOR";
 export declare const ParticipantRoles: {
   MODERATOR: "moderator";
   USER: "user";
   HOST: "HOST";
   PLAYER: "PLAYER";
+  SPECTATOR: "SPECTATOR";
 };
 
 export interface CreateSessionRequest {
@@ -46,7 +52,6 @@ export interface LeaveSessionRequest {}
 
 export interface GetSessionRequest {}
 
-
 export interface GetSessionResponse {
   session_id: string;
   public_key: string;
@@ -60,7 +65,6 @@ export interface GetSessionResponse {
   current_question?: GetCurrentQuestionResponse | null;
   is_last_question?: boolean;
 }
-
 
 export interface GetCurrentQuestionResponse {
   question_id: string;
@@ -79,7 +83,6 @@ export interface GetCurrentQuestionResponse {
   } | null;
   is_last_question?: boolean;
 }
-
 
 export interface StartSessionRequest {}
 

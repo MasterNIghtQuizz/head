@@ -1,9 +1,4 @@
-
-
 import { config } from "./config.js";
-
-
-
 
 import "reflect-metadata";
 import { fileURLToPath } from "node:url";
