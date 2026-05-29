@@ -305,12 +305,32 @@ export class ResponseService extends BaseService {
    * @returns {Promise<void>}
    */
   async gotoNextQuestion(sessionId, questionId) {
-    logger.info("entering gotoNextQuestion()");
+    logger.info({ sessionId, questionId }, "entering gotoNextQuestion()");
     await this.valkeyRepository.set(
       `currentSessionQuestion:${sessionId}`,
       questionId,
       3600,
     );
+
+    // Refresh question types cache to handle dynamically added questions (common in E2E tests)
+    try {
+      const quizId = await this.valkeyRepository.get(`sessionQuizId:${sessionId}`);
+      if (quizId) {
+        // We use a dummy hostId or try to get it from somewhere if needed,
+        // but fetchQuizz might already have it cached.
+        // For now, let's just try to get the cached quiz.
+        const quiz = await this.valkeyRepository.get(`quiz:${quizId}`);
+        if (quiz && quiz.questions) {
+          const questionTypes = (await this.valkeyRepository.get(`sessionQuestionTypes:${sessionId}`)) || {};
+          quiz.questions.forEach((q) => {
+            questionTypes[q.id] = q.type;
+          });
+          await this.valkeyRepository.set(`sessionQuestionTypes:${sessionId}`, questionTypes, 3600);
+        }
+      }
+    } catch (err) {
+      logger.warn({ err: err.message, sessionId }, "Failed to refresh question types during gotoNextQuestion");
+    }
   }
 
   /**
@@ -411,13 +431,28 @@ export class ResponseService extends BaseService {
       throw new Error(ResponseError.QUIZ_NOT_FOUND);
     }
 
-    await this.fetchQuizz(session.quizz_id, session.host_id, headers);
+    await this.valkeyRepository.del(`quiz:${session.quizz_id}`);
+    const quiz = await this.fetchQuizz(session.quizz_id, session.host_id, headers);
 
     await this.valkeyRepository.set(
       `sessionQuizId:${_sessionId}`,
       session.quizz_id,
       3600,
     );
+
+    // Refresh question types map
+    if (quiz && quiz.questions) {
+      /** @type {Record<string, string>} */
+      const questionTypes = {};
+      quiz.questions.forEach((q) => {
+        questionTypes[q.id] = q.type;
+      });
+      await this.valkeyRepository.set(
+        `sessionQuestionTypes:${_sessionId}`,
+        questionTypes,
+        3600,
+      );
+    }
 
     await this.valkeyRepository.set(
       `currentSessionQuestion:${_sessionId}`,
@@ -435,25 +470,36 @@ export class ResponseService extends BaseService {
   async getLeaderboard(sessionId) {
     const responses = await this.responseRepository.findBySession(sessionId);
     /** @type {Record<string, number>} */
-    const initialScores = {};
+    const scores = {};
     /** @type {Record<string, string>} */
-    const questionTypes =
+    let questionTypes =
       (await this.valkeyRepository.get(`sessionQuestionTypes:${sessionId}`)) ||
       {};
 
-    const scores = responses.reduce((acc, curr) => {
-      acc[curr.participantId] = acc[curr.participantId] || 0;
+    for (const curr of responses) {
+      scores[curr.participantId] = scores[curr.participantId] || 0;
+
+      // If question type is unknown, try to refresh the cache once via recovery
+      if (!questionTypes[curr.questionId]) {
+        logger.info({ questionId: curr.questionId, sessionId }, "Unknown question type in leaderboard, attempting full recovery");
+        try {
+          await this.handleQuizNotFound(sessionId, curr.participantId);
+          // Refresh questionTypes after recovery
+          questionTypes = (await this.valkeyRepository.get(`sessionQuestionTypes:${sessionId}`)) || {};
+        } catch (err) {
+          logger.warn({ err: err.message }, "Failed to recover question types in leaderboard");
+        }
+      }
 
       const qType = questionTypes[curr.questionId] || "single";
       const isBuzzer = qType === "buzzer";
 
       if (curr.isCorrect) {
-        acc[curr.participantId] += isBuzzer ? 2 : 1;
+        scores[curr.participantId] += isBuzzer ? 2 : 1;
       } else {
-        acc[curr.participantId] -= 1;
+        scores[curr.participantId] -= 1;
       }
-      return acc;
-    }, initialScores);
+    }
 
     return Object.entries(scores)
       .map(([participantId, score]) => ({
