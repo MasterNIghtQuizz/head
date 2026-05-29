@@ -9,6 +9,7 @@ export declare const UserRole: {
   readonly ADMIN: "admin";
   readonly USER: "user";
   readonly MODERATOR: "moderator";
+  readonly SPECTATOR: "spectator";
 };
 
 export declare const TokenType: {
