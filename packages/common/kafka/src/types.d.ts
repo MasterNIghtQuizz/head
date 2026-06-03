@@ -6,7 +6,7 @@ export class KafkaProducer {
   constructor(kafkaClient: Kafka);
   connect(): Promise<void>;
   disconnect(): Promise<void>;
-  publish(topic: string, payload: any, headers?: IHeaders): Promise<void>;
+  publish(topic: string, payload: any, headers?: IHeaders): Promise<boolean>;
 }
 
 export type MessageHandler = (
