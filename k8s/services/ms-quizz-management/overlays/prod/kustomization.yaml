@@ -6,4 +6,4 @@ resources:
 images:
 - name: victorcra/masterquizz-ms-quizz-management
   newName: victorcra/masterquizz-ms-quizz-management
-  newTag: 9ee189edf6dd758c102e5c13566db2aa0245d25f
+  newTag: dcb2c4715663dd87b598b3f36d58cebdfd7ec1fd
