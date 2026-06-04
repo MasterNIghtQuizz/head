@@ -123,11 +123,7 @@ describe("ParticipantService unit tests", () => {
     });
 
     it("should successfully join a session as a spectator", async () => {
-      const data = {
-        session_public_key: "pub",
-        participant_nickname: "nick",
-        is_spectator: true,
-      };
+      const data = { session_public_key: "pub", participant_nickname: "nick", is_spectator: true };
       const session = createSessionEntity({
         id: "s1",
         status: SessionStatus.LOBBY,
@@ -143,17 +139,12 @@ describe("ParticipantService unit tests", () => {
 
       const result = await service.joinSession(data);
 
-      expect(participantRepositoryMock.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          role: ParticipantRoles.SPECTATOR,
-        }),
-      );
-      expect(TokenService.signGameToken).toHaveBeenCalledWith(
-        expect.objectContaining({
-          role: "spectator",
-        }),
-        expect.any(String),
-      );
+      expect(participantRepositoryMock.create).toHaveBeenCalledWith(expect.objectContaining({
+        role: ParticipantRoles.SPECTATOR
+      }));
+      expect(TokenService.signGameToken).toHaveBeenCalledWith(expect.objectContaining({
+        role: "spectator"
+      }), expect.any(String));
       expect(result.game_token).toBe("tok-spectator");
     });
 
@@ -204,7 +195,6 @@ describe("ParticipantService unit tests", () => {
   describe("submitResponse", () => {
     const defaultParams = {
       sessionId: "s1",
-      participant_id: "p1",
       participantId: "p1",
       choiceIds: ["c1"],
     };
@@ -287,12 +277,9 @@ describe("ParticipantService unit tests", () => {
         },
       );
 
-      try {
-        await service.submitResponse(defaultParams);
-        expect.fail("Should have thrown");
-      } catch (err) {
-        expect(err.message).toBe("Question has timed out");
-      }
+      await expect(service.submitResponse(defaultParams)).rejects.toThrow(
+        QUESTION_TIMED_OUT().message,
+      );
     });
 
     it("should throw INVALID_CHOICE_IDS if choiceId not in question choices", async () => {
@@ -334,7 +321,7 @@ describe("ParticipantService unit tests", () => {
         ALREADY_RESPONDED("p1", "q1").message,
       );
     });
-    it("should allow response if activated_at is missing from Valkey (degraded mode)", async () => {
+    it("should throw QUESTION_TIMED_OUT if activated_at is missing from Valkey", async () => {
       vi.mocked(sessionRepositoryMock.find).mockResolvedValue(session);
       vi.mocked(valkeyRepositoryMock.get).mockImplementation(
         async (/** @type {string} */ key) => {
@@ -352,11 +339,10 @@ describe("ParticipantService unit tests", () => {
           return null;
         },
       );
-      vi.mocked(kafkaProducerMock.publish).mockResolvedValue(true);
 
-      await service.submitResponse(defaultParams);
-
-      expect(kafkaProducerMock.publish).toHaveBeenCalled();
+      await expect(service.submitResponse(defaultParams)).rejects.toThrow(
+        QUESTION_TIMED_OUT().message,
+      );
     });
   });
 
@@ -375,9 +361,6 @@ describe("ParticipantService unit tests", () => {
         createParticipantEntity({ id: "p1", role: ParticipantRoles.PLAYER }),
       );
       vi.mocked(sessionRepositoryMock.find).mockResolvedValue(session);
-      vi.mocked(kafkaProducerMock.publish).mockResolvedValue(true);
-      vi.mocked(kafkaProducerMock.publish).mockResolvedValue(true);
-      vi.mocked(kafkaProducerMock.publish).mockResolvedValue(true);
       vi.mocked(valkeyRepositoryMock.get).mockImplementation(async (key) => {
         if (key.includes("question_activated_at")) {
           return Date.now();
@@ -394,12 +377,11 @@ describe("ParticipantService unit tests", () => {
 
       await service.submitResponse({
         sessionId: "s1",
-        participant_id: "p1",
         participantId: "p1",
         choiceIds: ["c1"],
       });
 
-      expect(call).toHaveBeenCalledTimes(3);
+      expect(call).toHaveBeenCalledTimes(2);
       expect(kafkaProducerMock.publish).toHaveBeenCalledWith(
         "quizz.events",
         expect.objectContaining({
@@ -443,8 +425,8 @@ describe("ParticipantService unit tests", () => {
         expect(kafkaProducerMock.publish).toHaveBeenCalledWith(
           SessionEventTypes.FEED_BUZZER_QUEUE,
           expect.objectContaining({
-            session_id: sessionId,
-            participant_id: participantId,
+            sessionId,
+            participantId,
             username: "nick",
           }),
         );
@@ -453,7 +435,6 @@ describe("ParticipantService unit tests", () => {
 
     describe("_handleBuzzerSubmit", () => {
       it("should publish to FEED_BUZZER_QUEUE", async () => {
-        vi.mocked(kafkaProducerMock.publish).mockResolvedValue(true);
         vi.mocked(participantRepositoryMock.find).mockResolvedValue(
           createParticipantEntity({ id: participantId, nickname: "nick" }),
         );
@@ -463,8 +444,8 @@ describe("ParticipantService unit tests", () => {
         expect(kafkaProducerMock.publish).toHaveBeenCalledWith(
           SessionEventTypes.FEED_BUZZER_QUEUE,
           expect.objectContaining({
-            session_id: sessionId,
-            participant_id: participantId,
+            sessionId,
+            participantId,
             username: "nick",
           }),
         );
@@ -485,8 +466,7 @@ describe("ParticipantService unit tests", () => {
 
       it("should publish BUZZER_ANSWER_SUBMITTED and clear queue if correct", async () => {
         const buzzer = {
-          session_id: sessionId,
-          participant_id: participantId,
+          sessionId,
           participantId,
           username: "nick",
           questionId: "q1",
@@ -520,8 +500,7 @@ describe("ParticipantService unit tests", () => {
 
       it("should publish BUZZER_ANSWER_SUBMITTED and pop if incorrect", async () => {
         const buzzer = {
-          session_id: sessionId,
-          participant_id: participantId,
+          sessionId,
           participantId,
           username: "nick",
           questionId: "q1",
@@ -577,11 +556,11 @@ describe("ParticipantService unit tests", () => {
 
       it("should throw error if participant mismatch", async () => {
         const buzzer = {
-          session_id: sessionId,
-          participant_id: "other",
+          sessionId,
+          participantId: "other",
           username: "other",
-          question_id: "q1",
-          pressed_at: new Date().toISOString(),
+          questionId: "q1",
+          pressedAt: new Date().toISOString(),
         };
         vi.mocked(buzzerRepositoryMock.peek).mockResolvedValue(buzzer);
         vi.mocked(sessionRepositoryMock.find).mockResolvedValue(
@@ -602,8 +581,8 @@ describe("ParticipantService unit tests", () => {
     describe("getCurrentBuzzer", () => {
       it("should return peeked buzzer", async () => {
         const buzzer = {
-          session_id: sessionId,
-          participant_id: participantId,
+          sessionId,
+          participantId,
           username: "u",
           questionId: "q1",
           pressedAt: "t",

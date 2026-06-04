@@ -72,11 +72,12 @@ describe("KafkaProducer (Unit Test)", () => {
     });
   });
 
-  it("should return false if publish fails", async () => {
+  it("should throw an error if publish fails", async () => {
     vi.mocked(mockProducer.send).mockRejectedValue(new Error("Network Error"));
     const kafkaProducer = new KafkaProducer(mockKafkaClient);
 
-    const result = await kafkaProducer.publish("test-topic", { data: 1 });
-    expect(result).toBe(false);
+    await expect(
+      kafkaProducer.publish("test-topic", { data: 1 }),
+    ).rejects.toThrow("Network Error");
   });
 });

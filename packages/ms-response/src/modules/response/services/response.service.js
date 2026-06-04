@@ -55,15 +55,14 @@ export class ResponseService extends BaseService {
     );
 
     if (!questionId) {
-      const { session } = await this.handleQuizNotFound(
-        event.sessionId,
-        event.participantId,
+      await this.handleQuizNotFound(event.sessionId, event.participantId);
+      questionId = await this.valkeyRepository.get(
+        `currentSessionQuestion:${event.sessionId}`,
       );
-      questionId = session.current_question_id;
       if (!questionId) {
         logger.warn(
           { sessionId: event.sessionId },
-          "No current question found in cache or session after recovery attempt",
+          "No current question found in cache after recovery attempt",
         );
         throw new Error(ResponseError.QUIZ_NOT_FOUND);
       }
@@ -325,37 +324,33 @@ export class ResponseService extends BaseService {
     logger.info(
       "entering getIsCorrectFromCache() and getting quizId from cache",
     );
-    const quizId = await this.valkeyRepository.get(
-      `sessionQuizId:${sessionId}`,
-    );
-
-    let quiz;
-
+    let quizId = await this.valkeyRepository.get(`sessionQuizId:${sessionId}`);
     if (!quizId) {
       logger.info(
         "getIsCorrectFromCache : quizId not found in cache, trying to recover from handleQuizNotFound()",
       );
-      const recovered = await this.handleQuizNotFound(sessionId, participantId);
-      quiz = recovered ? recovered.quiz : null;
-    } else {
-      const cached = await this.valkeyRepository.get(`quiz:${quizId}`);
-      if (cached) {
-        quiz = /** @type {import('common-contracts').Quizz} */ (cached);
-      } else {
-        logger.warn(
-          "getIsCorrectFromCache: quizz not found in cache, trying to recover from handleQuizNotFound()",
-        );
-        const recovered = await this.handleQuizNotFound(
-          sessionId,
-          participantId,
-        );
-        quiz = recovered.quiz;
+      const cached = await this.handleQuizNotFound(sessionId, participantId);
+      quizId = cached
+        ? /** @type {string} */ (cached)
+        : await this.valkeyRepository.get(`sessionQuizId:${sessionId}`);
+      if (!quizId) {
+        throw new Error(ResponseError.QUIZ_NOT_FOUND);
       }
     }
 
-    if (!quiz) {
-      throw new Error(ResponseError.QUIZ_NOT_FOUND);
+    let cached = await this.valkeyRepository.get(`quiz:${quizId}`);
+
+    if (!cached) {
+      logger.warn(
+        "getIsCorrectFromCache: quizz not found, trying to recover from handleQuizNotFound()",
+      );
+      cached = await this.handleQuizNotFound(sessionId, participantId);
+      if (!cached) {
+        throw new Error(ResponseError.QUIZ_NOT_FOUND);
+      }
     }
+
+    const quiz = /** @type {import('common-contracts').Quizz} */ (cached);
 
     const question = quiz.questions?.find((q) => q.id === questionId);
 
@@ -397,7 +392,7 @@ export class ResponseService extends BaseService {
    * @param {string} _sessionId
    * @param {string} participantID
    * @param {import('node:http').IncomingHttpHeaders} [headers]
-   * @returns {Promise<{ session: import('common-contracts').GetSessionResponse, quiz: import('common-contracts').Quizz }>}
+   * @returns {Promise<string | null>}
    */
   async handleQuizNotFound(_sessionId, participantID, headers = {}) {
     const internalToken = this.getSessionToken(participantID, _sessionId);
@@ -416,11 +411,7 @@ export class ResponseService extends BaseService {
       throw new Error(ResponseError.QUIZ_NOT_FOUND);
     }
 
-    const quiz = await this.fetchQuizz(
-      session.quizz_id,
-      session.host_id,
-      headers,
-    );
+    await this.fetchQuizz(session.quizz_id, session.host_id, headers);
 
     await this.valkeyRepository.set(
       `sessionQuizId:${_sessionId}`,
@@ -434,7 +425,7 @@ export class ResponseService extends BaseService {
       3600,
     );
 
-    return { session, quiz };
+    return session.quizz_id;
   }
 
   /**

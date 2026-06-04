@@ -334,7 +334,7 @@ describe("SessionService unit tests", () => {
       };
       const buzzer = {
         sessionId: "s1",
-        participant_id: "p1", participantId: "p1",
+        participantId: "p1",
         username: "nick",
         questionId: "q1",
         pressedAt: "1000",
