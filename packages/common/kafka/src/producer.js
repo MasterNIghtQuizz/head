@@ -40,7 +40,7 @@ export class KafkaProducer {
    * @param {string} topic
    * @param {any} payload
    * @param {import('kafkajs').IHeaders} [headers]
-   * @returns {Promise<boolean>}
+   * @returns {Promise<void>}
    */
   async publish(topic, payload, headers = {}) {
     await this.connect();
@@ -56,10 +56,9 @@ export class KafkaProducer {
         messages: [message],
       });
       logger.info({ topic }, "Message published successfully");
-      return true;
     } catch (error) {
       logger.error({ error, topic }, "Failed to publish Kafka message");
-      return false;
+      throw error;
     }
   }
 }

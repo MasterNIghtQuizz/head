@@ -194,26 +194,16 @@ export class SessionService extends BaseService {
           { payload },
           "DEBUG [ms-session] Publishing SESSION_CREATED event to Kafka",
         );
-        const published = await this.kafkaProducer.publish(
-          Topics.QUIZZ_EVENTS,
-          {
-            eventId: randomUUID(),
-            timestamp: Date.now(),
-            eventType: SessionEventTypes.SESSION_CREATED,
-            payload,
-          },
+        await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
+          eventId: randomUUID(),
+          timestamp: Date.now(),
+          eventType: SessionEventTypes.SESSION_CREATED,
+          payload,
+        });
+        logger.info(
+          { sessionId: session.id, hostId },
+          "DEBUG [ms-session] SESSION_CREATED event published successfully",
         );
-        if (published) {
-          logger.info(
-            { sessionId: session.id, hostId },
-            "DEBUG [ms-session] SESSION_CREATED event published successfully",
-          );
-        } else {
-          logger.error(
-            { sessionId: session.id, hostId },
-            "DEBUG [ms-session] SESSION_CREATED event failed to publish. Proceeding in degraded mode.",
-          );
-        }
       }
 
       return new CreateSessionResponseDto({
@@ -414,37 +404,24 @@ export class SessionService extends BaseService {
       if (this.kafkaProducer) {
         /** @type {import('common-contracts').SessionStartedEventPayload} */
         const startedPayload = { session_id: session.id };
-        const publishedStart = await this.kafkaProducer.publish(
-          Topics.QUIZZ_EVENTS,
-          {
-            eventId: randomUUID(),
-            timestamp: Date.now(),
-            eventType: SessionEventTypes.SESSION_STARTED,
-            payload: startedPayload,
-          },
-        );
+        await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
+          eventId: randomUUID(),
+          timestamp: Date.now(),
+          eventType: SessionEventTypes.SESSION_STARTED,
+          payload: startedPayload,
+        });
 
         /** @type {import('common-contracts').SessionNextQuestionEventPayload} */
         const payload = {
           session_id: session.id,
           question_id: questionId,
         };
-        const publishedNext = await this.kafkaProducer.publish(
-          Topics.QUIZZ_EVENTS,
-          {
-            eventId: randomUUID(),
-            timestamp: Date.now(),
-            eventType: SessionEventTypes.SESSION_NEXT_QUESTION,
-            payload,
-          },
-        );
-
-        if (!publishedStart || !publishedNext) {
-          logger.error(
-            { sessionId: session.id },
-            "Failed to publish session start events to Kafka. Proceeding in degraded mode.",
-          );
-        }
+        await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
+          eventId: randomUUID(),
+          timestamp: Date.now(),
+          eventType: SessionEventTypes.SESSION_NEXT_QUESTION,
+          payload,
+        });
       }
     } catch (error) {
       const err = /** @type {import('common-errors').BaseError} */ (error);
@@ -597,21 +574,12 @@ export class SessionService extends BaseService {
           session_id: session.id,
           question_id: questionId,
         };
-        const publishedNext = await this.kafkaProducer.publish(
-          Topics.QUIZZ_EVENTS,
-          {
-            eventId: randomUUID(),
-            timestamp: Date.now(),
-            eventType: SessionEventTypes.SESSION_NEXT_QUESTION,
-            payload,
-          },
-        );
-        if (!publishedNext) {
-          logger.error(
-            { sessionId: session.id },
-            "Failed to publish next question event to Kafka. Proceeding in degraded mode.",
-          );
-        }
+        await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
+          eventId: randomUUID(),
+          timestamp: Date.now(),
+          eventType: SessionEventTypes.SESSION_NEXT_QUESTION,
+          payload,
+        });
       }
     } catch (error) {
       const err = /** @type {import('common-errors').BaseError} */ (error);
@@ -637,22 +605,19 @@ export class SessionService extends BaseService {
       });
       logger.info({ sessionId: session.id }, "Session finished successfully");
 
-      let published = false;
       if (this.kafkaProducer) {
         /** @type {import('common-contracts').SessionEndedEventPayload} */
         const payload = { session_id: session.id };
-        published = await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
+        await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
           eventId: randomUUID(),
           timestamp: Date.now(),
           eventType: SessionEventTypes.SESSION_ENDED,
           payload,
         });
-      }
-
-      if (!published) {
+      } else {
         logger.info(
           { sessionId: session.id },
-          "Kafka disabled or down, falling back to HTTP for session end notification",
+          "Kafka disabled, falling back to HTTP for session end notification",
         );
 
         const internalToken = TokenService.signInternalToken(
@@ -716,21 +681,12 @@ export class SessionService extends BaseService {
       if (this.kafkaProducer) {
         /** @type {import('common-contracts').SessionDeletedEventPayload} */
         const payload = { session_id: sessionId };
-        const published = await this.kafkaProducer.publish(
-          Topics.QUIZZ_EVENTS,
-          {
-            eventId: randomUUID(),
-            timestamp: Date.now(),
-            eventType: SessionEventTypes.SESSION_DELETED,
-            payload,
-          },
-        );
-        if (!published) {
-          logger.error(
-            { sessionId },
-            "Failed to publish SESSION_DELETED event. Proceeding in degraded mode.",
-          );
-        }
+        await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
+          eventId: randomUUID(),
+          timestamp: Date.now(),
+          eventType: SessionEventTypes.SESSION_DELETED,
+          payload,
+        });
       }
     } catch (error) {
       const err = /** @type {import('common-errors').BaseError} */ (error);
@@ -867,7 +823,7 @@ export class SessionService extends BaseService {
 
           if (buzzerData) {
             currentBuzzer = {
-              id: buzzerData.participant_id,
+              id: buzzerData.participantId,
               username: buzzerData.username,
               pressed_at: Number(buzzerData.pressedAt),
             };
@@ -882,21 +838,12 @@ export class SessionService extends BaseService {
             "Valkey down during getCurrentQuestion, pinging host/WS for recovery",
           );
           if (this.kafkaProducer) {
-            const published = await this.kafkaProducer.publish(
-              Topics.QUIZZ_EVENTS,
-              {
-                eventId: randomUUID(),
-                timestamp: Date.now(),
-                eventType: SessionEventTypes.PING_HOST_FOR_QUEUE,
-                payload: { session_id: sessionId },
-              },
-            );
-            if (!published) {
-              logger.error(
-                { sessionId },
-                "Failed to publish PING_HOST_FOR_QUEUE. Proceeding in degraded mode.",
-              );
-            }
+            await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
+              eventId: randomUUID(),
+              timestamp: Date.now(),
+              eventType: SessionEventTypes.PING_HOST_FOR_QUEUE,
+              payload: { sessionId },
+            });
           }
         }
       }
@@ -1010,27 +957,16 @@ export class SessionService extends BaseService {
           "Valkey publish failed, falling back to Kafka for results display",
         );
         if (this.kafkaProducer) {
-          const published = await this.kafkaProducer.publish(
-            Topics.QUIZZ_EVENTS,
-            {
-              eventId: randomUUID(),
-              timestamp: Date.now(),
-              eventType: SessionEventTypes.SESSION_RESULTS_DISPLAYED,
-              payload: { sessionId, questionId },
-            },
+          await this.kafkaProducer.publish(Topics.QUIZZ_EVENTS, {
+            eventId: randomUUID(),
+            timestamp: Date.now(),
+            eventType: SessionEventTypes.SESSION_RESULTS_DISPLAYED,
+            payload: { sessionId, questionId },
+          });
+          logger.info(
+            { sessionId, questionId },
+            "Results display triggered via Kafka fallback",
           );
-          if (published) {
-            logger.info(
-              { sessionId, questionId },
-              "Results display triggered via Kafka fallback",
-            );
-          } else {
-            logger.error(
-              { sessionId, questionId },
-              "Kafka fallback for results display failed",
-            );
-            throw valkeyErr;
-          }
         } else {
           throw valkeyErr;
         }

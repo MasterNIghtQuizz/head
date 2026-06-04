@@ -55,7 +55,7 @@ export class BuzzerRepository {
     const queue = await this.client.lrange(key, 0, -1);
     return queue.some((entry) => {
       const data = JSON.parse(entry);
-      return (data.participant_id || data.participantId) === participantId;
+      return data.participantId === participantId;
     });
   }
 }
